@@ -1,5 +1,7 @@
 Prototype for the OBS.Ninja desktop app. It's designed to be a viewer for remote streams that is "Window Capture" friendly, as it is frameless.  Default frameless resolution is 1280x720.
 
+![example](https://github.com/steveseguin/electroncapture/raw/master/example.jpg)
+
 I don't know exactly how much value this will have for everyone, but if Browser Source isn't working for you in OBS, this is perhaps an option. Audio Capture will still require some desktop capture audio tool.
 
 note: If you rename the file executable to the name of the streamID, it will auto-load that streamID, ready to play. This could be helpful with streamlining the setup and reloading process.
