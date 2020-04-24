@@ -1,5 +1,5 @@
 {
-  "name": "OBS.Ninja.Desktop.App",
+  "name": "Stage.Ten.Desktop.App",
   "version": "1.0.1",
   "description": "Simple Electron app for playing frameless videos online",
   "author": "Steve Seguin",
@@ -13,8 +13,8 @@
     "release": "electron-builder --publish always"
   },
   "build": {
-    "appId": "ninja.obs",
-    "productName": "OBS.Ninja Desktop App",
+    "appId": "Stage.TEN",
+    "productName": "STAGETEN Desktop App",
     "files": [
       "**/*",
       "build/Release/*",
@@ -40,7 +40,7 @@
           "path": "/Applications"
         }
       ],
-      "artifactName": "obs-ninja-da-${version}.${ext}"
+      "artifactName": "stageten-da-${version}.${ext}"
     },
     "win": {
       "target": [
@@ -59,17 +59,17 @@
     "nsis": {
       "runAfterFinish": true,
       "installerIcon": "assets/icons/win/icon.ico",
-      "artifactName": "obs-ninja-da-${version}.${ext}"
+      "artifactName": "stageten-da-${version}.${ext}"
     },
     "portable": {
       "artifactName": "OBSNinja.exe"
     },
     "appx": {
-      "applicationId": "obs.ninja",
+      "applicationId": "STAGETEN",
       "backgroundColor": "#464646",
       "identityName": "bs.ninja",
       "publisherDisplayName": "Steve Seguin",
-      "artifactName": "obs-ninja-da-${version}.${ext}"
+      "artifactName": "stageten-da-${version}.${ext}"
     },
     "publish": [
       {
