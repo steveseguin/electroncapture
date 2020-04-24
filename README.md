@@ -31,3 +31,5 @@ Building does not support cross-compiling. In order to build you must be logged 
 npm install
 npm run build
 ```
+
+* For Mac, please also see this issue for building: https://github.com/electron-userland/electron-builder/issues/3828
