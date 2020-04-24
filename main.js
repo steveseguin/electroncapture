@@ -1,6 +1,7 @@
 // Modules to control application life and create native browser window
 const {app, BrowserWindow, ipcMain} = require('electron')
 const path = require('path')
+const process = require('process')
 
 function createWindow () {
   // Create the browser window.
@@ -16,7 +17,7 @@ function createWindow () {
   })
 
   // and load the index.html of the app.
-  mainWindow.loadURL('https://obs.ninja/alpha/electron')
+  mainWindow.loadURL('https://obs.ninja/alpha/electron?name='+path.basename(process.env.PORTABLE_EXECUTABLE_FILE).split(".")[0])
 
   // Open the DevTools.
   // mainWindow.webContents.openDevTools()
@@ -39,4 +40,3 @@ app.on('activate', function () {
   // dock icon is clicked and there are no other windows open.
   if (BrowserWindow.getAllWindows().length === 0) createWindow()
 })
-
