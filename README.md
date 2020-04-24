@@ -1,4 +1,4 @@
-Prototype for the OBS.Ninja desktop app. It's designed to be a viewer for remote streams that is "Window Capture" friendly, as it is frameless.  Default frameless resolution is 1280x720.
+Prototype for the OBS.Ninja desktop app. It's designed to be a viewer for remote streams that is "Window Capture" friendly, as it is frameless and uses the newest version of Chromium.  Default frameless resolution is 1280x720.
 
 ![example](https://github.com/steveseguin/electroncapture/raw/master/example.jpg)
 
