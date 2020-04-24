@@ -1,22 +1,90 @@
 {
-  "name": "electron-quick-start",
-  "version": "1.0.0",
-  "description": "A minimal Electron application",
+  "name": "OBS.Ninja.Desktop.App",
+  "version": "1.0.1",
+  "description": "Simple Electron app for playing frameless videos online",
+  "author": "Steve Seguin",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "build": "run-os",
+    "build:win32": "electron-builder --win",
+    "build:darwin": "electron-builder --mac",
+    "clean": "rimraf ./dist",
+    "release": "electron-builder --publish always"
   },
-  "repository": "https://github.com/electron/electron-quick-start",
-  "keywords": [
-    "Electron",
-    "quick",
-    "start",
-    "tutorial",
-    "demo"
-  ],
-  "author": "GitHub",
-  "license": "CC0-1.0",
+  "build": {
+    "appId": "ninja.obs",
+    "productName": "OBS.Ninja Desktop App",
+    "files": [
+      "**/*",
+      "build/Release/*",
+      "assets/icons/*.*",
+      "assets/icons/mac/*.*",
+      "assets/icons/png/*.*",
+      "assets/icons/win/*.*"
+    ],
+    "mac": {
+      "category": "public.build.automation",
+      "icon": "assets/icons/win/icon.ico"
+    },
+    "dmg": {
+      "contents": [
+        {
+          "x": 110,
+          "y": 150
+        },
+        {
+          "x": 440,
+          "y": 150,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ],
+      "artifactName": "obs-ninja-da-${version}.${ext}"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable"
+        }
+      ],
+      "icon": "assets/icons/win/icon.ico"
+    },
+    "nsis": {
+      "runAfterFinish": true,
+      "installerIcon": "assets/icons/win/icon.ico",
+      "artifactName": "obs-ninja-da-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "OBSNinja.exe"
+    },
+    "appx": {
+      "applicationId": "obs.ninja",
+      "backgroundColor": "#464646",
+      "identityName": "bs.ninja",
+      "publisherDisplayName": "Steve Seguin",
+      "artifactName": "obs-ninja-da-${version}.${ext}"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "releaseType": "release"
+      }
+    ]
+  },
   "devDependencies": {
-    "electron": "^8.2.3"
+    "electron": "^5.0.1",
+    "electron-builder": "^20.40.2",
+    "rimraf": "^2.6.3",
+    "run-script-os-fix": "^1.0.4"
+  },
+  "dependencies": {
+    "electron-is-dev": "^1.0.1"
   }
 }
