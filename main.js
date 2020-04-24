@@ -6,9 +6,9 @@ const process = require('process')
 function createWindow () {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 720,
-	frame: false,
+    width: 1440,
+    height: 900,
+	frame: true,
 	backgroundColor: '#141926',
 	titleBarStyle: 'customButtonsOnHover',
     webPreferences: {
@@ -17,7 +17,7 @@ function createWindow () {
   })
 
   // and load the index.html of the app.
-  mainWindow.loadURL('https://obs.ninja/alpha/electron?name='+path.basename(process.env.PORTABLE_EXECUTABLE_FILE).split(".")[0])
+  mainWindow.loadURL('https://app.stageten.tv/?filename='+path.basename(process.env.PORTABLE_EXECUTABLE_FILE).split(".")[0])
 
   // Open the DevTools.
   // mainWindow.webContents.openDevTools()
