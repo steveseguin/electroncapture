@@ -10,7 +10,7 @@ note: If you rename the file executable to the name of the streamID, it will aut
 https://obs.ninja/alpha/OBSNinja.exe
 
 ## Mac Build
-(coming soon)
+https://obs.ninja/alpha/OBS.Ninja.Desktop.App-1.0.1.pkg
 
 ## Linux Build
 (coming soon)
