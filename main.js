@@ -17,8 +17,12 @@ function createWindow () {
   })
 
   // and load the index.html of the app.
-  mainWindow.loadURL('https://obs.ninja/alpha/electron?name='+path.basename(process.env.PORTABLE_EXECUTABLE_FILE).split(".")[0])
-
+  
+  try { // Windows
+  	mainWindow.loadURL('https://obs.ninja/alpha/electron?name='+path.basename(process.env.PORTABLE_EXECUTABLE_FILE).split(".")[0])
+  } catch (e){ // macOS
+	mainWindow.loadURL('https://obs.ninja/alpha/electron')
+  }
   // Open the DevTools.
   // mainWindow.webContents.openDevTools()
 }
