@@ -13,7 +13,7 @@ https://obs.ninja/alpha/OBSNinja.exe
 https://obs.ninja/alpha/OBS.Ninja.Desktop.App-1.0.1.pkg
 
 ## Linux Build
-(coming soon)
+(likely best to build it yourself?)
 
 
 ## Running
