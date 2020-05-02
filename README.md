@@ -2,11 +2,15 @@ Prototype for the OBS.Ninja desktop app. It's designed to be a viewer for remote
 
 Links to downloads below.
 
-Top 1" of the window can be used to drag the window around. You can also right click the top 1" of the window to get a menu to minimize, fullscreen, and close.  Options to "reload" and "load a camera" are coming.
+
 
 ![image](https://user-images.githubusercontent.com/2575698/80891669-8eacec80-8c93-11ea-8166-0ce6de83c5d0.png)
 
 ![example](https://github.com/steveseguin/electroncapture/raw/master/example.jpg)
+
+![image](https://user-images.githubusercontent.com/2575698/80891745-290d3000-8c94-11ea-85c4-ae0e7cd1ec19.png)
+
+Top 1" of the window can be used to drag the window around. You can also right click the top 1" of the window to get a menu to minimize, fullscreen, and close.  Options to "reload" and "load a camera" are coming.
 
 I don't know exactly how much value this will have for everyone, but if Browser Source isn't working for you in OBS, this is perhaps an option. Audio Capture will still require some desktop capture audio tool.
 
