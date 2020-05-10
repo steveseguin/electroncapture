@@ -43,3 +43,6 @@ npm run build
 ```
 
 * For Mac, please also see this issue for building: https://github.com/electron-userland/electron-builder/issues/3828
+
+
+"Electron capture is one process that unstable atoms can use to become more stable. " - https://education.jlab.org/glossary/electroncapture.html
