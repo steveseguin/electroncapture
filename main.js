@@ -16,15 +16,17 @@ function createWindow () {
     }
   })
 
-  // and load the index.html of the app.
-  
-  try { // Windows
-  	mainWindow.loadURL('https://obs.ninja/alpha/electron?name='+path.basename(process.env.PORTABLE_EXECUTABLE_FILE).split(".")[0])
-  } catch (e){ // macOS
-	mainWindow.loadURL('https://obs.ninja/alpha/electron')
+  if (process.argv.length==3){
+	mainWindow.loadURL(process.argv[2]);
+  } else if (((process.argv.length)==2)){
+   	mainWindow.loadURL(process.argv[1]);
+  } else {
+  	try { // Windows
+  		mainWindow.loadURL('https://obs.ninja/electron?name='+path.basename(process.env.PORTABLE_EXECUTABLE_FILE).split(".")[0])
+  	} catch (e){ // macOS
+		mainWindow.loadURL('https://obs.ninja/electron')
+  	}
   }
-  // Open the DevTools.
-  // mainWindow.webContents.openDevTools()
 }
 
 // This method will be called when Electron has finished
