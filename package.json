@@ -1,6 +1,6 @@
 {
   "name": "OBS.Ninja.Desktop.App",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Simple Electron app for playing frameless videos online",
   "author": "Steve Seguin",
   "main": "main.js",
@@ -14,7 +14,7 @@
   },
   "build": {
     "appId": "ninja.obs",
-    "productName": "OBS.Ninja Desktop App",
+    "productName": "OBS.Ninja",
     "files": [
       "**/*",
       "build/Release/*",
@@ -26,7 +26,12 @@
     "mac": {
       "category": "public.build.automation",
       "icon": "assets/icons/mac/icon.ico",
-       "target": "pkg"
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "hardenedRuntime": true,
+      "entitlements": "./build/entitlements.mac.inherit.plist"
     },
     "dmg": {
       "contents": [
@@ -80,8 +85,9 @@
     ]
   },
   "devDependencies": {
-    "electron": "^5.0.1",
-    "electron-builder": "^20.40.2",
+    "electron": "^9.0.3",
+    "electron-builder": "^22.7.0",
+    "electron-notarize": "^1.0.0",
     "rimraf": "^2.6.3",
     "run-script-os-fix": "^1.0.4"
   },
