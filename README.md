@@ -36,6 +36,15 @@ npm run build
 
 * For Mac, please also see this issue for building: https://github.com/electron-userland/electron-builder/issues/3828
 
+And for notorization on macOS,..
+```
+npm install
+export appleId={yourApp@dev.email}
+export appleIdPassword={app-specific-password-here}
+sudo -E npm run build
+
+```
+
 
 "Electron capture is one process that unstable atoms can use to become more stable. " - https://education.jlab.org/glossary/electroncapture.html
 
