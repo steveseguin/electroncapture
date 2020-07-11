@@ -16,7 +16,15 @@ function createWindow () {
     }
   })
 
-  mainWindow.setAlwaysOnTop(true, 'screen')
+// hides the dock icon for our app which allows our windows to join other
+// apps' spaces. without this our windows open on the nearest "desktop" space
+  app.dock.hide();
+
+// "floating" + 1 is higher than all regular windows, but still behind things
+// like spotlight or the screen saver
+   mainWindow.setAlwaysOnTop(true, "floating", 1);
+// allows the window to show over a fullscreen window
+   mainWindow.setVisibleOnAllWorkspaces(true);
 
   if (process.argv.length==3){
 	mainWindow.loadURL(process.argv[2]);
