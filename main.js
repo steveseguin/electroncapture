@@ -16,6 +16,8 @@ function createWindow () {
     }
   })
 
+  mainWindow.setAlwaysOnTop(true, 'screen')
+
   if (process.argv.length==3){
 	mainWindow.loadURL(process.argv[2]);
   } else if (((process.argv.length)==2)){
