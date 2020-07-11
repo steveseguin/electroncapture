@@ -8,11 +8,13 @@ I don't know exactly how much value this will have for everyone, but if Browser 
 
 note: If you rename the file executable to the name of the streamID, it will auto-load that streamID, ready to play. This could be helpful with streamlining the setup and reloading process.
 
+You can find the newest release builds of the app here: https://github.com/steveseguin/electroncapture/releases  or see below.
+
 ## Windows Build
-https://obs.ninja/alpha/OBSNinja.exe
+https://github.com/steveseguin/electroncapture/releases/download/1.03/OBSNinja.exe
 
 ## Mac Build
-https://obs.ninja/alpha/OBS.Ninja.Desktop.App-1.0.1.pkg
+https://github.com/steveseguin/electroncapture/releases/download/1.03/obs-ninja-da-1.0.3.dmg
 
 ## Linux Build
 (likely best to build it yourself?)
