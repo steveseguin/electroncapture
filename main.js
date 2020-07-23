@@ -1,12 +1,12 @@
 // Modules to control application life and create native browser window
-const {app, BrowserWindow, ipcMain} = require('electron')
+const {app, BrowserWindow, ipcMain, screen} = require('electron')
 const path = require('path')
 const process = require('process')
 
-let factor = screen.getPrimaryDisplay().scaleFactor;
-
 
 function createWindow () {
+
+  let factor = screen.getPrimaryDisplay().scaleFactor;
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 1280 / factor,
