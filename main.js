@@ -3,22 +3,24 @@ const {app, BrowserWindow, ipcMain} = require('electron')
 const path = require('path')
 const process = require('process')
 
+let factor = screen.getPrimaryDisplay().scaleFactor;
+
+
 function createWindow () {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 720,
+    width: 1280 / factor,
+    height: 720 / factor,
 	frame: false,
 	backgroundColor: '#141926',
 	titleBarStyle: 'customButtonsOnHover',
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, 'preload.js'),
+	  zoomFactor: 1.0 / factor
     }
   })
 
-// hides the dock icon for our app which allows our windows to join other
-// apps' spaces. without this our windows open on the nearest "desktop" space
-  app.dock.hide();
+
 
 // "floating" + 1 is higher than all regular windows, but still behind things
 // like spotlight or the screen saver
@@ -34,6 +36,9 @@ function createWindow () {
   	try { // Windows
   		mainWindow.loadURL('https://obs.ninja/electron?name='+path.basename(process.env.PORTABLE_EXECUTABLE_FILE).split(".")[0])
   	} catch (e){ // macOS
+		// hides the dock icon for our app which allows our windows to join other
+		// apps' spaces. without this our windows open on the nearest "desktop" space
+  		app.dock.hide();
 		mainWindow.loadURL('https://obs.ninja/electron')
   	}
   }
