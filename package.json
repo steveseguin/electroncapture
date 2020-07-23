@@ -1,6 +1,6 @@
 {
   "name": "OBS.Ninja.Desktop.App",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Simple Electron app for playing frameless videos online",
   "author": "Steve Seguin",
   "main": "main.js",
