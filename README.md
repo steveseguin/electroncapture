@@ -36,10 +36,13 @@ Multiple versions of the app can run on macOS; just make a copy of the file with
 You can find the newest release builds of the app here: https://github.com/steveseguin/electroncapture/releases  or see below.
 
 ### Windows Version
-https://github.com/steveseguin/electroncapture/releases/download/1.05/electron_win_installer.zip  (Installs the app for easy loading from Start Menu)
-https://github.com/steveseguin/electroncapture/releases/download/1.05/electron_win_portable.zip  (Portable version; no install needed)
+- Installs the app for easy loading from Start Menu
+https://github.com/steveseguin/electroncapture/releases/download/1.05/electron_win_installer.zip
 
-### Mac Versino
+- Portable version; no install needed
+https://github.com/steveseguin/electroncapture/releases/download/1.05/electron_win_portable.zip 
+
+### Mac Version
 https://github.com/steveseguin/electroncapture/releases/download/1.05/obs-ninja-da-1.0.5.dmg 
 
 ### Linux Version
