@@ -1,34 +1,62 @@
-Prototype for the OBS.Ninja desktop app. It's designed to be a viewer for remote streams that is "Window Capture" friendly, as it is frameless and uses the newest version of Chromium.  Default frameless resolution is 1280x720.
+This is the Electron Capture app, created for OBS.Ninja users. It's designed to be a media viewer for remote streams, which is "Window Capture" friendly, as it is frameless and uses the newest version of Chromium.
 
-Links to downloads below.
+## Why ?
+OBS on macOS currently doesn't support its Browser Source plugin all that well, so this tool is helpful for macOS users to screen-grab video without the need of the Browser Source plugin. It also makes it easy to select the output audio playback device, such as a Virtual Audio device, like https://rogueamoeba.com/audiohijack/, for each audio capturing and routing. It remains on top of other windows, attempts to hide the mouse cursor when possible, and provides accurate window sizes for 1:1 pixel mapping.
 
-Top 1" of the window can be used to drag the window around. You can also right click the top 1" of the window to get a menu to minimize, fullscreen, and close.  Options to "reload" and "load a camera" are coming.
+Windows users may also find it beneficial as it offers support for OBS.Ninja's &buffer audio sync command and has robust support for video packet loss. In other words, it can playback live video bettr than OBS can, with fewer video playback errors and better audio/video sync. If you have a spare monitor, it may at times be worth the hassle to use.
 
-I don't know exactly how much value this will have for everyone, but if Browser Source isn't working for you in OBS, this is perhaps an option. Audio Capture will still require some desktop capture audio tool.
+## Settings and Parameters
 
-note: If you rename the file executable to the name of the streamID, it will auto-load that streamID, ready to play. This could be helpful with streamlining the setup and reloading process.
+Default frameless resolution is 1280x720.  It auto-adapters for high-DPI displays, so it is always 1:1 pixel-accurate with the specified resolution.
+
+The optional Command Line arguments can be seen as examples below, along with their default values.
+
+```
+OBSN.exe --width 1280 --height 720 --url https://obs.ninja/electron
+```
+or for example
+```
+./OBSN -w 1280 -h 720 -u https://obs.ninja/electron
+```
+
+## Notes on Using and Closing the App
+
+For Windows users, right click to bring up the context menu, which allows you to close the app. You can also press ALT-F4 in many cases.
+
+For Mac users, you can hover your mouse cursor over the top-left corner of the app to show the close button.
+
+Also note, the top portion of the app is draggable, so you can move it around to place it accordingly. It is also resizable.
+
+Multiple versions of the app can run on macOS; just make a copy of the file with a different name to open up a new window.
+
+# Links to downloads below.
 
 You can find the newest release builds of the app here: https://github.com/steveseguin/electroncapture/releases  or see below.
 
-## Windows Build
-https://github.com/steveseguin/electroncapture/releases/download/1.03/OBSNinja.exe
+### Windows Version
+https://github.com/steveseguin/electroncapture/releases/download/1.05/electron_win_installer.zip  (Installs the app for easy loading from Start Menu)
+https://github.com/steveseguin/electroncapture/releases/download/1.05/electron_win_portable.zip  (Portable version; no install needed)
 
-## Mac Build
-https://github.com/steveseguin/electroncapture/releases/download/1.03/obs-ninja-da-1.0.3.dmg
+### Mac Versino
+https://github.com/steveseguin/electroncapture/releases/download/1.05/obs-ninja-da-1.0.5.dmg 
 
-## Linux Build
+### Linux Version
 (likely best to build it yourself?)
 
+![image](https://user-images.githubusercontent.com/2575698/80891745-290d3000-8c94-11ea-85c4-ae0e7cd1ec19.png)
 
-## Running
-In order to run locally type the following:
+## Building the App from Source
 
+You'll need to download and extract the source code; or git clone it.
+You'll also need npm installed.
+
+### To run the app from source, you can:
 ```
 npm install
 npm start
 ```
 
-## Building
+### Building the app from source:
 Building does not support cross-compiling. In order to build you must be logged in to a host having the target OS for the build. Once logged in, type the following:
 
 ```
@@ -52,8 +80,3 @@ sudo -E npm run build
 
 
 
-![image](https://user-images.githubusercontent.com/2575698/80891669-8eacec80-8c93-11ea-8166-0ce6de83c5d0.png)
-
-![example](https://github.com/steveseguin/electroncapture/raw/master/example.jpg)
-
-![image](https://user-images.githubusercontent.com/2575698/80891745-290d3000-8c94-11ea-85c4-ae0e7cd1ec19.png)
