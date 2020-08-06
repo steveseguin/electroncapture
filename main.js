@@ -51,6 +51,7 @@ function createWindow () {
     width: width / factor,
     height: height / factor,
 	frame: false,
+	type:'toolbar',
 	backgroundColor: '#141926',
 	titleBarStyle: 'customButtonsOnHover',
     webPreferences: {
