@@ -1,7 +1,7 @@
 {
-  "name": "OBS.Ninja.Desktop.App",
-  "version": "1.0.4",
-  "description": "Simple Electron app for playing frameless videos online",
+  "name": "OBSN.Electron.Capture.App",
+  "version": "1.0.5",
+  "description": "Simple tool to allow for playing frameless videos for screen capture",
   "author": "Steve Seguin",
   "main": "main.js",
   "scripts": {
@@ -14,7 +14,7 @@
   },
   "build": {
     "appId": "ninja.obs",
-    "productName": "OBS.Ninja",
+    "productName": "OBSN.Electron",
     "files": [
       "**/*",
       "build/Release/*",
@@ -68,7 +68,7 @@
       "artifactName": "obs-ninja-da-${version}.${ext}"
     },
     "portable": {
-      "artifactName": "OBSNinja.exe"
+      "artifactName": "OBSN.exe"
     },
     "appx": {
       "applicationId": "obs.ninja",
@@ -87,12 +87,13 @@
   },
   "devDependencies": {
     "electron": "^9.1.0",
-    "electron-builder": "^22.7.0",
+    "electron-builder": "^22.8.0",
     "electron-notarize": "^1.0.0",
     "rimraf": "^2.6.3",
     "run-script-os-fix": "^1.0.4"
   },
   "dependencies": {
-    "electron-is-dev": "^1.0.1"
+    "electron-is-dev": "^1.0.1",
+    "yargs": "^15.4.1"
   }
 }

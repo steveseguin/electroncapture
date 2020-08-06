@@ -2,15 +2,54 @@
 const {app, BrowserWindow, ipcMain, screen} = require('electron')
 const path = require('path')
 const process = require('process')
+const yargs = require('yargs')
 
+const argv = yargs
+    .command('width', 'Sets the WIDTH in pixels', {
+        width: {
+            description: 'Sets the width in pixels',
+            alias: 'w',
+            type: 'number',
+        }
+    })
+	.command('height', 'Sets the HEIGHT in pixels', {
+        height: {
+            description: 'Sets the height in pixels',
+            alias: 'h',
+            type: 'number',
+        }
+    })
+	.command('url', 'Sets the URL to load', {
+        url: {
+            description: 'Sets the URL to loads',
+            alias: 'u',
+            type: 'string',
+        }
+    })
+    .help()
+    .alias('help', 'h')
+    .argv;
 
 function createWindow () {
+  let url = "https://obs.ninja/electron";
+  let width = 1280;
+  let height = 720;
+
+  if (argv._.includes('url')) {
+    url = argv.url || "https://obs.ninja/electron";
+  }
+  if (argv._.includes('height')) {
+    height = argv.height || 720;
+  }
+  if (argv._.includes('width')) {
+    width = argv.width || 1280;
+  }
 
   let factor = screen.getPrimaryDisplay().scaleFactor;
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 1280 / factor,
-    height: 720 / factor,
+    width: width / factor,
+    height: height / factor,
 	frame: false,
 	backgroundColor: '#141926',
 	titleBarStyle: 'customButtonsOnHover',
@@ -20,29 +59,19 @@ function createWindow () {
     }
   })
 
-
-
 // "floating" + 1 is higher than all regular windows, but still behind things
 // like spotlight or the screen saver
    mainWindow.setAlwaysOnTop(true, "floating", 1);
 // allows the window to show over a fullscreen window
    mainWindow.setVisibleOnAllWorkspaces(true);
 
-  if (process.argv.length==3){
-	mainWindow.loadURL(process.argv[2]);
-  } else if (((process.argv.length)==2)){
-   	mainWindow.loadURL(process.argv[1]);
-  } else {
-  	try { // Windows
-  		mainWindow.loadURL('https://obs.ninja/electron?name='+path.basename(process.env.PORTABLE_EXECUTABLE_FILE).split(".")[0])
-  	} catch (e){ // macOS
-		// hides the dock icon for our app which allows our windows to join other
-		// apps' spaces. without this our windows open on the nearest "desktop" space
-  		app.dock.hide();
-		mainWindow.loadURL('https://obs.ninja/electron')
+  	try { // MacOS
+		app.dock.hide();
+  	} catch (e){
+		// Windows?
   	}
+    mainWindow.loadURL(url);
   }
-}
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
