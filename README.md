@@ -7,6 +7,8 @@ The app also remains on top of other windows, attempts to hide the mouse cursor 
 
 Windows users may find it beneficial too, as it offers support for OBS.Ninja's &buffer audio sync command and it has robust support for video packet loss. In other words, it can playback live video better than OBS can, with fewer video playback errors and better audio/video sync. If you have a spare monitor, it may at times be worth the hassle to use.
 
+![image](https://user-images.githubusercontent.com/2575698/80891745-290d3000-8c94-11ea-85c4-ae0e7cd1ec19.png | height=400 )
+
 ## Settings and Parameters
 
 The default frameless resolution of the capture window is 1280x720. The app automatically accounts for high-DPI displays, so it is always 1:1 pixel-accurate with the specified resolution on even Apple Retina displays.
@@ -48,7 +50,6 @@ https://github.com/steveseguin/electroncapture/releases/download/1.05/obs-ninja-
 ### Linux Version
 (likely best to build it yourself?)
 
-![image](https://user-images.githubusercontent.com/2575698/80891745-290d3000-8c94-11ea-85c4-ae0e7cd1ec19.png)
 
 ## Building the App from Source
 
