@@ -7,7 +7,7 @@ The app also remains on top of other windows, attempts to hide the mouse cursor 
 
 Windows users may find it beneficial too, as it offers support for OBS.Ninja's &buffer audio sync command and it has robust support for video packet loss. In other words, it can playback live video better than OBS can, with fewer video playback errors and better audio/video sync. If you have a spare monitor, it may at times be worth the hassle to use.
 
-![image](https://user-images.githubusercontent.com/2575698/80891745-290d3000-8c94-11ea-85c4-ae0e7cd1ec19.png | height=400 )
+<img src="https://user-images.githubusercontent.com/2575698/80891745-290d3000-8c94-11ea-85c4-ae0e7cd1ec19.png " alt="" data-canonical-src="https://user-images.githubusercontent.com/2575698/80891745-290d3000-8c94-11ea-85c4-ae0e7cd1ec19.png "  height="400" />
 
 ## Settings and Parameters
 
