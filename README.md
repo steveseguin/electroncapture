@@ -1,5 +1,7 @@
 This is the Electron Capture app, created for OBS.Ninja users. It's designed to allow for easy "Screen Capturing" of OBS.Ninja live video streams using applications like OBS.
 
+<img src="https://user-images.githubusercontent.com/2575698/80891745-290d3000-8c94-11ea-85c4-ae0e7cd1ec19.png " alt="" data-canonical-src="https://user-images.githubusercontent.com/2575698/80891745-290d3000-8c94-11ea-85c4-ae0e7cd1ec19.png "  height="300" />
+
 ## Why ?
 OBS on macOS currently doesn't support its Browser Source plugin all that well, so this tool is a viable alternative. It lets you cleanly screen-grab just a video stream without the need of the Browser Source plugin. It also makes it easy to select the output audio playback device, such as a Virtual Audio device: ie) https://rogueamoeba.com/audiohijack/
 
@@ -7,7 +9,7 @@ The app also remains on top of other windows, attempts to hide the mouse cursor 
 
 Windows users may find it beneficial too, as it offers support for OBS.Ninja's &buffer audio sync command and it has robust support for video packet loss. In other words, it can playback live video better than OBS can, with fewer video playback errors and better audio/video sync. If you have a spare monitor, it may at times be worth the hassle to use.
 
-<img src="https://user-images.githubusercontent.com/2575698/80891745-290d3000-8c94-11ea-85c4-ae0e7cd1ec19.png " alt="" data-canonical-src="https://user-images.githubusercontent.com/2575698/80891745-290d3000-8c94-11ea-85c4-ae0e7cd1ec19.png "  height="400" />
+
 
 ## Settings and Parameters
 
