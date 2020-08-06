@@ -1,13 +1,15 @@
-This is the Electron Capture app, created for OBS.Ninja users. It's designed to be a media viewer for remote streams, which is "Window Capture" friendly, as it is frameless and uses the newest version of Chromium.
+This is the Electron Capture app, created for OBS.Ninja users. It's designed to allow for easy "Screen Capturing" of OBS.Ninja live video streams using applications like OBS.
 
 ## Why ?
-OBS on macOS currently doesn't support its Browser Source plugin all that well, so this tool is helpful for macOS users to screen-grab video without the need of the Browser Source plugin. It also makes it easy to select the output audio playback device, such as a Virtual Audio device, like https://rogueamoeba.com/audiohijack/, for each audio capturing and routing. It remains on top of other windows, attempts to hide the mouse cursor when possible, and provides accurate window sizes for 1:1 pixel mapping.
+OBS on macOS currently doesn't support its Browser Source plugin all that well, so this tool is a viable alternative. It lets you cleanly screen-grab just a video stream without the need of the Browser Source plugin. It also makes it easy to select the output audio playback device, such as a Virtual Audio device: ie) https://rogueamoeba.com/audiohijack/
 
-Windows users may also find it beneficial as it offers support for OBS.Ninja's &buffer audio sync command and has robust support for video packet loss. In other words, it can playback live video bettr than OBS can, with fewer video playback errors and better audio/video sync. If you have a spare monitor, it may at times be worth the hassle to use.
+The app also remains on top of other windows, attempts to hide the mouse cursor when possible, and provides accurate window sizes for 1:1 pixel mapping.
+
+Windows users may find it beneficial too, as it offers support for OBS.Ninja's &buffer audio sync command and it has robust support for video packet loss. In other words, it can playback live video better than OBS can, with fewer video playback errors and better audio/video sync. If you have a spare monitor, it may at times be worth the hassle to use.
 
 ## Settings and Parameters
 
-Default frameless resolution is 1280x720.  It auto-adapters for high-DPI displays, so it is always 1:1 pixel-accurate with the specified resolution.
+The default frameless resolution of the capture window is 1280x720. The app automatically accounts for high-DPI displays, so it is always 1:1 pixel-accurate with the specified resolution on even Apple Retina displays.
 
 The optional Command Line arguments can be seen as examples below, along with their default values.
 
