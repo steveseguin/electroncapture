@@ -36,6 +36,10 @@ var { argv } = require("yargs")
   
 const { width, height, url } = argv;
 
+if (!(url.startsWith("http"))){
+	url = "https://"+url;
+}
+
 function createWindow () {
  
   const screen = electron.screen
@@ -54,6 +58,16 @@ function createWindow () {
 	  zoomFactor: 1.0 / factor
     }
   })
+  
+  mainWindow.on('close', function(e) { 
+        e.preventDefault();
+        mainWindow.destroy();
+		app.quit();
+    });
+	
+	mainWindow.webContents.on("did-fail-load", function() {
+		app.quit();
+	});
 
 // "floating" + 1 is higher than all regular windows, but still behind things
 // like spotlight or the screen saver
@@ -66,7 +80,14 @@ function createWindow () {
   	} catch (e){
 		// Windows?
   	}
-    mainWindow.loadURL(url);
+	
+	try {
+		mainWindow.loadURL(url);
+	} catch (e){
+		app.quit();
+  	}
+	
+	
   }
 
 // This method will be called when Electron has finished
@@ -77,6 +98,8 @@ app.whenReady().then(createWindow)
 app.on('window-all-closed', () => {
   app.quit();
 })
+
+
 
 app.on('activate', function () {
   // On macOS it's common to re-create a window in the app when the
