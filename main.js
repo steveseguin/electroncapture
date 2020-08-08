@@ -56,10 +56,11 @@ function createWindow () {
 	frame: false,
 	type:'toolbar',
 	backgroundColor: '#141926',
+	fullscreenable: true,
 	titleBarStyle: 'customButtonsOnHover',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-	  zoomFactor: 1.0 / factor
+	  zoomFactor: 1.0
     }
   })
 
