@@ -1,8 +1,10 @@
 // Modules to control application life and create native browser window
+const electron = require('electron')
 const {app, BrowserWindow, ipcMain, screen} = require('electron')
 const path = require('path')
 const process = require('process')
 const yargs = require('yargs')
+
 
 const argv = yargs
     .command('width', 'Sets the WIDTH in pixels', {
@@ -44,7 +46,8 @@ function createWindow () {
   if (argv._.includes('width')) {
     width = argv.width || 1280;
   }
-
+  
+  const screen = electron.screen
   let factor = screen.getPrimaryDisplay().scaleFactor;
   // Create the browser window.
   const mainWindow = new BrowserWindow({
