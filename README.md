@@ -49,7 +49,7 @@ https://github.com/steveseguin/electroncapture/releases/download/1.05/electron_w
 https://github.com/steveseguin/electroncapture/releases/download/1.05/electron_win_portable.zip 
 
 ### Mac Version
-https://github.com/steveseguin/electroncapture/releases/download/1.05/obs-ninja-da-1.0.5.dmg 
+https://github.com/steveseguin/electroncapture/releases/download/1.05/obs-ninja-1.0.5.2.dmg
 
 ### Linux Version
 (likely best to build it yourself?)
