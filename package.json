@@ -9,6 +9,7 @@
     "build": "run-os",
     "build:win32": "electron-builder --win",
     "build:darwin": "electron-builder --mac",
+    "build:linux": "electron-builder --linux",
     "clean": "rimraf ./dist",
     "release": "electron-builder --publish always"
   },
@@ -61,6 +62,11 @@
         }
       ],
       "icon": "assets/icons/win/icon.ico"
+    },
+    "linux": {
+      "category": "public.build.automation",
+      "icon": "assets/icons/png/256x256.png",
+      "target": "AppImage"
     },
     "nsis": {
       "runAfterFinish": true,
