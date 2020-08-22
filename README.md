@@ -42,8 +42,10 @@ or for example
 - Multiple versions of the app can run on macOS; just make a copy of the file with a different name to open up a new window.
 
 - If capturing the window with OBS, you can use either DISPLAY CAPTURE with a WINDOW CROP  -or-  WINDOW CAPTURE
---- WINDOW CAPTURE will have a video delay of up to ~800ms, but Windows can be stacked without issue
---- DISPLAY CAPTURE will have no delay, but the windows cannot be stacked, which could be a problem if you only have one screen
+
+--- *WINDOW CAPTURE* will have a video delay of up to ~800ms, but Windows can be stacked without issue
+
+--- *DISPLAY CAPTURE* will have no delay, but the windows cannot be stacked, which could be a problem if you only have one screen
 
 # Links to downloads below.
 
