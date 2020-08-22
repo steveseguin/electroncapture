@@ -29,13 +29,21 @@ or for example
 
 ## Notes on Using and Closing the App
 
-For Windows users, right click to bring up the context menu, which allows you to close the app. You can also press ALT-F4 in many cases.
+#### For Windows users:
 
-For Mac users, you can hover your mouse cursor over the top-left corner of the app to show the close button.
+- Right click to bring up the context menu, which allows you to close the app. You can also press ALT-F4 in many cases.
 
-Also note, the top portion of the app is draggable, so you can move it around to place it accordingly. It is also resizable.
+#### For Mac users:
 
-Multiple versions of the app can run on macOS; just make a copy of the file with a different name to open up a new window.
+- You can hover your mouse cursor over the top-left corner of the app to show the close button.
+
+- Also note, the top portion of the app is draggable, so you can move it around to place it accordingly. It is also resizable.
+
+- Multiple versions of the app can run on macOS; just make a copy of the file with a different name to open up a new window.
+
+- If capturing the window with OBS, you can use either DISPLAY CAPTURE with a WINDOW CROP  -or-  WINDOW CAPTURE
+--- WINDOW CAPTURE will have a video delay of up to ~800ms, but Windows can be stacked without issue
+--- DISPLAY CAPTURE will have no delay, but the windows cannot be stacked, which could be a problem if you only have one screen
 
 # Links to downloads below.
 
