@@ -1,8 +1,13 @@
 // Modules to control application life and create native browser window
 const electron = require('electron')
-const {app, BrowserWindow, ipcMain, screen} = require('electron')
+const {app, BrowserWindow, ipcMain, screen, shell} = require('electron')
 const path = require('path')
 const process = require('process')
+
+const contextMenu = require('electron-context-menu');
+
+
+
 
 var { argv } = require("yargs")
   .scriptName("area")
@@ -39,9 +44,12 @@ const { width, height, url } = argv;
 if (!(url.startsWith("http"))){
 	url = "https://"+url;
 }
+var counter=0;
 
-function createWindow () {
- 
+
+
+function createWindow (URL=url) {
+  counter+=1;
   const screen = electron.screen
   let factor = screen.getPrimaryDisplay().scaleFactor;
   // Create the browser window.
@@ -49,20 +57,22 @@ function createWindow () {
     width: width / factor,
     height: height / factor,
 	frame: false,
-	type:'toolbar',
 	backgroundColor: '#141926',
 	fullscreenable: true,
 	titleBarStyle: 'customButtonsOnHover',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
 	  zoomFactor: 1.0 / factor
-    }
+    },
+	title: "OBSN "+(counter.toString())
   })
   
-  mainWindow.on('close', function(e) { 
+  
+  
+	mainWindow.on('close', function(e) { 
         e.preventDefault();
         mainWindow.destroy();
-		app.quit();
+		//app.quit();
     });
 	
 	mainWindow.webContents.on("did-fail-load", function() {
@@ -82,13 +92,12 @@ function createWindow () {
   	}
 	
 	try {
-		mainWindow.loadURL(url);
+		mainWindow.loadURL(URL);
 	} catch (e){
 		app.quit();
   	}
 	
-	
-  }
+}
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
@@ -99,7 +108,34 @@ app.on('window-all-closed', () => {
   app.quit();
 })
 
-
+contextMenu({
+	prepend: (defaultActions, params) => [
+		{
+			label: 'Electron Capture homepage',
+			// Only show it when right-clicking text
+			visible: true,
+			click: () => {
+				shell.openExternal(`https://obs.ninja/electron`);
+			}
+		},
+		{
+			label: 'Reload',
+			// Only show it when right-clicking text
+			visible: true,
+			click: () => {
+				mainWindow.reload();
+			}
+		},
+		{
+			label: 'New Window',
+			// Only show it when right-clicking text
+			visible: true,
+			click: () => {
+				createWindow("https://obs.ninja/electron");
+			}
+		}
+	]
+});
 
 app.on('activate', function () {
   // On macOS it's common to re-create a window in the app when the
