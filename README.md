@@ -76,7 +76,6 @@ https://github.com/steveseguin/electroncapture/releases/download/1.0.6/obsn-1.0.
 ### Linux Version
 (likely best to build it yourself?)
 
-
 ## Building the App from Source
 
 You'll need to download and extract the source code; or git clone it.
@@ -111,4 +110,4 @@ sudo -E npm run build
 "Electron capture is one process that unstable atoms can use to become more stable. " - https://education.jlab.org/glossary/electroncapture.html
 
 
-
+![Usage on macOS](https://user-images.githubusercontent.com/2575698/91704607-d52f2c80-eb49-11ea-9e7a-f9566a77ab94.png)
