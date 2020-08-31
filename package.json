@@ -1,6 +1,6 @@
 {
   "name": "OBSN.Electron.Capture.App",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Simple tool to allow for playing frameless videos for screen capture",
   "author": "Steve Seguin",
   "main": "main.js",
@@ -15,7 +15,7 @@
   },
   "build": {
     "appId": "ninja.obs",
-    "productName": "OBSN.Electron",
+    "productName": "OBSN",
     "files": [
       "**/*",
       "build/Release/*",
@@ -37,17 +37,17 @@
     "dmg": {
       "contents": [
         {
-          "x": 110,
-          "y": 150
+          "x": 0,
+          "y": 0
         },
         {
-          "x": 440,
-          "y": 150,
+          "x": 0,
+          "y": 0,
           "type": "link",
           "path": "/Applications"
         }
       ],
-      "artifactName": "obs-ninja-da-${version}.${ext}"
+      "artifactName": "obsn-${version}.${ext}"
     },
     "win": {
       "target": [
@@ -71,17 +71,17 @@
     "nsis": {
       "runAfterFinish": true,
       "installerIcon": "assets/icons/win/icon.ico",
-      "artifactName": "obs-ninja-da-${version}.${ext}"
+      "artifactName": "obsn-${version}.${ext}"
     },
     "portable": {
-      "artifactName": "OBSN.exe"
+      "artifactName": "obsn.exe"
     },
     "appx": {
-      "applicationId": "obs.ninja",
+      "applicationId": "obsn",
       "backgroundColor": "#464646",
-      "identityName": "bs.ninja",
+      "identityName": "obsn",
       "publisherDisplayName": "Steve Seguin",
-      "artifactName": "obs-ninja-da-${version}.${ext}"
+      "artifactName": "obsn-${version}.${ext}"
     },
     "publish": [
       {

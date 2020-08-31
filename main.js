@@ -7,8 +7,6 @@ const process = require('process')
 const contextMenu = require('electron-context-menu');
 
 
-
-
 var { argv } = require("yargs")
   .scriptName("area")
   .usage("Usage: $0 -w num -h num -w string")
@@ -50,7 +48,7 @@ var counter=0;
 
 function createWindow (URL=url) {
   counter+=1;
-  const screen = electron.screen
+  
   let factor = screen.getPrimaryDisplay().scaleFactor;
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -96,7 +94,6 @@ function createWindow (URL=url) {
 	} catch (e){
 		app.quit();
   	}
-	
 }
 
 // This method will be called when Electron has finished
@@ -109,33 +106,74 @@ app.on('window-all-closed', () => {
 })
 
 contextMenu({
-	prepend: (defaultActions, params) => [
-		{
-			label: 'Electron Capture homepage',
-			// Only show it when right-clicking text
-			visible: true,
-			click: () => {
-				shell.openExternal(`https://obs.ninja/electron`);
+		prepend: (defaultActions, params) => [
+			{
+				label: 'Go to Homepage',
+				// Only show it when right-clicking text
+				visible: true,
+				click: () => {
+					const current = BrowserWindow.getFocusedWindow();
+					current.loadURL(`https://obs.ninja/electron`);
+				}
+			},
+			{
+				label: 'Reload',
+				// Only show it when right-clicking text
+				visible: true,
+				click: () => {
+					const current = BrowserWindow.getFocusedWindow();
+					current.reload();
+				}
+			},
+			{
+				label: 'Open New Window',
+				// Only show it when right-clicking text
+				visible: true,
+				click: () => {
+					createWindow("https://obs.ninja/electron");
+				}
+			},
+			{
+				label: 'Close',
+				// Only show it when right-clicking text
+				visible: true,
+				click: () => {
+					const current = BrowserWindow.getFocusedWindow();
+					current.destroy();
+				}
+			},
+			{
+				label: 'Resize to 1920x1080',
+				// Only show it when right-clicking text
+				visible: true,
+				click: () => {
+					let factor = screen.getPrimaryDisplay().scaleFactor;
+					const current = BrowserWindow.getFocusedWindow();
+					current.setSize(1920/factor, 1080/factor);
+				}
+			},
+			{
+				label: 'Resize to 1280x720',
+				// Only show it when right-clicking text
+				visible: true,
+				click: () => {
+					let factor = screen.getPrimaryDisplay().scaleFactor;
+					const current = BrowserWindow.getFocusedWindow();
+					current.setSize(1280/factor, 720/factor);
+				}
+			},
+			{
+				label: 'Resize to 640x360',
+				// Only show it when right-clicking text
+				visible: true,
+				click: () => {
+					let factor = screen.getPrimaryDisplay().scaleFactor;
+					const current = BrowserWindow.getFocusedWindow();
+					current.setSize(640/factor, 360/factor);
+				}
 			}
-		},
-		{
-			label: 'Reload',
-			// Only show it when right-clicking text
-			visible: true,
-			click: () => {
-				mainWindow.reload();
-			}
-		},
-		{
-			label: 'New Window',
-			// Only show it when right-clicking text
-			visible: true,
-			click: () => {
-				createWindow("https://obs.ninja/electron");
-			}
-		}
-	]
-});
+		]
+	});
 
 app.on('activate', function () {
   // On macOS it's common to re-create a window in the app when the
