@@ -26,6 +26,15 @@ or for example
 ```
 ./OBSN -w 1280 -h 720 -u https://obs.ninja/electron
 ```
+### Audio Output 
+
+A popular way of outputting audio from the Electron Capture app into OBS is done using a virtual audio cable. Some such cables include:
+
+Mac Audio Options: https://github.com/steveseguin/obsninja/wiki/FAQ#macaudio
+Windows Audio Option: https://www.vb-audio.com/Cable/
+
+You can also use some advanced URL parameters to output the audio to specific channels. The following link links the parameters and the outcome, based on device/software used:
+https://docs.google.com/spreadsheets/d/1R-y7xZ2BCn-GzTlwqq63H8lorXecO02DU9Hu4twuhuA/edit?usp=sharing
 
 ## Notes on Using and Closing the App
 
