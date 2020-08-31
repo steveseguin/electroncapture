@@ -1,6 +1,6 @@
 This is the **Electron Capture app**, created for <a href="https://obs.ninja">OBS.Ninja</a> users. It's designed to allow for easy "Screen Capturing" of OBS.Ninja live video streams using applications like OBS. 
 
-<a href="https://github.com/steveseguin/electroncapture#links-to-downloads-below">Jump to Downloads Section</a>
+## <a href="https://github.com/steveseguin/electroncapture#links-to-downloads-below">Jump to Downloads Section</a>
 
 <img src="https://user-images.githubusercontent.com/2575698/91703607-74ebbb00-eb48-11ea-94d2-f205da2976b1.png " alt="" data-canonical-src="https://user-images.githubusercontent.com/2575698/91703607-74ebbb00-eb48-11ea-94d2-f205da2976b1.png"  style="display:inline-block" height="300" />
 
