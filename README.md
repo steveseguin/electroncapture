@@ -10,9 +10,9 @@ OBS on macOS currently doesn't support its Browser Source plugin all that well, 
 
 The app also remains on top of other windows, attempts to hide the mouse cursor when possible, and provides accurate window sizes for 1:1 pixel mapping.
 
-Windows users may find it beneficial too, as it offers support for OBS.Ninja's &buffer audio sync command and it has robust support for video packet loss. In other words, it can playback live video better than OBS can, with fewer video playback errors and better audio/video sync. If you have a spare monitor, it may at times be worth the hassle to use.
+Windows users may find it beneficial too, as it offers support for OBS.Ninja's <a href="https://github.com/steveseguin/obsninja/wiki/Advanced-Settings#viewers-obs-link-options">&buffer</a> audio sync command and it has robust support for video packet loss. In other words, it can playback live video better than OBS can, with fewer video playback errors and with better audio/video sync. If you have a spare monitor, it may at times be worth the hassle to use instead of OBS alone.
 
-Lastly, the Electron Capture app uses the newest version of Chromium, which is more resistant to desync, video smearing, and other issues that might exist in the native OBS browser source capture method.
+The Electron Capture app uses the newest version of Chromium, which is more resistant to desync, video smearing, and other issues that might exist in the native OBS browser source capture method.
 
 <img src="https://user-images.githubusercontent.com/2575698/80891745-290d3000-8c94-11ea-85c4-ae0e7cd1ec19.png " alt="" data-canonical-src="https://user-images.githubusercontent.com/2575698/80891745-290d3000-8c94-11ea-85c4-ae0e7cd1ec19.png " style="display:inline-block" height="300" />
 
