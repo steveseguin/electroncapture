@@ -1,4 +1,4 @@
-#### This is the **Electron Capture app**, created for <a href="https://obs.ninja">OBS.Ninja</a> users, but can be with Stage Ten as well.
+#### This is the **Electron Capture app**, created for <a href="https://obs.ninja">OBS.Ninja</a> users, but can unofficially be used with <a href='https://docs.google.com/document/d/e/2PACX-1vS3ol8Tpnu4NrqRrGjzzmcOXxocsQ7pWj3Jrb1x_essbmcC5mxRp1QFCY1LUCoVglIgF0tb2UykbFTO/pub'>Stage Ten</a> as well.
 It's designed to help make "Screen Capturing" of live videos using applications like OBS easier and more reliable.
 
 #### <a href="https://github.com/steveseguin/electroncapture#links-to-downloads-below">Jump to Downloads Section</a>
