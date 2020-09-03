@@ -71,7 +71,11 @@ function createWindow (URL=url) {
         e.preventDefault();
         mainWindow.destroy();
 		//app.quit();
-    });
+	});
+	
+	mainWindow.on("page-title-updated", function(event) {
+		event.preventDefault();
+	});
 	
 	mainWindow.webContents.on("did-fail-load", function() {
 		app.quit();
