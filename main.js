@@ -71,7 +71,11 @@ function createWindow (URL=url) {
         e.preventDefault();
         mainWindow.destroy();
 		//app.quit();
-    });
+	});
+	
+	mainWindow.on("page-title-updated", function(event) {
+		event.preventDefault();
+	});
 	
 	mainWindow.webContents.on("did-fail-load", function() {
 		app.quit();
@@ -106,26 +110,21 @@ app.on('window-all-closed', () => {
 })
 
 contextMenu({
-		prepend: (defaultActions, params) => [
+		prepend: (defaultActions, params, browserWindow) => [
 			{
 				label: 'Go to Homepage',
 				// Only show it when right-clicking text
 				visible: true,
-				click: () => {
-					const current = BrowserWindow.getFocusedWindow();
-					current.loadURL(`https://obs.ninja/electron`);
+				click: () => {				
+					browserWindow.loadURL(`https://obs.ninja/electron`);
 				}
 			},
 			{
 				label: 'Reload',
 				// Only show it when right-clicking text
 				visible: true,
-				click: (a, e,focused) => {
-					console.log(a);
-					console.log(e);
-					console.log(focused);
-					const current = BrowserWindow.getFocusedWindow();
-					current.reload();
+				click: () => {
+					browserWindow.reload();
 				}
 			},
 			{
@@ -141,8 +140,7 @@ contextMenu({
 				// Only show it when right-clicking text
 				visible: true,
 				click: () => {
-					const current = BrowserWindow.getFocusedWindow();
-					current.destroy();
+					browserWindow.destroy();
 				}
 			},
 			{
@@ -151,8 +149,7 @@ contextMenu({
 				visible: true,
 				click: () => {
 					let factor = screen.getPrimaryDisplay().scaleFactor;
-					const current = BrowserWindow.getFocusedWindow();
-					current.setSize(1920/factor, 1080/factor);
+					browserWindow.setSize(1920/factor, 1080/factor);
 				}
 			},
 			{
@@ -161,8 +158,7 @@ contextMenu({
 				visible: true,
 				click: () => {
 					let factor = screen.getPrimaryDisplay().scaleFactor;
-					const current = BrowserWindow.getFocusedWindow();
-					current.setSize(1280/factor, 720/factor);
+					browserWindow.setSize(1280/factor, 720/factor);
 				}
 			},
 			{
@@ -171,8 +167,7 @@ contextMenu({
 				visible: true,
 				click: () => {
 					let factor = screen.getPrimaryDisplay().scaleFactor;
-					const current = BrowserWindow.getFocusedWindow();
-					current.setSize(640/factor, 360/factor);
+					browserWindow.setSize(640/factor, 360/factor);
 				}
 			}
 		]
