@@ -120,7 +120,10 @@ contextMenu({
 				label: 'Reload',
 				// Only show it when right-clicking text
 				visible: true,
-				click: () => {
+				click: (a, e,focused) => {
+					console.log(a);
+					console.log(e);
+					console.log(focused);
 					const current = BrowserWindow.getFocusedWindow();
 					current.reload();
 				}
