@@ -1,8 +1,14 @@
 // Modules to control application life and create native browser window
 const electron = require('electron')
+
+const process = require('process')
+process.on('uncaughtException', function (error) {
+    error.log(error);
+}
+
 const {app, BrowserWindow, ipcMain, screen, shell} = require('electron')
 const path = require('path')
-const process = require('process')
+
 
 const contextMenu = require('electron-context-menu');
 
@@ -41,9 +47,9 @@ const { width, height, url } = argv;
 
 if (!(url.startsWith("http"))){
 	url = "https://"+url;
+
 }
 var counter=0;
-
 
 
 function createWindow (URL=url) {
