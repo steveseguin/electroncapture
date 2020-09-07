@@ -4,7 +4,7 @@ const electron = require('electron')
 const process = require('process')
 process.on('uncaughtException', function (error) {
     error.log(error);
-}
+});
 
 const {app, BrowserWindow, ipcMain, screen, shell} = require('electron')
 const path = require('path')
