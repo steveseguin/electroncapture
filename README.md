@@ -24,11 +24,11 @@ The default frameless resolution of the capture window is 1280x720. The app auto
 The optional Command Line arguments can be seen as examples below, along with their default values.
 
 ```
-OBSN.exe --width 1280 --height 720 --url https://obs.ninja/electron
+OBSN.exe --width 1280 --height 720 --url https://obs.ninja/electron --title "my Window name"
 ```
 or for example
 ```
-./OBSN -w 1280 -h 720 -u https://obs.ninja/electron
+./OBSN -w 1280 -h 720 -u https://obs.ninja/electron -t "my Window name"
 ```
 ### Audio Output 
 
