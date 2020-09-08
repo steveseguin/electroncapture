@@ -38,12 +38,19 @@ var { argv } = require("yargs")
     type: "string",
     nargs: 1,
   })
+  .option("t", {
+    alias: "title",
+    describe: "The default Title for the app Window",
+    type: "string",
+    nargs: 1,
+  })
   .describe("help", "Show help.") // Override --help usage message.
   .default("h", 720)
   .default("w", 1280)
   .default("u", "https://obs.ninja/electron")
+  .default("t", null)
   
-const { width, height, url } = argv;
+const { width, height, url, title} = argv;
 
 if (!(url.startsWith("http"))){
 	url = "https://"+url;
@@ -53,7 +60,19 @@ var counter=0;
 
 
 function createWindow (URL=url) {
-  counter+=1;
+ 
+  let currentTitle = "OBSN";
+  
+  if (title==null){
+	counter+=1;
+	currentTitle = "OBSN "+(counter.toString());
+  } else if (counter==0){
+	counter+=1;
+	currentTitle = title;
+  } else {
+	counter+=1;
+	currentTitle = title + " " +(counter.toString());
+  }
   
   let factor = screen.getPrimaryDisplay().scaleFactor;
   // Create the browser window.
@@ -68,7 +87,7 @@ function createWindow (URL=url) {
       preload: path.join(__dirname, 'preload.js'),
 	  zoomFactor: 1.0 / factor
     },
-	title: "OBSN "+(counter.toString())
+	title: currentTitle
   })
   
   
