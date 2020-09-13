@@ -15,7 +15,7 @@ const contextMenu = require('electron-context-menu');
 
 var { argv } = require("yargs")
   .scriptName("area")
-  .usage("Usage: $0 -w num -h num -w string")
+  .usage("Usage: $0 -w num -h num -w string -p")
   .example(
     "$0 -w 1280 -h 720 -u https://obs.ninja/?view=xxxx",
     "Loads the stream with ID xxxx into a window sized 1280x720"
@@ -44,13 +44,19 @@ var { argv } = require("yargs")
     type: "string",
     nargs: 1,
   })
+  .option("p", {
+    alias: "pin",
+    describe: "Toggle always on top",
+    type: "boolean"
+  })
   .describe("help", "Show help.") // Override --help usage message.
   .default("h", 720)
   .default("w", 1280)
   .default("u", "https://obs.ninja/electron")
   .default("t", null)
+  .default("p", process.platform == 'darwin')
   
-const { width, height, url, title} = argv;
+const { width, height, url, title, pin } = argv;
 
 if (!(url.startsWith("http"))){
 	url = "https://"+url;
@@ -90,8 +96,6 @@ function createWindow (URL=url) {
 	title: currentTitle
   })
   
-  
-  
 	mainWindow.on('close', function(e) { 
         e.preventDefault();
         mainWindow.destroy();
@@ -106,11 +110,13 @@ function createWindow (URL=url) {
 		app.quit();
 	});
 
-// "floating" + 1 is higher than all regular windows, but still behind things
-// like spotlight or the screen saver
-   mainWindow.setAlwaysOnTop(true, "floating", 1);
-// allows the window to show over a fullscreen window
-   mainWindow.setVisibleOnAllWorkspaces(true);
+	if (pin == true) {
+		// "floating" + 1 is higher than all regular windows, but still behind things
+		// like spotlight or the screen saver
+		mainWindow.setAlwaysOnTop(true, "floating", 1);
+		// allows the window to show over a fullscreen window
+   		mainWindow.setVisibleOnAllWorkspaces(true);
+	}
 
   	try { // MacOS
 		app.dock.hide();
@@ -169,30 +175,54 @@ contextMenu({
 				}
 			},
 			{
-				label: 'Resize to 1920x1080',
+				label: 'Resize window',
 				// Only show it when right-clicking text
 				visible: true,
-				click: () => {
-					let factor = screen.getPrimaryDisplay().scaleFactor;
-					browserWindow.setSize(1920/factor, 1080/factor);
-				}
+				type: 'submenu',
+				submenu: [
+					{
+						label: '1920x1080',
+						// Only show it when right-clicking text
+						visible: true,
+						click: () => {
+							let factor = screen.getPrimaryDisplay().scaleFactor;
+							browserWindow.setSize(1920/factor, 1080/factor);
+						}
+					},
+					{
+						label: '1280x720',
+						// Only show it when right-clicking text
+						visible: true,
+						click: () => {
+							let factor = screen.getPrimaryDisplay().scaleFactor;
+							browserWindow.setSize(1280/factor, 720/factor);
+						}
+					},
+					{
+						label: '640x360',
+						// Only show it when right-clicking text
+						visible: true,
+						click: () => {
+							let factor = screen.getPrimaryDisplay().scaleFactor;
+							browserWindow.setSize(640/factor, 360/factor);
+						}
+					}
+				]
 			},
 			{
-				label: 'Resize to 1280x720',
-				// Only show it when right-clicking text
+				label: 'Always on top',
+				type: 'checkbox',
 				visible: true,
-				click: () => {
-					let factor = screen.getPrimaryDisplay().scaleFactor;
-					browserWindow.setSize(1280/factor, 720/factor);
-				}
-			},
-			{
-				label: 'Resize to 640x360',
-				// Only show it when right-clicking text
-				visible: true,
-				click: () => {
-					let factor = screen.getPrimaryDisplay().scaleFactor;
-					browserWindow.setSize(640/factor, 360/factor);
+				checked: browserWindow.isAlwaysOnTop(),
+				click: (item, browserWindow) => {
+					if (browserWindow.isAlwaysOnTop()) {
+						browserWindow.setAlwaysOnTop(false);
+						browserWindow.setVisibleOnAllWorkspaces(false);
+					} else {
+						browserWindow.setAlwaysOnTop(true, "floating", 1);
+						browserWindow.setVisibleOnAllWorkspaces(true);
+					}
+
 				}
 			}
 		]
