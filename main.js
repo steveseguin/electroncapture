@@ -1,6 +1,5 @@
 // Modules to control application life and create native browser window
 const electron = require('electron')
-
 const process = require('process')
 
 process.on('uncaughtException', function (error) {
@@ -9,10 +8,7 @@ process.on('uncaughtException', function (error) {
 
 const {app, BrowserWindow, ipcMain, screen, shell} = require('electron')
 const path = require('path')
-
-
 const contextMenu = require('electron-context-menu');
-
 
 var { argv } = require("yargs")
   .scriptName("area")
@@ -61,10 +57,9 @@ const { width, height, url, title, pin } = argv;
 
 if (!(url.startsWith("http"))){
 	url = "https://"+url;
-
 }
-var counter=0;
 
+var counter=0;
 
 function createWindow (URL=url) {
  
@@ -119,8 +114,8 @@ function createWindow (URL=url) {
    		mainWindow.setVisibleOnAllWorkspaces(true);
 	} else {
 		mainWindow.setAlwaysOnTop(false);
-        // allows the window to show over a fullscreen window
-        mainWindow.setVisibleOnAllWorkspaces(false);
+		// allows the window to show over a fullscreen window
+		mainWindow.setVisibleOnAllWorkspaces(false);
 	}
 
   	try { // MacOS
