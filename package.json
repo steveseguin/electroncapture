@@ -37,12 +37,12 @@
     "dmg": {
       "contents": [
         {
-          "x": 0,
-          "y": 0
+          "x": 110,
+          "y": 150
         },
         {
-          "x": 0,
-          "y": 0,
+          "x": 440,
+          "y": 150,
           "type": "link",
           "path": "/Applications"
         }

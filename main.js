@@ -2,6 +2,7 @@
 const electron = require('electron')
 
 const process = require('process')
+
 process.on('uncaughtException', function (error) {
     error.log(error);
 });
@@ -116,6 +117,10 @@ function createWindow (URL=url) {
 		mainWindow.setAlwaysOnTop(true, "floating", 1);
 		// allows the window to show over a fullscreen window
    		mainWindow.setVisibleOnAllWorkspaces(true);
+	} else {
+		mainWindow.setAlwaysOnTop(false);
+        // allows the window to show over a fullscreen window
+        mainWindow.setVisibleOnAllWorkspaces(false);
 	}
 
   	try { // MacOS
@@ -214,7 +219,7 @@ contextMenu({
 				type: 'checkbox',
 				visible: true,
 				checked: browserWindow.isAlwaysOnTop(),
-				click: (item, browserWindow) => {
+				click: () => {
 					if (browserWindow.isAlwaysOnTop()) {
 						browserWindow.setAlwaysOnTop(false);
 						browserWindow.setVisibleOnAllWorkspaces(false);
