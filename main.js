@@ -63,34 +63,34 @@ var counter=0;
 
 function createWindow (URL=url) {
  
-  let currentTitle = "OBSN";
+	let currentTitle = "OBSN";
   
-  if (title==null){
-	counter+=1;
-	currentTitle = "OBSN "+(counter.toString());
-  } else if (counter==0){
-	counter+=1;
-	currentTitle = title;
-  } else {
-	counter+=1;
-	currentTitle = title + " " +(counter.toString());
-  }
-  
-  let factor = screen.getPrimaryDisplay().scaleFactor;
-  // Create the browser window.
-  const mainWindow = new BrowserWindow({
-    width: width / factor,
-    height: height / factor,
-	frame: false,
-	backgroundColor: '#141926',
-	fullscreenable: true,
-	titleBarStyle: 'customButtonsOnHover',
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-	  zoomFactor: 1.0 / factor
-    },
-	title: currentTitle
-  })
+	if (title==null){
+		counter+=1;
+		currentTitle = "OBSN "+(counter.toString());
+	} else if (counter==0){
+		counter+=1;
+		currentTitle = title;
+	} else {
+		counter+=1;
+		currentTitle = title + " " +(counter.toString());
+	}
+
+	let factor = screen.getPrimaryDisplay().scaleFactor;
+	// Create the browser window.
+	const mainWindow = new BrowserWindow({
+		width: width / factor,
+		height: height / factor,
+		frame: false,
+		backgroundColor: '#141926',
+		fullscreenable: true,
+		titleBarStyle: 'customButtonsOnHover',
+		webPreferences: {
+			preload: path.join(__dirname, 'preload.js')
+			//, zoomFactor: 1.0 / factor
+		},
+		title: currentTitle
+	});
   
 	mainWindow.on('close', function(e) { 
         e.preventDefault();
