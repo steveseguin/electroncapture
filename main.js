@@ -167,24 +167,25 @@ contextMenu({
 				}
 			},
 			{
-				label: 'Close',
-				// Only show it when right-clicking text
-				visible: true,
-				click: () => {
-					browserWindow.destroy();
-				}
-			},
-			{
 				label: 'Resize window',
 				// Only show it when right-clicking text
 				visible: true,
 				type: 'submenu',
 				submenu: [
 					{
+						label: 'Fullscreen',
+						// Only show if not already full-screen
+						visible: !browserWindow.isMaximized(),
+						click: () => {
+							browserWindow.isMaximized() ? browserWindow.unmaximize() : browserWindow.maximize();
+						}
+					},
+					{
 						label: '1920x1080',
 						// Only show it when right-clicking text
 						visible: true,
 						click: () => {
+							if (browserWindow.isMaximized()){browserWindow.unmaximize();}
 							let factor = screen.getPrimaryDisplay().scaleFactor;
 							browserWindow.setSize(1920/factor, 1080/factor);
 						}
@@ -194,6 +195,7 @@ contextMenu({
 						// Only show it when right-clicking text
 						visible: true,
 						click: () => {
+							if (browserWindow.isMaximized()){browserWindow.unmaximize();}
 							let factor = screen.getPrimaryDisplay().scaleFactor;
 							browserWindow.setSize(1280/factor, 720/factor);
 						}
@@ -203,6 +205,7 @@ contextMenu({
 						// Only show it when right-clicking text
 						visible: true,
 						click: () => {
+							if (browserWindow.isMaximized()){browserWindow.unmaximize();}
 							let factor = screen.getPrimaryDisplay().scaleFactor;
 							browserWindow.setSize(640/factor, 360/factor);
 						}
@@ -223,6 +226,14 @@ contextMenu({
 						browserWindow.setVisibleOnAllWorkspaces(true);
 					}
 
+				}
+			},
+			{
+				label: 'Close',
+				// Only show it when right-clicking text
+				visible: true,
+				click: () => {
+					browserWindow.destroy();
 				}
 			}
 		]
