@@ -66,10 +66,10 @@ You can find the newest release builds of the app here: https://github.com/steve
 
 ### Windows Version
 - Installs the app for easy loading from Start Menu
-https://github.com/steveseguin/electroncapture/releases/download/1.0.7/OBSN_installer_win.zip
+https://github.com/steveseguin/electroncapture/releases/download/1.0.9/obsn-1.0.9_win_installer.zip
 
 - Portable version; no install needed
-https://github.com/steveseguin/electroncapture/releases/download/1.0.7/OBSN_portable_win.zip
+https://github.com/steveseguin/electroncapture/releases/download/1.0.9/obsn-1.0.9_win_portable.zip
 
 ### Mac Version
 https://github.com/steveseguin/electroncapture/releases/download/1.0.7/obsn-1.0.7.dmg
