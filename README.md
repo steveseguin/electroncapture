@@ -14,6 +14,8 @@ Windows users may find it beneficial too, as it offers support for OBS.Ninja's <
 
 The Electron Capture app uses the newest version of Chromium, which is more resistant to desync, video smearing, and other issues that might exist in the native OBS browser source capture method.
 
+[![Everything Is AWESOME](https://yt-embed.herokuapp.com/embed?v=z3uDpGMzHCg)](https://www.youtube.com/watch?v=z3uDpGMzHCg "Everything Is AWESOME")
+
 <img src="https://user-images.githubusercontent.com/2575698/80891745-290d3000-8c94-11ea-85c4-ae0e7cd1ec19.png " alt="" data-canonical-src="https://user-images.githubusercontent.com/2575698/80891745-290d3000-8c94-11ea-85c4-ae0e7cd1ec19.png " style="display:inline-block" height="300" />
 
 
