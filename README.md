@@ -45,6 +45,12 @@ Windows Audio Option: https://www.vb-audio.com/Cable/
 You can also use some advanced URL parameters to output the audio to specific channels. The following link links the parameters and the outcome, based on device/software used:
 https://docs.google.com/spreadsheets/d/1R-y7xZ2BCn-GzTlwqq63H8lorXecO02DU9Hu4twuhuA/edit?usp=sharing
 
+### Syphon Output
+
+While there is no native Syphon or NDI output option yet available, one user has mentioned a solution for some users:
+http://www.sigmasix.ch/syphoner/
+
+
 ## Notes on Using and Closing the App
 
 #### For Windows users:
