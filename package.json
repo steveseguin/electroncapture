@@ -33,7 +33,7 @@
       ],
       "hardenedRuntime": true,
       "entitlements": "./build/entitlements.mac.inherit.plist",
-	  "extendInfo": {
+      "extendInfo": {
         "NSCameraUsageDescription": "This app requires camera access to record video.",
         "NSMicrophoneUsageDescription": "This app requires microphone access to record audio."
       }
