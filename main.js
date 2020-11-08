@@ -151,10 +151,21 @@ contextMenu({
 				}
 			},
 			{
+				label: 'Go Back',
+				// Only show it when right-clicking text
+				visible: true,
+				click: () => {	
+					if (browserWindow.webContents.canGoBack()) {				
+						browserWindow.webContents.goBack();
+					}
+				}
+			},
+			{
 				label: 'Reload',
 				// Only show it when right-clicking text
 				visible: true,
 				click: () => {
+					
 					browserWindow.reload();
 				}
 			},
