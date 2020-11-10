@@ -1,0 +1,16 @@
+- Better handles packet loss than OBS (Such as guests on poor Wi-Fi connections)
+- Using OBS to Window Capture the Electron Capture App window has lower resource usage than using the browser source directly in OBS
+- Able to capture the Electron Capture window in multiple instances of OBS without forcing your players' computers to output 2 different video streams (one for each OBS instance)
+- It's frame-less so no need to crop after a window-capture
+- It's a stable version and it won't auto-update on you to something unstable.
+- It can be launched via command line to open to a specific link
+- It lets you select exact window sizes (1280x720, etc), so pixel sizes are captured 1:1 exactly
+- It is more stable than OBS ; no video corruption caused by packet loss
+- Doesn't have a timestamp sync bug that is in OBS browser source
+- Doesn't throttle performance if backgrounded like Chrome does
+- There is an always on top option, allowing for screen-capping
+- Auto-detects and changes to the correct window size if high DPi mode is on
+- It loads up to a nice homepage with audio-output options and other selectable options
+- I guess no google tracking?
+- Some of the experimental builds have improved encoding peformance; max quality
+- Sharing a video as a screen-share into Zoom provides higher quality video versus a virtual camera input into Zoom. Helpful if you want to use OBS.Ninja to turn your iPhone into a remote webcam for Zoom Meetings maybe.
