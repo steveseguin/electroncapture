@@ -83,7 +83,7 @@ https://github.com/steveseguin/electroncapture/releases/download/1.1.3/obsn_win_
 https://github.com/steveseguin/electroncapture/releases/download/1.1.3/obsn_win_portable.zip
 
 ### Mac Version
-https://github.com/steveseguin/electroncapture/releases/download/1.1.3/obsn-1.1.3_mac.dmg
+https://github.com/steveseguin/electroncapture/releases/download/1.1.3/obsn-1.1.3.dmg
 
 ### Linux Version
 (likely best to build it yourself?)
