@@ -77,6 +77,7 @@ function createWindow (URL=url) {
 	}
 
 	let factor = screen.getPrimaryDisplay().scaleFactor;
+    
 	// Create the browser window.
 	const mainWindow = new BrowserWindow({
 		width: width / factor,
@@ -189,6 +190,10 @@ contextMenu({
 						visible: !browserWindow.isMaximized(),
 						click: () => {
 							browserWindow.isMaximized() ? browserWindow.unmaximize() : browserWindow.maximize();
+                            browserWindow.setMenu(null);
+
+							//const {width,height} = screen.getPrimaryDisplay().workAreaSize;
+							//browserWindow.setSize(width, height);
 						}
 					},
 					{
@@ -197,8 +202,12 @@ contextMenu({
 						visible: true,
 						click: () => {
 							if (browserWindow.isMaximized()){browserWindow.unmaximize();}
-							let factor = screen.getPrimaryDisplay().scaleFactor;
-							browserWindow.setSize(1920/factor, 1080/factor);
+
+							//let factor = screen.getPrimaryDisplay().scaleFactor;
+							//browserWindow.setSize(1920/factor, 1080/factor);
+							let point =  screen.getCursorScreenPoint();
+							let factor = screen.getDisplayNearestPoint(point).scaleFactor;
+                            browserWindow.setSize(1920/factor, 1080/factor);
 						}
 					},
 					{
@@ -207,7 +216,8 @@ contextMenu({
 						visible: true,
 						click: () => {
 							if (browserWindow.isMaximized()){browserWindow.unmaximize();}
-							let factor = screen.getPrimaryDisplay().scaleFactor;
+							let point =  screen.getCursorScreenPoint();
+                            let factor = screen.getDisplayNearestPoint(point).scaleFactor;
 							browserWindow.setSize(1280/factor, 720/factor);
 						}
 					},
@@ -217,7 +227,8 @@ contextMenu({
 						visible: true,
 						click: () => {
 							if (browserWindow.isMaximized()){browserWindow.unmaximize();}
-							let factor = screen.getPrimaryDisplay().scaleFactor;
+							let point =  screen.getCursorScreenPoint();
+                            let factor = screen.getDisplayNearestPoint(point).scaleFactor;
 							browserWindow.setSize(640/factor, 360/factor);
 						}
 					}

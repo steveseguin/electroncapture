@@ -33,7 +33,7 @@
       ],
       "hardenedRuntime": true,
       "entitlements": "./build/entitlements.mac.inherit.plist",
-	  "extendInfo": {
+      "extendInfo": {
         "NSCameraUsageDescription": "This app requires camera access to record video.",
         "NSMicrophoneUsageDescription": "This app requires microphone access to record audio."
       }
@@ -96,8 +96,8 @@
     "afterSign": "./afterSign.js"
   },
   "devDependencies": {
-    "electron": "^10.1.1",
-    "electron-builder": "^22.8.0",
+    "electron": "^12.0.0-beta.1",
+    "electron-builder": "^22.9.1",
     "electron-notarize": "^1.0.0",
     "rimraf": "^2.6.3",
     "run-script-os-fix": "^1.0.4"
