@@ -50,6 +50,9 @@ https://docs.google.com/spreadsheets/d/1R-y7xZ2BCn-GzTlwqq63H8lorXecO02DU9Hu4twu
 While there is no native Syphon or NDI output option yet available, one user has mentioned a solution for some users:
 http://www.sigmasix.ch/syphoner/
 
+### Automation Workflows with OBS.Ninja
+
+You can see a quick start / cheat sheet guide for example uses of the app with OBS.Ninja here: https://github.com/steveseguin/obsninja/tree/quickstart#automating-obsn-start-up-currently-in-beta-only
 
 ## Notes on Using and Closing the App
 
