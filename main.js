@@ -190,7 +190,7 @@ contextMenu({
 						visible: !browserWindow.isMaximized(),
 						click: () => {
 							browserWindow.isMaximized() ? browserWindow.unmaximize() : browserWindow.maximize();
-                            browserWindow.setMenu(null);
+							browserWindow.setMenu(null);
 
 							//const {width,height} = screen.getPrimaryDisplay().workAreaSize;
 							//browserWindow.setSize(width, height);
@@ -207,7 +207,7 @@ contextMenu({
 							//browserWindow.setSize(1920/factor, 1080/factor);
 							let point =  screen.getCursorScreenPoint();
 							let factor = screen.getDisplayNearestPoint(point).scaleFactor;
-                            browserWindow.setSize(1920/factor, 1080/factor);
+							browserWindow.setSize(1920/factor, 1080/factor);
 						}
 					},
 					{
@@ -217,7 +217,7 @@ contextMenu({
 						click: () => {
 							if (browserWindow.isMaximized()){browserWindow.unmaximize();}
 							let point =  screen.getCursorScreenPoint();
-                            let factor = screen.getDisplayNearestPoint(point).scaleFactor;
+							let factor = screen.getDisplayNearestPoint(point).scaleFactor;
 							browserWindow.setSize(1280/factor, 720/factor);
 						}
 					},
@@ -228,7 +228,7 @@ contextMenu({
 						click: () => {
 							if (browserWindow.isMaximized()){browserWindow.unmaximize();}
 							let point =  screen.getCursorScreenPoint();
-                            let factor = screen.getDisplayNearestPoint(point).scaleFactor;
+							let factor = screen.getDisplayNearestPoint(point).scaleFactor;
 							browserWindow.setSize(640/factor, 360/factor);
 						}
 					}
