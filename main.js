@@ -87,8 +87,9 @@ function createWindow (URL=url) {
 		fullscreenable: true,
 		titleBarStyle: 'customButtonsOnHover',
 		webPreferences: {
-			preload: path.join(__dirname, 'preload.js')
-			//, zoomFactor: 1.0 / factor
+				      preload: path.join(__dirname, 'preload.js'),
+		//		      zoomFactor: 1.0 / factor,
+				      nodeIntegration: true
 		},
 		title: currentTitle
 	});
