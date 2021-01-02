@@ -1,4 +1,6 @@
-##### Update: If downloading this app for the purpose of OBS.Ninja on macOS, you can find a "PREVIEW" version of OBS Studio that now supports OBS.Ninja here:[https://github.com/obsproject/obs-browser/issues/209#issuecomment-748683083](https://github.com/obsproject/obs-browser/issues/209#issuecomment-748683083). Hopefully it will be released officially soon.
+##### Update for macOS users:
+If downloading this app for the purpose of OBS.Ninja on macOS, you can find a "PREVIEW" version of OBS Studio that now supports OBS.Ninja here:
+[https://github.com/obsproject/obs-browser/issues/209#issuecomment-748683083](https://github.com/obsproject/obs-browser/issues/209#issuecomment-748683083). Hopefully it will be released officially soon.
 
 
 
