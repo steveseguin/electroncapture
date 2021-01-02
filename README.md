@@ -1,3 +1,5 @@
+Update: If downloading this app for the purpose of OBS.Ninja on macOS, you can find a "PREVIEW" version of OBS Studio that now supports OBS.Ninja here - (https://github.com/obsproject/obs-browser/issues/209#issuecomment-748683083){https://github.com/obsproject/obs-browser/issues/209#issuecomment-748683083]. Hopefully it will be released officially soon.
+
 #### This is the **Electron Capture app**, created for <a href="https://obs.ninja">OBS.Ninja</a> users, but can be (unofficially) used with <a href='https://docs.google.com/document/d/e/2PACX-1vS3ol8Tpnu4NrqRrGjzzmcOXxocsQ7pWj3Jrb1x_essbmcC5mxRp1QFCY1LUCoVglIgF0tb2UykbFTO/pub'>Stage Ten</a> as well.
 It's designed to help make "Screen Capturing" of live video using applications like OBS or Zoom easier and more reliable.
 
