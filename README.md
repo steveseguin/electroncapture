@@ -40,6 +40,12 @@ or for example
 ./OBSN -w 1280 -h 720 -u https://obs.ninja/electron -t "my Window name"
 ```
 
+If running from Windows command prompt, any ampersand "&" characters will need to be escape with a "^" character, as seen below:
+
+```
+C:\Users\Steve\Desktop>obsn -t feed2 -u https://obs.ninja/?view=ePz9hnx^&scene^&codec=h264^&room=SOMETHINGTEST123
+```
+
 <img src="https://user-images.githubusercontent.com/2575698/80891745-290d3000-8c94-11ea-85c4-ae0e7cd1ec19.png " alt="" data-canonical-src="https://user-images.githubusercontent.com/2575698/80891745-290d3000-8c94-11ea-85c4-ae0e7cd1ec19.png " style="display:inline-block" height="300" />
 
 
