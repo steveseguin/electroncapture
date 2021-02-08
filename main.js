@@ -6,7 +6,7 @@ process.on('uncaughtException', function (error) {
     error.log(error);
 });
 
-const {app, BrowserWindow, ipcMain, screen, shell} = require('electron')
+const {app, BrowserWindow, ipcMain, screen, shell, globalShortcut , session, desktopCapturer} = require('electron')
 const path = require('path')
 const contextMenu = require('electron-context-menu');
 
@@ -75,6 +75,22 @@ function createWindow (URL=url) {
 		counter+=1;
 		currentTitle = title + " " +(counter.toString());
 	}
+	
+	const ret = globalShortcut.register('CommandOrControl+M', () => {
+		console.log('CommandOrControl+N is pressed')
+		if (mainWindow) {
+			mainWindow.webContents.send('postMessage', {'mic':'toggle'})
+		}
+	})
+	
+	ipcMain.on('postMessage', () => {
+	    console.log('We received a postMessage from the preload script')
+	})
+
+	if (!ret) {
+		console.log('registration failed')
+	}
+	
 
 	let factor = screen.getPrimaryDisplay().scaleFactor;
     
@@ -87,9 +103,9 @@ function createWindow (URL=url) {
 		fullscreenable: true,
 		titleBarStyle: 'customButtonsOnHover',
 		webPreferences: {
-				      preload: path.join(__dirname, 'preload.js'),
-		//		      zoomFactor: 1.0 / factor,
-				      nodeIntegration: true
+			preload: path.join(__dirname, 'preload.js'),
+			//	zoomFactor: 1.0 / factor,
+			nodeIntegration: true  // this could be a security hazard, but useful for enabling screen sharing and global hotkeys
 		},
 		title: currentTitle
 	});
@@ -97,6 +113,8 @@ function createWindow (URL=url) {
 	mainWindow.on('close', function(e) { 
         e.preventDefault();
         mainWindow.destroy();
+		globalShortcut.unregister('CommandOrControl+M');
+		globalShortcut.unregisterAll();
 		//app.quit();
 	});
 	
@@ -126,11 +144,28 @@ function createWindow (URL=url) {
 		// Windows?
   	}
 	
+	
+	session.fromPartition("default").setPermissionRequestHandler((webContents, permission, callback) => {
+        let allowedPermissions = ["audioCapture", "desktopCapture", "pageCapture", "tabCapture", "experimental"]; // Full list here: https://developer.chrome.com/extensions/declare_permissions#manifest
+
+        if (allowedPermissions.includes(permission)) {
+            callback(true); // Approve permission request
+        } else {
+            console.error(
+                `The application tried to request permission for '${permission}'. This permission was not whitelisted and has been blocked.`
+            );
+
+            callback(false); // Deny
+        }
+    });
+	
 	try {
 		mainWindow.loadURL(URL);
 	} catch (e){
 		app.quit();
   	}
+	
+	
 }
 
 // This method will be called when Electron has finished
