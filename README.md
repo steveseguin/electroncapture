@@ -6,8 +6,7 @@ You may not need to use Electron Capture app anymore, although it still has its 
 
 
 ### This is the **Electron Capture app**,
-created for <a href="https://obs.ninja">OBS.Ninja</a> users, but can be (unofficially) used with <a href='https://docs.google.com/document/d/e/2PACX-1vS3ol8Tpnu4NrqRrGjzzmcOXxocsQ7pWj3Jrb1x_essbmcC5mxRp1QFCY1LUCoVglIgF0tb2UykbFTO/pub'>Stage Ten</a> as well.
-It's designed to help make "Screen Capturing" of live video using applications like OBS or Zoom easier and more reliable.
+Created for <a href="https://obs.ninja">OBS.Ninja</a> users, it can provide users a clean way of window capturing websites. In the case of OBS.Ninja, it may offer a more flexible and reliable method of capturing live video than the browser source plugin built into OBS.
 
 #### <a href="https://github.com/steveseguin/electroncapture#links-to-downloads-below">Jump to Downloads Section</a>
 
@@ -91,6 +90,8 @@ You can see a quick start / cheat sheet guide for example uses of the app with O
 # Links to downloads below.
 
 You can find the newest release builds of the app here: https://github.com/steveseguin/electroncapture/releases  or see below.
+
+Please note that the Electron Capture app does not auto-update to newer versions of Chromium. This can become a security issue if it is left to become out of date. It's also recommended to not use the Electron Capture app with websites and remote OBS.Ninja peers that you do not trust.
 
 ### Windows Version
 - Installs the app for easy loading from Start Menu
