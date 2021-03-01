@@ -100,6 +100,9 @@ https://github.com/steveseguin/electroncapture/releases/download/1.1.3/obsn_win_
 - Portable version; no install needed
 https://github.com/steveseguin/electroncapture/releases/download/1.1.3/obsn_win_portable.zip
 
+- I've also created a custom version of the Electron Capture app for PC that has hardware-acceleration disabled. This seems to let those who cannot hide the cursor to do so, but under "bitBlt" capture mode in OBS.
+https://github.com/steveseguin/electroncapture/releases/tag/1.3.x
+
 ### Mac Version
 https://github.com/steveseguin/electroncapture/releases/download/1.1.3/obsn-1.1.3.dmg
 
