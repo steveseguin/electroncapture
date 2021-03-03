@@ -3,7 +3,7 @@ const electron = require('electron')
 const process = require('process')
 
 process.on('uncaughtException', function (error) {
-    error.log(error);
+    console.error(error);
 });
 
 const {app, BrowserWindow, ipcMain, screen, shell, globalShortcut , session, desktopCapturer} = require('electron')
@@ -60,6 +60,7 @@ if (!(url.startsWith("http"))){
 }
 
 var counter=0;
+var forcingAspectRatio = false;
 
 function createWindow (URL=url) {
  
@@ -284,6 +285,22 @@ contextMenu({
 						browserWindow.setVisibleOnAllWorkspaces(true);
 					}
 
+				}
+			},
+			{
+				label: 'Force 16/9 aspect ratio',
+				type: 'checkbox',
+				visible: true,
+				checked: forcingAspectRatio,
+				click: () => {
+					if (forcingAspectRatio) {
+						browserWindow.setAspectRatio(0)
+						forcingAspectRatio = false
+					} else {
+						browserWindow.setAspectRatio(16/9)
+						forcingAspectRatio = true
+					}
+					
 				}
 			},
 			{
