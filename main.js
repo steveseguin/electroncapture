@@ -1,7 +1,7 @@
 // Modules to control application life and create native browser window
 const electron = require('electron')
 const process = require('process')
-
+const prompt = require('electron-prompt');
 process.on('uncaughtException', function (error) {
     console.error(error);
 });
@@ -46,18 +46,29 @@ var { argv } = require("yargs")
     describe: "Toggle always on top",
     type: "boolean"
   })
+  .option("a", {
+    alias: "hwa",
+    describe: "Enable Hardware Acceleration",
+    type: "boolean"
+  })
   .describe("help", "Show help.") // Override --help usage message.
   .default("h", 720)
   .default("w", 1280)
   .default("u", "https://obs.ninja/electron")
   .default("t", null)
   .default("p", process.platform == 'darwin')
+  .default("a", true)
   
-const { width, height, url, title, pin } = argv;
+const { width, height, url, title, pin, hwa } = argv;
 
 if (!(url.startsWith("http"))){
 	url = "https://"+url;
 }
+
+if (!(hwa)){
+	app.disableHardwareAcceleration();
+}
+
 
 var counter=0;
 var forcingAspectRatio = false;
@@ -101,7 +112,7 @@ function createWindow (URL=url) {
 		height: height / factor,
 		frame: false,
 		backgroundColor: '#141926',
-		fullscreenable: true,
+		fullscreenable: true, 
 		titleBarStyle: 'customButtonsOnHover',
 		webPreferences: {
 			preload: path.join(__dirname, 'preload.js'),
@@ -213,6 +224,32 @@ contextMenu({
 				visible: true,
 				click: () => {
 					createWindow("https://obs.ninja/electron");
+				}
+			},
+			{
+				label: 'Edit URL',
+				// Only show it when right-clicking text
+				visible: true,
+				click: () => {
+					var URL = browserWindow.webContents.getURL();
+					prompt({
+						title: 'Edit the URL',
+						label: 'URL:',
+						value: URL,
+						inputAttrs: {
+							type: 'url'
+						},
+						type: 'input'
+					})
+					.then((r) => {
+						if(r === null) {
+							console.log('user cancelled');
+						} else {
+							console.log('result', r);
+							browserWindow.loadURL(r);
+						}
+					})
+					.catch(console.error);
 				}
 			},
 			{
