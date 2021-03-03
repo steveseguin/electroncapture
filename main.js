@@ -305,6 +305,36 @@ contextMenu({
 							let factor = screen.getDisplayNearestPoint(point).scaleFactor;
 							browserWindow.setSize(640/factor, 360/factor);
 						}
+					},
+					{
+						label: 'Custom resolution',
+						// Only show it when right-clicking text
+						visible: true,
+						click: () => {
+							var URL = browserWindow.webContents.getURL();
+							prompt({
+								title: 'Custom window resolution',
+								label: 'Enter a resolution:',
+								value: browserWindow.getSize()[0] + 'x' + browserWindow.getSize()[1],
+								inputAttrs: {
+									type: 'string',
+									placeholder: '1280x720'
+								},
+								type: 'input'
+							})
+							.then((r) => {
+								if(r === null) {
+									console.log('user cancelled');
+								} else {
+									console.log('Window resized to ', r);
+									if (browserWindow.isMaximized()){browserWindow.unmaximize();}
+									let point =  screen.getCursorScreenPoint();
+									let factor = screen.getDisplayNearestPoint(point).scaleFactor;
+									browserWindow.setSize(r.split('x')[0]/factor, r.split('x')[1]/factor);
+								}
+							})
+							.catch(console.error);
+						}
 					}
 				]
 			},
