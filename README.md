@@ -73,6 +73,8 @@ You can see a quick start / cheat sheet guide for example uses of the app with O
 
 - Right click to bring up the context menu, which allows you to close the app. You can also press ALT-F4 in many cases.
 
+- You can disable hardware-assisted rendering by passing '-a 0' to the command line when lauching; this can help hide the windows mouse cursor with some setups when using BitBlt capture mode.
+
 #### For Mac users:
 
 - You can hover your mouse cursor over the top-left corner of the app to show the close button.
