@@ -11,13 +11,13 @@ Created for <a href="https://obs.ninja">OBS.Ninja</a> users, it can provide user
 <img src="https://user-images.githubusercontent.com/2575698/91703607-74ebbb00-eb48-11ea-94d2-f205da2976b1.png " alt="" data-canonical-src="https://user-images.githubusercontent.com/2575698/91703607-74ebbb00-eb48-11ea-94d2-f205da2976b1.png"  style="display:inline-block" height="300" />
 
 ## Why ?
-On some systems the OBS Browser Source plugin isn't available or doesn't work all that well, so this tool is a viable alternative. It lets you cleanly screen-grab just a video stream without the need of the Browser Source plugin. It also makes it easy to select the output audio playback device, such as a Virtual Audio device: ie) https://vb-audio.com/Cable/ (Windows & macOS; donationware),  https://rogueamoeba.com/loopback/ (macOS & non-free, but excellent), and https://existential.audio/blackhole/ (macOS & free)
+On some systems the OBS Browser Source plugin isn't available or doesn't work all that well, so this tool is a viable alternative. It lets you cleanly screen-grab just a video stream without the need of the Browser Source plugin. It also makes it easy to select the output audio playback device, such as a Virtual Audio device: ie) https://vb-audio.com/Cable/ (Windows & macOS; donationware)
 
-The app also remains on top of other windows, attempts to hide the mouse cursor when possible, and provides accurate window sizes for 1:1 pixel mapping.
+The app can also be set to remain on top of other windows, attempts to hide the mouse cursor when possible, provides accurate window sizes for 1:1 pixel mapping, and supports global system hotkeys (CTRL+M on Windows, for example).
 
 Windows users may find it beneficial too, as it offers support for OBS.Ninja's <a href="https://github.com/steveseguin/obsninja/wiki/Advanced-Settings#viewers-obs-link-options">&buffer</a> audio sync command and it has robust support for video packet loss. In other words, it can playback live video better than OBS can, with fewer video playback errors and with better audio/video sync. If you have a spare monitor, it may at times be worth the hassle to use instead of OBS alone.
 
-The Electron Capture app uses the newest version of Chromium, which is more resistant to desync, video smearing, and other issues that might exist in the native OBS browser source capture method. [More benefits listed here](https://github.com/steveseguin/electroncapture/blob/master/BENEFITS.md)
+The Electron Capture app uses recent versions of Chromium, which is more resistant to desync, video smearing, and other issues that might exist in the native OBS browser source capture method. [More benefits listed here](https://github.com/steveseguin/electroncapture/blob/master/BENEFITS.md)
 
 Lastly, since playback is agnostic, you can window-capture the same video multiple times, using one copy in a mixed-down live stream, while using a window-capture to record a clean full-resolution isolated video stream.
 
@@ -47,14 +47,16 @@ C:\Users\Steve\Desktop>obsn -t feed2 -u https://obs.ninja/?view=ePz9hnx^&scene^&
 
 <img src="https://user-images.githubusercontent.com/2575698/80891745-290d3000-8c94-11ea-85c4-ae0e7cd1ec19.png " alt="" data-canonical-src="https://user-images.githubusercontent.com/2575698/80891745-290d3000-8c94-11ea-85c4-ae0e7cd1ec19.png " style="display:inline-block" height="300" />
 
-If you right-click the application, you'll get a context menu with additional options. 
+If you right-click the application, you'll get a context menu with additional options. Changing resolutions dynamically is an option, for example.
 
 ### Audio Output 
 
 A popular way of outputting audio from the Electron Capture app into OBS is done using a virtual audio cable. Some such cables include:
 
-Mac Audio Options: https://github.com/steveseguin/obsninja/wiki/FAQ#macaudio
-Windows Audio Option: https://www.vb-audio.com/Cable/
+Mac Audio Options: https://rogueamoeba.com/loopback/ (macOS & non-free, but excellent), and https://existential.audio/blackhole/ (macOS & free)
+(and more here https://github.com/steveseguin/obsninja/wiki/FAQ#macaudio)
+
+Windows Audio Option: https://www.vb-audio.com/Cable/ (donationware)
 
 You can also use some advanced URL parameters to output the audio to specific channels. The following link links the parameters and the outcome, based on device/software used:
 https://docs.google.com/spreadsheets/d/1R-y7xZ2BCn-GzTlwqq63H8lorXecO02DU9Hu4twuhuA/edit?usp=sharing
