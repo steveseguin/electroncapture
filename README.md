@@ -1,11 +1,9 @@
 #### Update for macOS users:
-
 If downloading this app for the purpose of OBS.Ninja on macOS, OBS v26.1.2 and newer should now support OBS.Ninja on macOS !! 😃
-
 You may not need to use Electron Capture app anymore, although it still has its advantages and will see continued development efforts.
 
 
-### This is the **Electron Capture app**,
+## This is the **Electron Capture app**,
 Created for <a href="https://obs.ninja">OBS.Ninja</a> users, it can provide users a clean way of window capturing websites. In the case of OBS.Ninja, it may offer a more flexible and reliable method of capturing live video than the browser source plugin built into OBS.
 
 #### <a href="https://github.com/steveseguin/electroncapture#links-to-downloads-below">Jump to Downloads Section</a>
