@@ -13,7 +13,7 @@ Created for <a href="https://obs.ninja">OBS.Ninja</a> users, it can provide user
 <img src="https://user-images.githubusercontent.com/2575698/91703607-74ebbb00-eb48-11ea-94d2-f205da2976b1.png " alt="" data-canonical-src="https://user-images.githubusercontent.com/2575698/91703607-74ebbb00-eb48-11ea-94d2-f205da2976b1.png"  style="display:inline-block" height="300" />
 
 ## Why ?
-OBS on macOS currently doesn't support its Browser Source plugin all that well, so this tool is a viable alternative. It lets you cleanly screen-grab just a video stream without the need of the Browser Source plugin. It also makes it easy to select the output audio playback device, such as a Virtual Audio device: ie) https://rogueamoeba.com/loopback/ (macOS & non-free, but excellent) and https://existential.audio/blackhole/ (macOS & free)
+On some systems the OBS Browser Source plugin isn't available or doesn't work all that well, so this tool is a viable alternative. It lets you cleanly screen-grab just a video stream without the need of the Browser Source plugin. It also makes it easy to select the output audio playback device, such as a Virtual Audio device: ie) https://vb-audio.com/Cable/ (Windows & macOS; donationware),  https://rogueamoeba.com/loopback/ (macOS & non-free, but excellent), and https://existential.audio/blackhole/ (macOS & free)
 
 The app also remains on top of other windows, attempts to hide the mouse cursor when possible, and provides accurate window sizes for 1:1 pixel mapping.
 
@@ -21,7 +21,7 @@ Windows users may find it beneficial too, as it offers support for OBS.Ninja's <
 
 The Electron Capture app uses the newest version of Chromium, which is more resistant to desync, video smearing, and other issues that might exist in the native OBS browser source capture method. [More benefits listed here](https://github.com/steveseguin/electroncapture/blob/master/BENEFITS.md)
 
-## Video Guide (primarily for macOS users)
+## a Video Guide (primarily for macOS users)
 
 [![Everything Is AWESOME](https://yt-embed.herokuapp.com/embed?v=z3uDpGMzHCg)](https://www.youtube.com/watch?v=z3uDpGMzHCg "Everything Is AWESOME")
 
@@ -109,7 +109,14 @@ https://github.com/steveseguin/electroncapture/releases/tag/1.3.x
 https://github.com/steveseguin/electroncapture/releases/download/1.1.3/obsn-1.1.3.dmg
 
 ### Linux Version
-(likely best to build it yourself?)
+We're recommending Linux users build it themselves for now,
+
+```
+git clone https://github.com/steveseguin/electroncapture.git
+cd electroncapture
+npm install
+npm run build:linux
+```
 
 ## Building the App from Source
 
