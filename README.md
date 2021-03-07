@@ -95,19 +95,17 @@ Please note that the Electron Capture app does not auto-update to newer versions
 
 ### Windows Version
 - Installs the app for easy loading from Start Menu
-https://github.com/steveseguin/electroncapture/releases/download/1.1.3/obsn_win_installer.zip
+https://github.com/steveseguin/electroncapture/releases/download/1.4.1/obsn_installer_win.zip
 
 - Portable version; no install needed
-https://github.com/steveseguin/electroncapture/releases/download/1.1.3/obsn_win_portable.zip
+https://github.com/steveseguin/electroncapture/releases/download/1.4.1/obsn_portable_win.zip
 
-- I've also created a custom version of the Electron Capture app for PC that has hardware-acceleration disabled. This seems to let those who cannot hide the cursor to do so, but under "bitBlt" capture mode in OBS.
-https://github.com/steveseguin/electroncapture/releases/tag/1.3.x
-
-### Mac Version
+### Mac Version 
+- Signed and notarized; installer.
 https://github.com/steveseguin/electroncapture/releases/download/1.1.3/obsn-1.1.3.dmg
 
 ### Linux Version
-We're recommending Linux users build it themselves for now,
+We're recommending Linux users build it themselves for now; see below.
 
 ```
 git clone https://github.com/steveseguin/electroncapture.git
@@ -121,7 +119,7 @@ npm run build:linux
 You'll need to download and extract the source code; or git clone it.
 You'll also need npm installed.
 
-### To run the app from source, you can:
+### To just run the app from source without building, you can:
 ```
 npm install
 npm start
