@@ -19,6 +19,8 @@ Windows users may find it beneficial too, as it offers support for OBS.Ninja's <
 
 The Electron Capture app uses the newest version of Chromium, which is more resistant to desync, video smearing, and other issues that might exist in the native OBS browser source capture method. [More benefits listed here](https://github.com/steveseguin/electroncapture/blob/master/BENEFITS.md)
 
+Lastly, since playback is agnostic, you can window-capture the same video multiple times, using one copy in a mixed-down live stream, while using a window-capture to record a clean full-resolution isolated video stream.
+
 ## a Video Guide (primarily for macOS users)
 
 [![Everything Is AWESOME](https://yt-embed.herokuapp.com/embed?v=z3uDpGMzHCg)](https://www.youtube.com/watch?v=z3uDpGMzHCg "Everything Is AWESOME")
@@ -73,6 +75,8 @@ You can see a quick start / cheat sheet guide for example uses of the app with O
 - Right click to bring up the context menu, which allows you to close the app. You can also press ALT-F4 in many cases.
 
 - You can disable hardware-assisted rendering by passing '-a 0' to the command line when lauching; this can help hide the windows mouse cursor with some setups when using BitBlt capture mode.
+
+- You can use the Win+Tab key combo on Windows 10 machines to create a secondary desktop and load the Electron Capture into that. In this way, you can hide your electron capture windows, yet still have them be available to OBS for window-capture. This is a great option for window-capturing without on computers with limited desktop screen space.
 
 #### For Mac users:
 
