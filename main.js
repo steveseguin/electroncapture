@@ -239,6 +239,7 @@ contextMenu({
 						inputAttrs: {
 							type: 'url'
 						},
+						resizable: true,
 						type: 'input'
 					})
 					.then((r) => {
@@ -357,7 +358,7 @@ contextMenu({
 			{
 				label: 'Force 16/9 aspect ratio',
 				type: 'checkbox',
-				visible: true,
+				visible: false, // need to re-ensable this at some point
 				checked: forcingAspectRatio,
 				click: () => {
 					if (forcingAspectRatio) {
