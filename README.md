@@ -23,7 +23,7 @@ Lastly, since playback is agnostic, you can window-capture the same video multip
 
 ## a Video Guide (primarily for macOS users)
 
-[![Everything Is AWESOME](https://yt-embed.herokuapp.com/embed?v=z3uDpGMzHCg)](https://www.youtube.com/watch?v=z3uDpGMzHCg "Everything Is AWESOME")
+[![Everything Is AWESOME](https://yt3.ggpht.com/ytc/AAUvwniJal5DPiNZjmwsjJLVGyat4wWvZJtS5vkemZBhGg=s176-c-k-c0x00ffffff-no-rj)](https://www.youtube.com/watch?v=z3uDpGMzHCg "Everything Is AWESOME")
 
 ## Settings and Parameters
 
