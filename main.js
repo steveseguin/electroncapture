@@ -117,7 +117,7 @@ function createWindow (URL=url) {
 		webPreferences: {
 			preload: path.join(__dirname, 'preload.js'),
 			//	zoomFactor: 1.0 / factor,
-			nodeIntegration: true  // this could be a security hazard, but useful for enabling screen sharing and global hotkeys
+			// nodeIntegration: true  // this could be a security hazard, but useful for enabling screen sharing and global hotkeys
 		},
 		title: currentTitle
 	});
