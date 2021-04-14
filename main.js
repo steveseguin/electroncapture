@@ -69,6 +69,8 @@ if (!(hwa)){
 	app.disableHardwareAcceleration();
 }
 
+app.commandLine.appendSwitch('enable-features', 'WebAssemblySimd'); // Might not be needed in the future with Chromium; not supported on older Chromium. For faster greenscreen effects.
+
 
 var counter=0;
 var forcingAspectRatio = false;
@@ -116,7 +118,7 @@ function createWindow (URL=url) {
 		titleBarStyle: 'customButtonsOnHover',
 		webPreferences: {
 			preload: path.join(__dirname, 'preload.js'),
-			//	zoomFactor: 1.0 / factor,
+			contextIsolation: false,
 			nodeIntegration: true  // this could be a security hazard, but useful for enabling screen sharing and global hotkeys
 		},
 		title: currentTitle
