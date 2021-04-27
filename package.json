@@ -1,6 +1,6 @@
 {
   "name": "OBSN.Electron.Capture.App",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "A simple tool to aid with frameless window video capture",
   "author": "Steve Seguin",
   "main": "main.js",
@@ -96,14 +96,14 @@
     "afterSign": "./afterSign.js"
   },
   "devDependencies": {
-    "electron": "^12.0.2",
+    "electron": "^12.0.5",
     "electron-builder": "^22.9.1",
     "electron-notarize": "^1.0.0",
     "rimraf": "^2.6.3",
     "run-script-os-fix": "^1.0.4"
   },
   "dependencies": {
-    "electron-context-menu": "^2.4.0",
+    "electron-context-menu": "^2.5.2",
     "electron-is-dev": "^1.0.1",
     "electron-prompt": "^1.6.2",
     "yargs": "^15.4.1"
