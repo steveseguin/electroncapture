@@ -10,8 +10,7 @@ const {app, BrowserWindow, ipcMain, screen, shell, globalShortcut , session, des
 const path = require('path')
 const contextMenu = require('electron-context-menu');
 
-var { argv } = require("yargs")
-  .scriptName("area")
+var argv = require('yargs')
   .usage("Usage: $0 -w num -h num -w string -p")
   .example(
     "$0 -w 1280 -h 720 -u https://obs.ninja/?view=xxxx",
@@ -22,47 +21,45 @@ var { argv } = require("yargs")
     describe: "The width of the window in pixel.",
     type: "number",
     nargs: 1,
+	default: 1280
   })
   .option("h", {
     alias: "height",
     describe: "The height of the window in pixels.",
     type: "number",
     nargs: 1,
+	default: 720
   })
   .option("u", {
     alias: "url",
     describe: "The URL of the window to load.",
-    type: "string",
-    nargs: 1,
+	default: "https://obs.ninja/electron",
+    type: "string"
   })
   .option("t", {
     alias: "title",
     describe: "The default Title for the app Window",
     type: "string",
-    nargs: 1,
+	default: null
   })
   .option("p", {
     alias: "pin",
     describe: "Toggle always on top",
-    type: "boolean"
+    type: "boolean",
+	default: process.platform == 'darwin'
   })
   .option("a", {
     alias: "hwa",
     describe: "Enable Hardware Acceleration",
-    type: "boolean"
+    type: "boolean",
+	default: true
   })
   .describe("help", "Show help.") // Override --help usage message.
-  .default("h", 720)
-  .default("w", 1280)
-  .default("u", "https://obs.ninja/electron")
-  .default("t", null)
-  .default("p", process.platform == 'darwin')
-  .default("a", true)
   
-const { width, height, url, title, pin, hwa } = argv;
+var { width, height, url, title, pin, hwa } = argv.argv;
 
 if (!(url.startsWith("http"))){
-	url = "https://"+url;
+	url = "https://"+url.toString();
 }
 
 if (!(hwa)){
@@ -75,19 +72,20 @@ app.commandLine.appendSwitch('enable-features', 'WebAssemblySimd'); // Might not
 var counter=0;
 var forcingAspectRatio = false;
 
+
 function createWindow (URL=url) {
  
 	let currentTitle = "OBSN";
   
-	if (title==null){
+	if (title===null){
 		counter+=1;
 		currentTitle = "OBSN "+(counter.toString());
 	} else if (counter==0){
 		counter+=1;
-		currentTitle = title;
+		currentTitle = title.toString();
 	} else {
 		counter+=1;
-		currentTitle = title + " " +(counter.toString());
+		currentTitle = title.toString() + " " +(counter.toString());
 	}
 	
 	const ret = globalShortcut.register('CommandOrControl+M', () => {
@@ -185,7 +183,7 @@ function createWindow (URL=url) {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(createWindow)
+app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {
   app.quit();
