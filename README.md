@@ -102,10 +102,10 @@ Please note that the Electron Capture app does not auto-update to newer versions
 
 ### Windows Version
 - Installs the app for easy loading from Start Menu
-https://github.com/steveseguin/electroncapture/releases/download/1.5.0/obsn_installer_win.zip
+https://github.com/steveseguin/electroncapture/releases/download/1.5.1/obsn_installer_win.zip
 
 - Portable version; no install needed
-https://github.com/steveseguin/electroncapture/releases/download/1.5.0/obsn_portable_win.zip
+https://github.com/steveseguin/electroncapture/releases/download/1.5.1/obsn_portable_win.zip
 
 ### Mac Version 
 - Signed and notarized; installer.
