@@ -54,9 +54,17 @@ var argv = require('yargs')
     type: "boolean",
 	default: true
   })
+  .option("x", {
+    describe: "Window X position",
+    type: "number",
+  })
+  .option("y", {
+    describe: "Window Y position",
+    type: "number",
+  })
   .describe("help", "Show help.") // Override --help usage message.
   
-var { width, height, url, title, pin, hwa } = argv.argv;
+var { width, height, url, title, pin, hwa, x, y } = argv.argv;
 
 if (!(url.startsWith("http"))){
 	url = "https://"+url.toString();
@@ -156,6 +164,10 @@ function createWindow (URL=url) {
 		},
 		title: currentTitle
 	});
+
+	if (x && y) {
+		mainWindow.setPosition(Math.floor(x/factor), Math.floor(y/factor))
+	}
   
 	mainWindow.on('close', function(e) { 
         e.preventDefault();
