@@ -14,7 +14,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 
 window.addEventListener('message', ({ data }) => {
-  ipcRenderer.send('postMessage', data)
+    ipcRenderer.send('postMessage', data)
 })
 
 ipcRenderer.on('postMessage', (event, ...args) => {
