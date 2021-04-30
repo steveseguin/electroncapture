@@ -103,6 +103,41 @@ function createWindow (URL=url) {
 		console.log('registration failed')
 	}
 	
+	ipcMain.on('getAppVersion', function(eventRet) {
+		if (mainWindow) {
+			mainWindow.webContents.send('appVersion', app.getVersion());
+		}
+	});
+	
+	ipcMain.on('prompt', function(eventRet, arg) {  // this enables a PROMPT pop up , which is used to BLOCK the main thread until the user provides input. OBS.Ninja uses prompt for passwords, etc.
+	
+		arg.val = arg.val || '';
+		arg.title = arg.title.replace("\n","<br /><br />");
+		//arg.title = "<div style='max-width:100%;word-wrap: break-word;overflow-wrap: break-word;'>"+arg.title+"</div>";
+		prompt({
+			title: "",
+			label: arg.title,
+			width: 700,
+			useHtmlLabel: true,
+			inputAttrs: {
+				type: 'string',
+				placeholder: arg.val
+			},
+			type: 'input',
+			resizable: true
+		})
+		.then((r) => {
+			if(r === null) {
+				console.log('user cancelled');
+			} else {
+				console.log('result', r);
+				eventRet.returnValue = r;
+			}
+		})
+		.catch(console.error);
+	
+	});
+	
 
 	let factor = screen.getPrimaryDisplay().scaleFactor;
     
