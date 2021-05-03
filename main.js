@@ -2,11 +2,12 @@
 const electron = require('electron')
 const process = require('process')
 const prompt = require('electron-prompt');
+
 process.on('uncaughtException', function (error) {
     console.error(error);
 });
 
-const {app, BrowserWindow, ipcMain, screen, shell, globalShortcut , session, desktopCapturer} = require('electron')
+const {app, BrowserWindow, ipcMain, screen, shell, globalShortcut , session, desktopCapturer, dialog} = require('electron')
 const path = require('path')
 const contextMenu = require('electron-context-menu');
 
@@ -62,9 +63,15 @@ var argv = require('yargs')
     describe: "Window Y position",
     type: "number",
   })
+  .option("node", {
+	alias: "n",
+    describe: "Enables node-integration, allowing for screen capture, global hotkeys, prompts, and more.",
+    type: "boolean",
+	default: false
+  })
   .describe("help", "Show help.") // Override --help usage message.
   
-var { width, height, url, title, pin, hwa, x, y } = argv.argv;
+var { width, height, url, title, pin, hwa, x, y , node} = argv.argv;
 
 if (!(url.startsWith("http"))){
 	url = "https://"+url.toString();
@@ -81,7 +88,7 @@ var counter=0;
 var forcingAspectRatio = false;
 
 
-function createWindow (URL=url) {
+function createWindow (URL=url, NODE=node) {
  
 	let currentTitle = "OBSN";
   
@@ -150,7 +157,7 @@ function createWindow (URL=url) {
 	let factor = screen.getPrimaryDisplay().scaleFactor;
     
 	// Create the browser window.
-	const mainWindow = new BrowserWindow({
+	var mainWindow = new BrowserWindow({
 		width: width / factor,
 		height: height / factor,
 		frame: false,
@@ -159,8 +166,8 @@ function createWindow (URL=url) {
 		titleBarStyle: 'customButtonsOnHover',
 		webPreferences: {
 			preload: path.join(__dirname, 'preload.js'),
-			contextIsolation: false,
-			nodeIntegration: true  // this could be a security hazard, but useful for enabling screen sharing and global hotkeys
+			contextIsolation: !NODE,
+			nodeIntegration: NODE  // this could be a security hazard, but useful for enabling screen sharing and global hotkeys
 		},
 		title: currentTitle
 	});
@@ -170,12 +177,20 @@ function createWindow (URL=url) {
 	}
   
 	mainWindow.on('close', function(e) { 
-        e.preventDefault();
+        //e.preventDefault();
         mainWindow.destroy();
 		globalShortcut.unregister('CommandOrControl+M');
 		globalShortcut.unregisterAll();
-		//app.quit();
+		mainWindow = null
 	});
+	
+	mainWindow.on('closed', function (e) {
+		//e.preventDefault();
+        mainWindow.destroy();
+		globalShortcut.unregister('CommandOrControl+M');
+		globalShortcut.unregisterAll();
+		mainWindow = null
+	})
 	
 	mainWindow.on("page-title-updated", function(event) {
 		event.preventDefault();
@@ -196,6 +211,8 @@ function createWindow (URL=url) {
 		// allows the window to show over a fullscreen window
 		mainWindow.setVisibleOnAllWorkspaces(false);
 	}
+
+	
 
   	try { // MacOS
 		app.dock.hide();
@@ -232,8 +249,10 @@ function createWindow (URL=url) {
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(createWindow);
 
+var DoNotClose = false;
 app.on('window-all-closed', () => {
-  app.quit();
+	if (DoNotClose){return;}
+	app.quit();
 })
 
 contextMenu({
@@ -261,7 +280,7 @@ contextMenu({
 				// Only show it when right-clicking text
 				visible: true,
 				click: () => {
-					
+					// browserWindow.webContents.reloadIgnoringCache();
 					browserWindow.reload();
 				}
 			},
@@ -271,6 +290,27 @@ contextMenu({
 				visible: true,
 				click: () => {
 					createWindow("https://obs.ninja/electron");
+				}
+			},
+			{
+				label: 'Elevate Privilege',
+				// Only show it when right-clicking text
+				
+				visible: !node,
+				click: () => {
+					let options  = {
+						 title : "Elevate the Allowed Privileges of websites",
+						 buttons: ["Yes","Cancel"],
+						 message: "This will reload the current page, allowing for screen-share, global-hotkeys, and message prompts.\n\nIt will however also decrease app-security, especially if on an untrusted website.\n\nContinue?"
+					};
+					let response = dialog.showMessageBoxSync(options);
+					if (response==0){
+						var URL = browserWindow.webContents.getURL();
+						DoNotClose = true; // avoids fully closing the app if no other windows are open
+						browserWindow.destroy();
+						createWindow(URL, true); // we close the window and open it again; a faked refresh
+						DoNotClose = false;
+					}
 				}
 			},
 			{
