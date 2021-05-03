@@ -32,11 +32,11 @@ The default frameless resolution of the capture window is 1280x720. The app auto
 The optional Command Line arguments can be seen as examples below, along with their default values.
 
 ```
-OBSN.exe --width 1280 --height 720 --url 'https://obs.ninja/electron' --title 'my Window name --x 1 --y 1 --node 1'
+OBSN.exe --width 1280 --height 720 --url 'https://obs.ninja/electron' --title 'my Window name' --x 1 --y 1 --node 1
 ```
 or for example
 ```
-./OBSN -w 1280 -h 720 -u 'https://obs.ninja/electron' -t 'my Window name -x 10 -y 10 -n 1'
+./OBSN -w 1280 -h 720 -u 'https://obs.ninja/electron' -t 'my Window name' -x 10 -y 10 -n 1
 ```
 
 If running from Windows command prompt, any ampersand "&" characters will need to be escaped with a "^" character, as seen below:
