@@ -11,6 +11,8 @@ const {app, BrowserWindow, ipcMain, screen, shell, globalShortcut , session, des
 const path = require('path')
 const contextMenu = require('electron-context-menu');
 
+var ver = app.getVersion();
+
 var argv = require('yargs')
   .usage("Usage: $0 -w num -h num -w string -p")
   .example(
@@ -34,7 +36,7 @@ var argv = require('yargs')
   .option("u", {
     alias: "url",
     describe: "The URL of the window to load.",
-	default: "https://obs.ninja/electron",
+	default: "https://obs.ninja/alpha/electron?version="+ver,
     type: "string"
   })
   .option("t", {
@@ -261,8 +263,9 @@ contextMenu({
 				label: 'Go to Homepage',
 				// Only show it when right-clicking text
 				visible: true,
-				click: () => {				
-					browserWindow.loadURL(`https://obs.ninja/electron`);
+				click: () => {
+					var ver = app.getVersion();
+					browserWindow.loadURL("https://obs.ninja/alpha/electron?version="+ver);
 				}
 			},
 			{
@@ -289,7 +292,8 @@ contextMenu({
 				// Only show it when right-clicking text
 				visible: true,
 				click: () => {
-					createWindow("https://obs.ninja/electron");
+					var ver = app.getVersion();
+					createWindow("https://obs.ninja/alpha/electron?version="+ver);
 				}
 			},
 			{
