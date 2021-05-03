@@ -32,11 +32,11 @@ The default frameless resolution of the capture window is 1280x720. The app auto
 The optional Command Line arguments can be seen as examples below, along with their default values.
 
 ```
-OBSN.exe --width 1280 --height 720 --url 'https://obs.ninja/electron' --title 'my Window name --x 1 --y 1'
+OBSN.exe --width 1280 --height 720 --url 'https://obs.ninja/electron' --title 'my Window name --x 1 --y 1 --node 1'
 ```
 or for example
 ```
-./OBSN -w 1280 -h 720 -u 'https://obs.ninja/electron' -t 'my Window name -x 10 -y 10'
+./OBSN -w 1280 -h 720 -u 'https://obs.ninja/electron' -t 'my Window name -x 10 -y 10 -n 1'
 ```
 
 If running from Windows command prompt, any ampersand "&" characters will need to be escaped with a "^" character, as seen below:
@@ -52,6 +52,16 @@ C:\Users\Steve\Desktop>obsn -t feed2 -u https://obs.ninja/?view=ePz9hnx^&scene^&
 <img src="https://user-images.githubusercontent.com/2575698/80891745-290d3000-8c94-11ea-85c4-ae0e7cd1ec19.png " alt="" data-canonical-src="https://user-images.githubusercontent.com/2575698/80891745-290d3000-8c94-11ea-85c4-ae0e7cd1ec19.png " style="display:inline-block" height="300" />
 
 If you right-click the application, you'll get a context menu with additional options. Changing resolutions dynamically is an option, for example.
+
+### Screen-share, global hotkeys, and user-prompts
+
+Starting with version 1.6.0, to enable screen-share support and some other features, the app needs Node Integration enabled; aka, Elevated Privileges. This will allow remote websites to run node-based code, which is a security concern if visiting untrusted websites. 
+
+You can enable Elevated Privileges for the app via the command line with `--node 1` or in the app by right-clicking and selecting "Elevate Privileges" from the context-menu.
+
+Global Hotkeys, such as CTRL+M, are supported. CTRL+M will mute the mic, in the most recently opened window.
+
+Some features, like Screen Sharing, are only supported with OBS.Ninja v17 and newer, along with requiring Elevated Privileges to be enabled in the Electron Capture app.
 
 ### Audio Output 
 
