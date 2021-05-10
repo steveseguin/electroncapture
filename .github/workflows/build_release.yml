@@ -2,7 +2,9 @@ name: Build/release
 
 on:
   push:
-
+    branches:
+      - master
+      
 jobs:
   release:
     runs-on: ${{ matrix.os }}
