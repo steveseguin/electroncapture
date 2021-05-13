@@ -36,7 +36,7 @@ var argv = require('yargs')
   .option("u", {
     alias: "url",
     describe: "The URL of the window to load.",
-	default: "https://obs.ninja/alpha/electron?version="+ver,
+	default: "https://obs.ninja/electron?version="+ver,
     type: "string"
   })
   .option("t", {
@@ -265,7 +265,7 @@ contextMenu({
 				visible: true,
 				click: () => {
 					var ver = app.getVersion();
-					browserWindow.loadURL("https://obs.ninja/alpha/electron?version="+ver);
+					browserWindow.loadURL("https://obs.ninja/electron?version="+ver);
 				}
 			},
 			{
@@ -293,7 +293,7 @@ contextMenu({
 				visible: true,
 				click: () => {
 					var ver = app.getVersion();
-					createWindow("https://obs.ninja/alpha/electron?version="+ver);
+					createWindow("https://obs.ninja/electron?version="+ver);
 				}
 			},
 			{
