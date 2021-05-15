@@ -1,6 +1,6 @@
 {
   "name": "OBSN.Electron.Capture.App",
-  "version": "1.6.3",
+  "version": "1.6.4",
   "description": "A simple tool to aid with frameless window video capture",
   "author": "Steve Seguin",
   "main": "main.js",
