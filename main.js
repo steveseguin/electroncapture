@@ -166,6 +166,7 @@ function createWindow (URL=url, NODE=node) {
 		backgroundColor: '#141926',
 		fullscreenable: true, 
 		titleBarStyle: 'customButtonsOnHover',
+		roundedCorners: false,
 		webPreferences: {
 			preload: path.join(__dirname, 'preload.js'),
 			contextIsolation: !NODE,
@@ -342,6 +343,33 @@ contextMenu({
 						}
 					})
 					.catch(console.error);
+				}
+			},
+			{
+				label: 'Edit Window Title',
+				// Only show it when right-clicking text
+				visible: true,
+				click: () => {
+			        var title = browserWindow.getTitle();
+			        prompt({
+			                title: 'Edit  Window Title',
+			                label: 'Title:',
+			                value: title,
+			                inputAttrs: {
+			                        type: 'string'
+			                },
+			                resizable: true,
+			                type: 'input'
+			        })
+			        .then((r) => {
+			                if(r === null) {
+			                        console.log('user cancelled');
+			                } else {
+			                        console.log('result', r);
+			                        browserWindow.setTitle(r);
+			                }
+			        })
+			        .catch(console.error);
 				}
 			},
 			{
