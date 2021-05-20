@@ -383,7 +383,7 @@ contextMenu({
 						// Only show if not already full-screen
 						visible: !browserWindow.isMaximized(),
 						click: () => {
-							browserWindow.isMaximized() ? browserWindow.unmaximize() : browserWindow.maximize();
+							browserWindow.isFullScreen() ? browserWindow.setFullScreen(false) : browserWindow.setFullScreen(true);
 							browserWindow.setMenu(null);
 
 							//const {width,height} = screen.getPrimaryDisplay().workAreaSize;
@@ -395,7 +395,7 @@ contextMenu({
 						// Only show it when right-clicking text
 						visible: true,
 						click: () => {
-							if (browserWindow.isMaximized()){browserWindow.unmaximize();}
+							if (browserWindow.isFullScreen()){browserWindow.setFullScreen(false);}
 
 							//let factor = screen.getPrimaryDisplay().scaleFactor;
 							//browserWindow.setSize(1920/factor, 1080/factor);
@@ -409,7 +409,7 @@ contextMenu({
 						// Only show it when right-clicking text
 						visible: true,
 						click: () => {
-							if (browserWindow.isMaximized()){browserWindow.unmaximize();}
+							if (browserWindow.isFullScreen()){browserWindow.setFullScreen(false);}
 							let point =  screen.getCursorScreenPoint();
 							let factor = screen.getDisplayNearestPoint(point).scaleFactor;
 							browserWindow.setSize(1280/factor, 720/factor);
@@ -420,7 +420,7 @@ contextMenu({
 						// Only show it when right-clicking text
 						visible: true,
 						click: () => {
-							if (browserWindow.isMaximized()){browserWindow.unmaximize();}
+							if (browserWindow.isFullScreen()){browserWindow.setFullScreen(false);}
 							let point =  screen.getCursorScreenPoint();
 							let factor = screen.getDisplayNearestPoint(point).scaleFactor;
 							browserWindow.setSize(640/factor, 360/factor);
@@ -447,7 +447,7 @@ contextMenu({
 									console.log('user cancelled');
 								} else {
 									console.log('Window resized to ', r);
-									if (browserWindow.isMaximized()){browserWindow.unmaximize();}
+									if (browserWindow.isFullScreen()){browserWindow.setFullScreen(false);}
 									let point =  screen.getCursorScreenPoint();
 									let factor = screen.getDisplayNearestPoint(point).scaleFactor;
 									browserWindow.setSize(r.split('x')[0]/factor, r.split('x')[1]/factor);
