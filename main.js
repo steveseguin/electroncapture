@@ -170,7 +170,9 @@ function createWindow (URL=url, NODE=node) {
 		webPreferences: {
 			preload: path.join(__dirname, 'preload.js'),
 			contextIsolation: !NODE,
+			nodeIntegrationInSubFrames: NODE,
 			nodeIntegration: NODE  // this could be a security hazard, but useful for enabling screen sharing and global hotkeys
+			
 		},
 		title: currentTitle
 	});
@@ -222,7 +224,6 @@ function createWindow (URL=url, NODE=node) {
   	} catch (e){
 		// Windows?
   	}
-	
 	
 	session.fromPartition("default").setPermissionRequestHandler((webContents, permission, callback) => {
         let allowedPermissions = ["audioCapture", "desktopCapture", "pageCapture", "tabCapture", "experimental"]; // Full list here: https://developer.chrome.com/extensions/declare_permissions#manifest
