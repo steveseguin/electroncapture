@@ -507,3 +507,13 @@ app.on('activate', function () {
   // dock icon is clicked and there are no other windows open.
   if (BrowserWindow.getAllWindows().length === 0) createWindow()
 })
+
+electron.powerMonitor.on('on-battery', () => {
+	var notification = new electron.Notification(
+		{
+			title: 'Electron-capture performance is degraded',
+			body: 'You are now on battery power. Please consider connecting your charger for improved performance.',
+			icon: path.join(__dirname, "assets", "icons", "png", "256x256.png")
+		});
+	notification.show();
+})
