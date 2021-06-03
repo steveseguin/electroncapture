@@ -45,6 +45,13 @@ If running from Windows command prompt, any ampersand "&" characters will need t
 C:\Users\Steve\Desktop>obsn -t feed2 -u https://obs.ninja/?view=ePz9hnx^&scene^&codec=h264^&room=SOMETHINGTEST123
 ```
 
+If running from a Windows batch file with the goal of launching multiple instances at a time, try the following:
+
+```
+start obsn.exe -t feed1 -u https://obs.ninja/?view=2P342n5^&scene^&codec=h264^&room=SOMETHINGTEST123
+start obsn.exe -t feed2 -u https://obs.ninja/?view=ePz9hnx^&scene^&codec=h264^&room=SOMETHINGTEST123
+```
+
 *** Please note, do not use double-quotes, rather single-quotes, if needing to enclose text via the command line.
 
 *** x and y position is available in v1.5.2 and up; x or y values must be greater than 0.
