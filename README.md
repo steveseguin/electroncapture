@@ -1,10 +1,10 @@
 #### Update for macOS users:
-If downloading this app for the purpose of OBS.Ninja on macOS, OBS v26.1.2 and newer should now support OBS.Ninja on macOS !! 😃
+If downloading this app for the purpose of VDO.Ninja on macOS, OBS v26.1.2 and newer should now support VDO.Ninja on macOS !! 😃
 You may not need to use Electron Capture app anymore, although it still has its advantages and will see continued development efforts.
 
 
 ## This is the **Electron Capture app**,
-Created for <a href="https://obs.ninja">OBS.Ninja</a> users, it can provide users a clean way of window capturing websites. In the case of OBS.Ninja, it may offer a more flexible and reliable method of capturing live video than the browser source plugin built into OBS.
+Created for <a href="https://vdo.ninja">VDO.Ninja</a> users, it can provide users a clean way of window capturing websites. In the case of VDO.Ninja, it may offer a more flexible and reliable method of capturing live video than the browser source plugin built into OBS.
 
 #### <a href="https://github.com/steveseguin/electroncapture#links-to-downloads-below">Jump to Downloads Section</a>
 
@@ -15,7 +15,7 @@ On some systems the OBS Browser Source plugin isn't available or doesn't work al
 
 The app can also be set to remain on top of other windows, attempts to hide the mouse cursor when possible, provides accurate window sizes for 1:1 pixel mapping, and supports global system hotkeys (CTRL+M on Windows, for example).
 
-Windows users may find it beneficial too, as it offers support for OBS.Ninja's <a href="https://github.com/steveseguin/obsninja/wiki/Advanced-Settings#viewers-obs-link-options">&buffer</a> audio sync command and it has robust support for video packet loss. In other words, it can playback live video better than OBS can, with fewer video playback errors and with better audio/video sync. If you have a spare monitor, it may at times be worth the hassle to use instead of OBS alone.
+Windows users may find it beneficial too, as it offers support for VDO.Ninja's <a href="https://github.com/steveseguin/obsninja/wiki/Advanced-Settings#viewers-obs-link-options">&buffer</a> audio sync command and it has robust support for video packet loss. In other words, it can playback live video better than OBS can, with fewer video playback errors and with better audio/video sync. If you have a spare monitor, it may at times be worth the hassle to use instead of OBS alone.
 
 The Electron Capture app uses recent versions of Chromium, which is more resistant to desync, video smearing, and other issues that might exist in the native OBS browser source capture method. [More benefits listed here](https://github.com/steveseguin/electroncapture/blob/master/BENEFITS.md)
 
@@ -68,7 +68,7 @@ You can enable Elevated Privileges for the app via the command line with `--node
 
 Global Hotkeys, such as CTRL+M, are supported. CTRL+M will mute the mic, in the most recently opened window.
 
-Some features, like Screen Sharing, are only supported with OBS.Ninja v17 and newer, along with requiring Elevated Privileges to be enabled in the Electron Capture app.
+Some features, like Screen Sharing, are only supported with VDO.Ninja v17 and newer, along with requiring Elevated Privileges to be enabled in the Electron Capture app.
 
 ### Audio Output 
 
@@ -87,9 +87,9 @@ https://docs.google.com/spreadsheets/d/1R-y7xZ2BCn-GzTlwqq63H8lorXecO02DU9Hu4twu
 While there is no native Syphon or NDI output option yet available, one user has mentioned a solution for some users:
 http://www.sigmasix.ch/syphoner/
 
-### Automation Workflows with OBS.Ninja
+### Automation Workflows with VDO.Ninja
 
-You can see a quick start / cheat sheet guide for example uses of the app with OBS.Ninja here: https://github.com/steveseguin/obsninja/tree/quickstart#automating-obsn-start-up-currently-in-beta-only
+You can see a quick start / cheat sheet guide for example uses of the app with VDO.Ninja here: https://github.com/steveseguin/obsninja/tree/quickstart#automating-obsn-start-up-currently-in-beta-only
 
 ## Notes on Using and Closing the App
 
@@ -119,7 +119,7 @@ You can see a quick start / cheat sheet guide for example uses of the app with O
 
 You can find the newest release builds of the app here: https://github.com/steveseguin/electroncapture/releases  or see below.
 
-Please note that the Electron Capture app does not auto-update to newer versions of Chromium. This can become a security issue if it is left to become out of date. It's also recommended to not use the Electron Capture app with websites and remote OBS.Ninja peers that you do not trust.
+Please note that the Electron Capture app does not auto-update to newer versions of Chromium. This can become a security issue if it is left to become out of date. It's also recommended to not use the Electron Capture app with websites and remote VDO.Ninja peers that you do not trust.
 
 ### Windows Version
 - Installs the app for easy loading from Start Menu
