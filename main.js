@@ -172,7 +172,7 @@ function createWindow (URL=url, NODE=node) {
 			preload: path.join(__dirname, 'preload.js'),
 			pageVisibility: true,
 			contextIsolation: !NODE,
-			ackgroundThrottling: false,
+			backgroundThrottling: false,
 			nodeIntegrationInSubFrames: NODE,
 			nodeIntegration: NODE  // this could be a security hazard, but useful for enabling screen sharing and global hotkeys
 			
