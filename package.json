@@ -1,7 +1,7 @@
 {
-  "name": "OBSN.Electron.Capture.App",
-  "version": "1.6.9",
-  "description": "A simple tool to aid with frameless window video capture",
+  "name": "VDON.Electron.Capture.App",
+  "version": "2.0.0",
+  "description": "A simple tool to aid with frameless window video capture and VDON publishing",
   "author": "Steve Seguin",
   "main": "main.js",
   "scripts": {
@@ -14,8 +14,8 @@
     "release": "electron-builder --publish always"
   },
   "build": {
-    "appId": "ninja.obs",
-    "productName": "OBSN",
+    "appId": "capture.electron",
+    "productName": "ElectronCapture",
     "files": [
       "**/*",
       "build/Release/*",
@@ -51,7 +51,7 @@
           "path": "/Applications"
         }
       ],
-      "artifactName": "obsn-${version}.${ext}"
+      "artifactName": "elecap-${version}.${ext}"
     },
     "win": {
       "target": [
@@ -75,17 +75,17 @@
     "nsis": {
       "runAfterFinish": true,
       "installerIcon": "assets/icons/win/icon.ico",
-      "artifactName": "obsn-${version}.${ext}"
+      "artifactName": "elecap-${version}.${ext}"
     },
     "portable": {
-      "artifactName": "obsn.exe"
+      "artifactName": "elecap.exe"
     },
     "appx": {
-      "applicationId": "obsn",
+      "applicationId": "elecap",
       "backgroundColor": "#464646",
-      "identityName": "obsn",
+      "identityName": "elecap",
       "publisherDisplayName": "Steve Seguin",
-      "artifactName": "obsn-${version}.${ext}"
+      "artifactName": "elecap-${version}.${ext}"
     },
     "publish": [
       {
@@ -96,7 +96,7 @@
     "afterSign": "./afterSign.js"
   },
   "devDependencies": {
-    "electron": "^11.4.0",
+    "electron": "^13.0.0",
     "electron-builder": "^22.9.1",
     "electron-notarize": "^1.0.0",
     "rimraf": "^2.6.3",

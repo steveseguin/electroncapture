@@ -16,7 +16,7 @@ var ver = app.getVersion();
 var argv = require('yargs')
   .usage("Usage: $0 -w num -h num -w string -p")
   .example(
-    "$0 -w 1280 -h 720 -u https://obs.ninja/?view=xxxx",
+    "$0 -w 1280 -h 720 -u https://vdo.ninja/?view=xxxx",
     "Loads the stream with ID xxxx into a window sized 1280x720"
   )
   .option("w", {
@@ -36,7 +36,7 @@ var argv = require('yargs')
   .option("u", {
     alias: "url",
     describe: "The URL of the window to load.",
-	default: "https://obs.ninja/electron?version="+ver,
+	default: "https://vdo.ninja/electron?version="+ver,
     type: "string"
   })
   .option("t", {
@@ -85,6 +85,7 @@ if (!(hwa)){
 
 app.commandLine.appendSwitch('enable-features', 'WebAssemblySimd'); // Might not be needed in the future with Chromium; not supported on older Chromium. For faster greenscreen effects.
 app.commandLine.appendSwitch('webrtc-max-cpu-consumption-percentage', '100');
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
 
 var counter=0;
 var forcingAspectRatio = false;
@@ -92,11 +93,11 @@ var forcingAspectRatio = false;
 
 function createWindow (URL=url, NODE=node) {
  
-	let currentTitle = "OBSN";
+	let currentTitle = "ElectronCapture";
   
 	if (title===null){
 		counter+=1;
-		currentTitle = "OBSN "+(counter.toString());
+		currentTitle = "Electron "+(counter.toString());
 	} else if (counter==0){
 		counter+=1;
 		currentTitle = title.toString();
@@ -126,7 +127,7 @@ function createWindow (URL=url, NODE=node) {
 		}
 	});
 	
-	ipcMain.on('prompt', function(eventRet, arg) {  // this enables a PROMPT pop up , which is used to BLOCK the main thread until the user provides input. OBS.Ninja uses prompt for passwords, etc.
+	ipcMain.on('prompt', function(eventRet, arg) {  // this enables a PROMPT pop up , which is used to BLOCK the main thread until the user provides input. VDO.Ninja uses prompt for passwords, etc.
 	
 		arg.val = arg.val || '';
 		arg.title = arg.title.replace("\n","<br /><br />");
@@ -169,7 +170,9 @@ function createWindow (URL=url, NODE=node) {
 		roundedCorners: false,
 		webPreferences: {
 			preload: path.join(__dirname, 'preload.js'),
+			pageVisibility: true,
 			contextIsolation: !NODE,
+			ackgroundThrottling: false,
 			nodeIntegrationInSubFrames: NODE,
 			nodeIntegration: NODE  // this could be a security hazard, but useful for enabling screen sharing and global hotkeys
 			
@@ -267,7 +270,7 @@ contextMenu({
 				visible: true,
 				click: () => {
 					var ver = app.getVersion();
-					browserWindow.loadURL("https://obs.ninja/electron?version="+ver);
+					browserWindow.loadURL("https://vdo.ninja/electron?version="+ver);
 				}
 			},
 			{
@@ -295,7 +298,7 @@ contextMenu({
 				visible: true,
 				click: () => {
 					var ver = app.getVersion();
-					createWindow("https://obs.ninja/electron?version="+ver);
+					createWindow("https://vdo.ninja/electron?version="+ver);
 				}
 			},
 			{
