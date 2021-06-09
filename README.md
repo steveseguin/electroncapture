@@ -10,7 +10,7 @@ On some systems the OBS Browser Source plugin isn't available or doesn't work al
 
 The app can also be set to remain on top of other windows, attempts to hide the mouse cursor when possible, provides accurate window sizes for 1:1 pixel mapping, and supports global system hotkeys (CTRL+M on Windows, for example).
 
-Windows users may find it beneficial too, as it offers support for VDO.Ninja's <a href="https://github.com/steveseguin/obsninja/wiki/Advanced-Settings#viewers-obs-link-options">&buffer</a> audio sync command and it has robust support for video packet loss. In other words, it can playback live video better than OBS can, with fewer video playback errors and with better audio/video sync. If you have a spare monitor, it may at times be worth the hassle to use instead of OBS alone.
+Windows users may find it beneficial too, as it offers support for VDO.Ninja's <a href="https://github.com/steveseguin/vdoninja/wiki/Advanced-Settings#viewers-obs-link-options">&buffer</a> audio sync command and it has robust support for video packet loss. In other words, it can playback live video better than OBS can, with fewer video playback errors and with better audio/video sync. If you have a spare monitor, it may at times be worth the hassle to use instead of OBS alone.
 
 The Electron Capture app uses recent versions of Chromium, which is more resistant to desync, video smearing, and other issues that might exist in the native OBS browser source capture method. [More benefits listed here](https://github.com/steveseguin/electroncapture/blob/master/BENEFITS.md)
 
@@ -27,24 +27,24 @@ The default frameless resolution of the capture window is 1280x720. The app auto
 The optional Command Line arguments can be seen as examples below, along with their default values.
 
 ```
-OBSN.exe --width 1280 --height 720 --url 'https://obs.ninja/electron' --title 'my Window name' --x 1 --y 1 --node 1
+elecap.exe --width 1280 --height 720 --url 'https://vdo.ninja/electron' --title 'my Window name' --x 1 --y 1 --node 1
 ```
 or for example
 ```
-./OBSN -w 1280 -h 720 -u 'https://obs.ninja/electron' -t 'my Window name' -x 10 -y 10 -n 1
+./elecap -w 1280 -h 720 -u 'https://vdo.ninja/electron' -t 'my Window name' -x 10 -y 10 -n 1
 ```
 
 If running from Windows command prompt, any ampersand "&" characters will need to be escaped with a "^" character, as seen below:
 
 ```
-C:\Users\Steve\Desktop>obsn -t feed2 -u https://obs.ninja/?view=ePz9hnx^&scene^&codec=h264^&room=SOMETHINGTEST123
+C:\Users\Steve\Desktop>elecap -t feed2 -u https://vdo.ninja/?view=ePz9hnx^&scene^&codec=h264^&room=SOMETHINGTEST123
 ```
 
 If running from a Windows batch file with the goal of launching multiple instances at a time, try the following:
 
 ```
-start obsn.exe -t feed1 -u https://obs.ninja/?view=2P342n5^&scene^&codec=h264^&room=SOMETHINGTEST123
-start obsn.exe -t feed2 -u https://obs.ninja/?view=ePz9hnx^&scene^&codec=h264^&room=SOMETHINGTEST123
+start elecap.exe -t feed1 -u https://vdo.ninja/?view=2P342n5^&scene^&codec=h264^&room=SOMETHINGTEST123
+start elecap.exe -t feed2 -u https://vdo.ninja/?view=ePz9hnx^&scene^&codec=h264^&room=SOMETHINGTEST123
 ```
 
 *** Please note, do not use double-quotes, rather single-quotes, if needing to enclose text via the command line.
@@ -70,7 +70,7 @@ Some features, like Screen Sharing, are only supported with VDO.Ninja v17 and ne
 A popular way of outputting audio from the Electron Capture app into OBS is done using a virtual audio cable. Some such cables include:
 
 Mac Audio Options: https://rogueamoeba.com/loopback/ (macOS & non-free, but excellent), and https://existential.audio/blackhole/ (macOS & free)
-(and more here https://github.com/steveseguin/obsninja/wiki/FAQ#macaudio)
+(and more here https://github.com/steveseguin/vdoninja/wiki/FAQ#macaudio)
 
 Windows Audio Option: https://www.vb-audio.com/Cable/ (donationware)
 
@@ -84,7 +84,7 @@ http://www.sigmasix.ch/syphoner/
 
 ### Automation Workflows with VDO.Ninja
 
-You can see a quick start / cheat sheet guide for example uses of the app with VDO.Ninja here: https://github.com/steveseguin/obsninja/tree/quickstart#automating-obsn-start-up-currently-in-beta-only
+You can see a quick start / cheat sheet guide for example uses of the app with VDO.Ninja here: https://github.com/steveseguin/vdoninja/tree/quickstart#automating-obsn-start-up-currently-in-beta-only
 
 ## Notes on Using and Closing the App
 
