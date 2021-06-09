@@ -84,7 +84,7 @@ http://www.sigmasix.ch/syphoner/
 
 ### Automation Workflows with VDO.Ninja
 
-You can see a quick start / cheat sheet guide for example uses of the app with VDO.Ninja here: https://github.com/steveseguin/vdoninja/tree/quickstart#automating-obsn-start-up-currently-in-beta-only
+You can see a quick start / cheat sheet guide for example uses of the app with VDO.Ninja here: https://github.com/steveseguin/vdo.ninja/blob/quickstart/automation/cheatsheet_obsn_automation.md
 
 ## Notes on Using and Closing the App
 
