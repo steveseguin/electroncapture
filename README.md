@@ -22,6 +22,19 @@ Lastly, since playback is agnostic, you can window-capture the same video multip
 
 ## Settings and Parameters
 
+| Parameter 	| Alias 	| Description                	| Example values                    	| Notes                                                                       	|
+|-----------	|-------	|----------------------------	|-----------------------------------	|-----------------------------------------------------------------------------	|
+| --width   	| --w   	| Window width               	| 1280                              	| Value in px                                                                 	|
+| --height  	| --h   	| Window height              	| 720                               	| Value in px                                                                 	|
+| --x       	|       	| X position on screen       	| 1                                 	| Left side is 1                                                              	|
+| --y       	|       	| Y position on screen       	| 1                                 	| Top side is 1                                                               	|
+| --pin     	| --p   	| Pin window on top          	| (Takes no values)                 	| Display this window always on top.                                          	|
+| --url     	| --u   	| Set a custom link on start 	| https://vdo.ninja/?view=aCustomID 	| You can push and pull with single links or rooms.                           	|
+| --title   	| --t   	| Set a custom window title  	| Guest 1                           	| Handy for use with OBS window capture                                       	|
+| --node    	| --n   	| Use advanced features      	| 0 or 1                            	| Enable with 1. Allows for screen capture, global hotkeys, prompts and more. 	|
+| --hwa     	| --a   	| Hardware acceleration      	| 0 or 1                            	| Disable with 0.                                                             	|
+
+
 The default frameless resolution of the capture window is 1280x720. The app automatically accounts for high-DPI displays, so it is always 1:1 pixel-accurate with the specified resolution on even Apple Retina displays.
 
 The optional Command Line arguments can be seen as examples below, along with their default values.
