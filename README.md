@@ -124,8 +124,8 @@ https://github.com/steveseguin/electroncapture/releases/download/2.0.0/elecap_in
 https://github.com/steveseguin/electroncapture/releases/download/2.0.0/elecap_portable_win.zip
 
 ### Mac Version 
-- Unsigned, but newer version (v2.0.0)
-https://github.com/steveseguin/electroncapture/releases/download/2.0.0/elecap-2.0.0.dmg
+- Unsigned, but newer version (v2.0.1)
+https://github.com/steveseguin/electroncapture/releases/download/2.0.1/elecap-2.0.1.dmg
 
 - Signed and notarized, but older version (v1.1.3)
 https://github.com/steveseguin/electroncapture/releases/download/1.1.3/obsn-1.1.3.dmg
