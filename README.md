@@ -67,9 +67,9 @@ start elecap.exe -t feed7 -u https://vdo.ninja/?view=76542n5^&scene^&codec=h264^
 start elecap.exe -t feed8 -u https://vdo.ninja/?view=gfd9hnx^&scene^&codec=h264^&room=SOMETHINGTEST123
 ```
 
-* Please note, do not use double-quotes, rather single-quotes, if needing to enclose text via the command line.
-** Please Also note,the use ot timeout /T 10, as you'll want to load no more than a few at a time to prevent problems.
-*** x and y position is available in v1.5.2 and up; x or y values must be greater than 0.
+- Please note, do not use double-quotes, rather single-quotes, if needing to enclose text via the command line.
+- Please Also note,the use ot timeout /T 10, as you'll want to load no more than a few at a time to prevent problems.
+- x and y position is available in v1.5.2 and up; x or y values must be greater than 0.
 
 <img src="https://user-images.githubusercontent.com/2575698/80891745-290d3000-8c94-11ea-85c4-ae0e7cd1ec19.png " alt="" data-canonical-src="https://user-images.githubusercontent.com/2575698/80891745-290d3000-8c94-11ea-85c4-ae0e7cd1ec19.png " style="display:inline-block" height="300" />
 
