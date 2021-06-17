@@ -7,7 +7,7 @@ process.on('uncaughtException', function (error) {
     console.error(error);
 });
 
-const {app, BrowserWindow, ipcMain, screen, shell, globalShortcut , session, desktopCapturer, dialog} = require('electron')
+const {app, BrowserWindow, BrowserView, ipcMain, screen, shell, globalShortcut , session, desktopCapturer, dialog} = require('electron')
 const path = require('path')
 const contextMenu = require('electron-context-menu');
 
@@ -72,7 +72,7 @@ var argv = require('yargs')
 	default: false
   })
   .describe("help", "Show help.") // Override --help usage message.
-  
+
 var { width, height, url, title, pin, hwa, x, y , node} = argv.argv;
 
 if (!(url.startsWith("http"))){
@@ -92,9 +92,9 @@ var forcingAspectRatio = false;
 
 
 function createWindow (URL=url, NODE=node) {
- 
+
 	let currentTitle = "ElectronCapture";
-  
+
 	if (title===null){
 		counter+=1;
 		currentTitle = "Electron "+(counter.toString());
@@ -105,14 +105,14 @@ function createWindow (URL=url, NODE=node) {
 		counter+=1;
 		currentTitle = title.toString() + " " +(counter.toString());
 	}
-	
+
 	const ret = globalShortcut.register('CommandOrControl+M', () => {
 		console.log('CommandOrControl+N is pressed')
 		if (mainWindow) {
 			mainWindow.webContents.send('postMessage', {'mic':'toggle'})
 		}
 	})
-	
+
 	ipcMain.on('postMessage', () => {
 	    console.log('We received a postMessage from the preload script')
 	})
@@ -120,15 +120,15 @@ function createWindow (URL=url, NODE=node) {
 	if (!ret) {
 		console.log('registration failed')
 	}
-	
+
 	ipcMain.on('getAppVersion', function(eventRet) {
 		if (mainWindow) {
 			mainWindow.webContents.send('appVersion', app.getVersion());
 		}
 	});
-	
+
 	ipcMain.on('prompt', function(eventRet, arg) {  // this enables a PROMPT pop up , which is used to BLOCK the main thread until the user provides input. VDO.Ninja uses prompt for passwords, etc.
-	
+
 		arg.val = arg.val || '';
 		arg.title = arg.title.replace("\n","<br /><br />");
 		//arg.title = "<div style='max-width:100%;word-wrap: break-word;overflow-wrap: break-word;'>"+arg.title+"</div>";
@@ -142,7 +142,8 @@ function createWindow (URL=url, NODE=node) {
 				placeholder: arg.val
 			},
 			type: 'input',
-			resizable: true
+			resizable: true,
+      alwaysOnTop: true
 		})
 		.then((r) => {
 			if(r === null) {
@@ -153,19 +154,19 @@ function createWindow (URL=url, NODE=node) {
 			}
 		})
 		.catch(console.error);
-	
+
 	});
-	
+
 
 	let factor = screen.getPrimaryDisplay().scaleFactor;
-    
+
 	// Create the browser window.
 	var mainWindow = new BrowserWindow({
 		width: width / factor,
 		height: height / factor,
 		frame: false,
 		backgroundColor: '#141926',
-		fullscreenable: true, 
+		fullscreenable: true,
 		titleBarStyle: 'customButtonsOnHover',
 		roundedCorners: false,
 		webPreferences: {
@@ -175,7 +176,7 @@ function createWindow (URL=url, NODE=node) {
 			backgroundThrottling: false,
 			nodeIntegrationInSubFrames: NODE,
 			nodeIntegration: NODE  // this could be a security hazard, but useful for enabling screen sharing and global hotkeys
-			
+
 		},
 		title: currentTitle
 	});
@@ -183,15 +184,28 @@ function createWindow (URL=url, NODE=node) {
 	if (x && y) {
 		mainWindow.setPosition(Math.floor(x/factor), Math.floor(y/factor))
 	}
-  
-	mainWindow.on('close', function(e) { 
+
+//  let view = new BrowserView({
+//    webPreferences: {
+//      nodeIntegration: false,
+//      transparent:true
+//    }
+//  })
+//  mainWindow.setBrowserView(view);
+//  view.setBounds({ x: 0, y: 0, width: width / factor, height: height / factor, });
+//  view.setAutoResize({width: true, height: true});
+//  view.setBackgroundColor("#0000");
+//  view.webContents.loadURL('https://vdo.ninja/?transparent');
+//  view.webContents.insertCSS("body {pointer-events:none;}");
+
+	mainWindow.on('close', function(e) {
         //e.preventDefault();
         mainWindow.destroy();
 		globalShortcut.unregister('CommandOrControl+M');
 		globalShortcut.unregisterAll();
 		mainWindow = null
 	});
-	
+
 	mainWindow.on('closed', function (e) {
 		//e.preventDefault();
         mainWindow.destroy();
@@ -199,11 +213,11 @@ function createWindow (URL=url, NODE=node) {
 		globalShortcut.unregisterAll();
 		mainWindow = null
 	})
-	
+
 	mainWindow.on("page-title-updated", function(event) {
 		event.preventDefault();
 	});
-	
+
 	mainWindow.webContents.on("did-fail-load", function() {
 		app.quit();
 	});
@@ -220,14 +234,14 @@ function createWindow (URL=url, NODE=node) {
 		mainWindow.setVisibleOnAllWorkspaces(false);
 	}
 
-	
+
 
   	try { // MacOS
 		app.dock.hide();
   	} catch (e){
 		// Windows?
   	}
-	
+
 	session.fromPartition("default").setPermissionRequestHandler((webContents, permission, callback) => {
         let allowedPermissions = ["audioCapture", "desktopCapture", "pageCapture", "tabCapture", "experimental"]; // Full list here: https://developer.chrome.com/extensions/declare_permissions#manifest
 
@@ -241,14 +255,14 @@ function createWindow (URL=url, NODE=node) {
             callback(false); // Deny
         }
     });
-	
+
 	try {
 		mainWindow.loadURL(URL);
 	} catch (e){
 		app.quit();
   	}
-	
-	
+
+
 }
 
 // This method will be called when Electron has finished
@@ -277,8 +291,8 @@ contextMenu({
 				label: 'Go Back',
 				// Only show it when right-clicking text
 				visible: true,
-				click: () => {	
-					if (browserWindow.webContents.canGoBack()) {				
+				click: () => {
+					if (browserWindow.webContents.canGoBack()) {
 						browserWindow.webContents.goBack();
 					}
 				}
@@ -304,7 +318,7 @@ contextMenu({
 			{
 				label: 'Elevate Privilege',
 				// Only show it when right-clicking text
-				
+
 				visible: !node,
 				click: () => {
 					let options  = {
@@ -328,6 +342,10 @@ contextMenu({
 				visible: true,
 				click: () => {
 					var URL = browserWindow.webContents.getURL();
+          var onTop = browserWindow.isAlwaysOnTop();
+          if (onTop) {
+            browserWindow.setAlwaysOnTop(false);
+          }
 					prompt({
 						title: 'Edit the URL',
 						label: 'URL:',
@@ -336,25 +354,73 @@ contextMenu({
 							type: 'url'
 						},
 						resizable: true,
-						type: 'input'
+						type: 'input',
+            alwaysOnTop: true
 					})
 					.then((r) => {
 						if(r === null) {
 							console.log('user cancelled');
+              if (onTop) {
+                browserWindow.setAlwaysOnTop(true);
+              }
 						} else {
 							console.log('result', r);
+              if (onTop) {
+                browserWindow.setAlwaysOnTop(true);
+              }
 							browserWindow.loadURL(r);
 						}
 					})
 					.catch(console.error);
 				}
 			},
+      {
+        label: 'Insert CSS',
+        // Only show it when right-clicking text
+        visible: true,
+        click: () => {
+          var onTop = browserWindow.isAlwaysOnTop();
+          if (onTop) {
+            browserWindow.setAlwaysOnTop(false);
+          }
+          prompt({
+            title: 'Insert Custom CSS',
+            label: 'CSS:',
+            value: "body {background-color:#0000;}",
+            inputAttrs: {
+              type: 'text'
+            },
+            resizable: true,
+            type: 'input',
+            alwaysOnTop: true
+          })
+          .then((r) => {
+            if(r === null) {
+              console.log('user cancelled');
+              if (onTop) {
+                browserWindow.setAlwaysOnTop(true);
+              }
+            } else {
+              console.log('result', r);
+              if (onTop) {
+                browserWindow.setAlwaysOnTop(true);
+              }
+              browserWindow.webContents.insertCSS(r);
+            }
+          })
+          .catch(console.error);
+        }
+      },
 			{
 				label: 'Edit Window Title',
 				// Only show it when right-clicking text
 				visible: true,
 				click: () => {
 			        var title = browserWindow.getTitle();
+              var onTop = browserWindow.isAlwaysOnTop();
+              if (onTop) {
+                browserWindow.setAlwaysOnTop(false);
+              }
 			        prompt({
 			                title: 'Edit  Window Title',
 			                label: 'Title:',
@@ -363,14 +429,21 @@ contextMenu({
 			                        type: 'string'
 			                },
 			                resizable: true,
-			                type: 'input'
+			                type: 'input',
+                      alwaysOnTop: true
 			        })
 			        .then((r) => {
 			                if(r === null) {
-			                        console.log('user cancelled');
+                        if (onTop) {
+                          browserWindow.setAlwaysOnTop(true);
+                        }
+			                  console.log('user cancelled');
 			                } else {
-			                        console.log('result', r);
-			                        browserWindow.setTitle(r);
+                        if (onTop) {
+                          browserWindow.setAlwaysOnTop(true);
+                        }
+                        console.log('result', r);
+                        browserWindow.setTitle(r);
 			                }
 			        })
 			        .catch(console.error);
@@ -436,6 +509,10 @@ contextMenu({
 						visible: true,
 						click: () => {
 							var URL = browserWindow.webContents.getURL();
+              var onTop = browserWindow.isAlwaysOnTop();
+              if (onTop) {
+                browserWindow.setAlwaysOnTop(false);
+              }
 							prompt({
 								title: 'Custom window resolution',
 								label: 'Enter a resolution:',
@@ -444,13 +521,20 @@ contextMenu({
 									type: 'string',
 									placeholder: '1280x720'
 								},
-								type: 'input'
+								type: 'input',
+                alwaysOnTop: true
 							})
 							.then((r) => {
 								if(r === null) {
 									console.log('user cancelled');
+                  if (onTop) {
+                    browserWindow.setAlwaysOnTop(true);
+                  }
 								} else {
 									console.log('Window resized to ', r);
+                  if (onTop) {
+                    browserWindow.setAlwaysOnTop(true);
+                  }
 									if (browserWindow.isFullScreen()){browserWindow.setFullScreen(false);}
 									let point =  screen.getCursorScreenPoint();
 									let factor = screen.getDisplayNearestPoint(point).scaleFactor;
@@ -491,7 +575,7 @@ contextMenu({
 						browserWindow.setAspectRatio(16/9)
 						forcingAspectRatio = true
 					}
-					
+
 				}
 			},
 			{
