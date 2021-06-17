@@ -96,8 +96,8 @@
     "afterSign": "./afterSign.js"
   },
   "devDependencies": {
-    "electron": "^13.0.0",
-    "electron-builder": "^22.9.1",
+    "electron": "^13.1.2",
+    "electron-builder": "^22.11.7",
     "electron-notarize": "^1.0.0",
     "rimraf": "^2.6.3",
     "run-script-os-fix": "^1.0.4"
@@ -107,5 +107,8 @@
     "electron-is-dev": "^1.0.1",
     "electron-prompt": "^1.6.2",
     "yargs": "^15.4.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
   }
 }
