@@ -51,7 +51,8 @@
           "path": "/Applications"
         }
       ],
-      "artifactName": "elecap-${version}.${ext}"
+      "artifactName": "elecap-${version}.${ext}",
+      "writeUpdateInfo":false
     },
     "win": {
       "target": [
@@ -75,7 +76,8 @@
     "nsis": {
       "runAfterFinish": true,
       "installerIcon": "assets/icons/win/icon.ico",
-      "artifactName": "elecap-${version}.${ext}"
+      "artifactName": "elecap-${version}.${ext}",
+      "differentialPackage": false
     },
     "portable": {
       "artifactName": "elecap.exe"
