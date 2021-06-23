@@ -44,7 +44,7 @@ elecap.exe --width 1280 --height 720 --url 'https://vdo.ninja/electron' --title 
 ```
 or for example
 ```
-./elecap -w 1280 -h 720 -u 'https://vdo.ninja/electron' -t 'my Window name' -x 10 -y 10 -n 1
+./elecap -w 1280 -h 720 -u 'https://vdo.ninja/electron' -t 'my Window name' --x 10 --y 10 -n 1
 ```
 
 If running from Windows command prompt, any ampersand "&" characters will need to be escaped with a "^" character, as seen below:
