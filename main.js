@@ -58,12 +58,16 @@ var argv = require('yargs')
 	default: true
   })
   .option("x", {
+	alias: "x",
     describe: "Window X position",
     type: "number",
+	default: -1
   })
   .option("y", {
+	alias: "y",
     describe: "Window Y position",
     type: "number",
+	default: -1
   })
   .option("node", {
 	alias: "n",
@@ -181,7 +185,9 @@ function createWindow (URL=url, NODE=node) {
 		title: currentTitle
 	});
 
-	if (x && y) {
+	if ((x!=-1) || (y!=-1)) {
+		if (x==-1){x=0;}
+		if (y==-1){y=0;}
 		mainWindow.setPosition(Math.floor(x/factor), Math.floor(y/factor))
 	}
 
