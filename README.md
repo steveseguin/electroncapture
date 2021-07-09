@@ -151,7 +151,7 @@ https://github.com/steveseguin/electroncapture/releases/download/2.1.2/elecap_po
 
 ### Mac Version 
 - Unsigned, but newer version (v2.1.2)
-https://github.com/steveseguin/electroncapture/releases/download/elecap-2.1.2.dmg
+https://github.com/steveseguin/electroncapture/releases/download/2.1.2/elecap-2.1.2.dmg
 
 - Signed and notarized, but older version (v1.1.3)
 https://github.com/steveseguin/electroncapture/releases/download/1.1.3/obsn-1.1.3.dmg
