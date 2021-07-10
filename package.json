@@ -1,6 +1,6 @@
 {
   "name": "VDON.Electron.Capture.App",
-  "version": "2.1.2",
+  "version": "2.1.3",
   "description": "A simple tool to aid with frameless window video capture and VDON publishing",
   "author": "Steve Seguin",
   "main": "main.js",
@@ -59,11 +59,16 @@
         {
           "target": "nsis",
           "arch": [
-            "x64"
+            "x64",
+            "ia32"
           ]
         },
         {
-          "target": "portable"
+          "target": "portable",
+	  "arch": [
+		"ia32",
+		"x64"
+	  ]
         }
       ],
       "icon": "assets/icons/win/icon.ico"
