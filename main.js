@@ -75,9 +75,15 @@ var argv = require('yargs')
     type: "boolean",
 	default: false
   })
+  .option("fullscreen", {
+    alias: "f",
+    describe: "Enables full-screen mode for the first window on its load.",
+    type: "boolean",
+    default: false
+  })
   .describe("help", "Show help.") // Override --help usage message.
 
-var { width, height, url, title, pin, hwa, x, y , node} = argv.argv;
+var { width, height, url, title, pin, hwa, x, y , node, fullscreen} = argv.argv;
 
 if (!(url.startsWith("http"))){
 	url = "https://"+url.toString();
@@ -240,13 +246,21 @@ function createWindow (URL=url, NODE=node) {
 		mainWindow.setVisibleOnAllWorkspaces(false);
 	}
 
+    if (fullscreen){
+		 if (process.platform == "XXXXdarwin"){
+         	mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize();
+         } else {
+            mainWindow.isFullScreen() ? mainWindow.setFullScreen(false) : mainWindow.setFullScreen(true);
+         }
+	}
 
-
-  	try { // MacOS
-		app.dock.hide();
-  	} catch (e){
-		// Windows?
-  	}
+	if (process.platform == "darwin"){
+  		try { // MacOS
+			app.dock.hide();
+  		} catch (e){
+			// Windows?
+  		}
+	}
 
 	session.fromPartition("default").setPermissionRequestHandler((webContents, permission, callback) => {
         let allowedPermissions = ["audioCapture", "desktopCapture", "pageCapture", "tabCapture", "experimental"]; // Full list here: https://developer.chrome.com/extensions/declare_permissions#manifest
@@ -466,7 +480,11 @@ contextMenu({
 						// Only show if not already full-screen
 						visible: !browserWindow.isMaximized(),
 						click: () => {
-							browserWindow.isFullScreen() ? browserWindow.setFullScreen(false) : browserWindow.setFullScreen(true);
+							if (process.platform == "XXXXdarwin"){ // On certain electron builds, fullscreen fails on macOS; this is in case it starts happening again
+								browserWindow.isMaximized() ? browserWindow.unmaximize() : browserWindow.maximize();
+							} else {
+								browserWindow.isFullScreen() ? browserWindow.setFullScreen(false) : browserWindow.setFullScreen(true);
+							}
 							browserWindow.setMenu(null);
 
 							//const {width,height} = screen.getPrimaryDisplay().workAreaSize;
@@ -478,8 +496,11 @@ contextMenu({
 						// Only show it when right-clicking text
 						visible: true,
 						click: () => {
-							if (browserWindow.isFullScreen()){browserWindow.setFullScreen(false);}
-
+							if (process.platform !== "XXXXdarwin"){
+								if (browserWindow.isFullScreen()){browserWindow.setFullScreen(false);}
+							} else {
+								if (browserWindow.isMaximized()){browserWindow.unmaximize();}
+							}
 							//let factor = screen.getPrimaryDisplay().scaleFactor;
 							//browserWindow.setSize(1920/factor, 1080/factor);
 							let point =  screen.getCursorScreenPoint();
@@ -492,7 +513,11 @@ contextMenu({
 						// Only show it when right-clicking text
 						visible: true,
 						click: () => {
-							if (browserWindow.isFullScreen()){browserWindow.setFullScreen(false);}
+                            if (process.platform !== "XXXXdarwin"){
+                                if (browserWindow.isFullScreen()){browserWindow.setFullScreen(false);}
+                            } else {
+                                if (browserWindow.isMaximized()){browserWindow.unmaximize();}
+                            }	
 							let point =  screen.getCursorScreenPoint();
 							let factor = screen.getDisplayNearestPoint(point).scaleFactor;
 							browserWindow.setSize(1280/factor, 720/factor);
@@ -503,7 +528,11 @@ contextMenu({
 						// Only show it when right-clicking text
 						visible: true,
 						click: () => {
-							if (browserWindow.isFullScreen()){browserWindow.setFullScreen(false);}
+							if (process.platform !== "XXXXdarwin"){
+                                if (browserWindow.isFullScreen()){browserWindow.setFullScreen(false);}
+                            } else {
+                                if (browserWindow.isMaximized()){browserWindow.unmaximize();}
+                            }
 							let point =  screen.getCursorScreenPoint();
 							let factor = screen.getDisplayNearestPoint(point).scaleFactor;
 							browserWindow.setSize(640/factor, 360/factor);
@@ -515,10 +544,10 @@ contextMenu({
 						visible: true,
 						click: () => {
 							var URL = browserWindow.webContents.getURL();
-              var onTop = browserWindow.isAlwaysOnTop();
-              if (onTop) {
-                browserWindow.setAlwaysOnTop(false);
-              }
+				            var onTop = browserWindow.isAlwaysOnTop();
+              				if (onTop) {
+				                browserWindow.setAlwaysOnTop(false);
+              				}
 							prompt({
 								title: 'Custom window resolution',
 								label: 'Enter a resolution:',
@@ -528,20 +557,24 @@ contextMenu({
 									placeholder: '1280x720'
 								},
 								type: 'input',
-                alwaysOnTop: true
+                				alwaysOnTop: true
 							})
 							.then((r) => {
 								if(r === null) {
 									console.log('user cancelled');
-                  if (onTop) {
-                    browserWindow.setAlwaysOnTop(true);
-                  }
+                  					if (onTop) {
+                    					browserWindow.setAlwaysOnTop(true);
+                  					}
 								} else {
 									console.log('Window resized to ', r);
-                  if (onTop) {
-                    browserWindow.setAlwaysOnTop(true);
-                  }
-									if (browserWindow.isFullScreen()){browserWindow.setFullScreen(false);}
+                  					if (onTop) {
+					                    browserWindow.setAlwaysOnTop(true);
+                  					}
+									if (process.platform !== "XXXXdarwin"){
+                                		if (browserWindow.isFullScreen()){browserWindow.setFullScreen(false);}
+                            		} else {
+                                		if (browserWindow.isMaximized()){browserWindow.unmaximize();}
+                            		}	
 									let point =  screen.getCursorScreenPoint();
 									let factor = screen.getDisplayNearestPoint(point).scaleFactor;
 									browserWindow.setSize(r.split('x')[0]/factor, r.split('x')[1]/factor);
