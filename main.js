@@ -100,11 +100,12 @@ app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
 var counter=0;
 var forcingAspectRatio = false;
 
-
 function createWindow (URL=url, NODE=node) {
 
 	let currentTitle = "ElectronCapture";
 
+	
+	
 	if (title===null){
 		counter+=1;
 		currentTitle = "Electron "+(counter.toString());
@@ -136,6 +137,8 @@ function createWindow (URL=url, NODE=node) {
 			mainWindow.webContents.send('appVersion', app.getVersion());
 		}
 	});
+	
+	
 
 	ipcMain.on('prompt', function(eventRet, arg) {  // this enables a PROMPT pop up , which is used to BLOCK the main thread until the user provides input. VDO.Ninja uses prompt for passwords, etc.
 
@@ -190,25 +193,14 @@ function createWindow (URL=url, NODE=node) {
 		},
 		title: currentTitle
 	});
+	
+	mainWindow.node = NODE;
 
 	if ((x!=-1) || (y!=-1)) {
 		if (x==-1){x=0;}
 		if (y==-1){y=0;}
 		mainWindow.setPosition(Math.floor(x/factor), Math.floor(y/factor))
 	}
-
-//  let view = new BrowserView({
-//    webPreferences: {
-//      nodeIntegration: false,
-//      transparent:true
-//    }
-//  })
-//  mainWindow.setBrowserView(view);
-//  view.setBounds({ x: 0, y: 0, width: width / factor, height: height / factor, });
-//  view.setAutoResize({width: true, height: true});
-//  view.setBackgroundColor("#0000");
-//  view.webContents.loadURL('https://vdo.ninja/?transparent');
-//  view.webContents.insertCSS("body {pointer-events:none;}");
 
 	mainWindow.on('close', function(e) {
         //e.preventDefault();
@@ -233,6 +225,7 @@ function createWindow (URL=url, NODE=node) {
 	mainWindow.webContents.on("did-fail-load", function() {
 		app.quit();
 	});
+	
 
 	if (pin == true) {
 		// "floating" + 1 is higher than all regular windows, but still behind things
@@ -339,7 +332,7 @@ contextMenu({
 				label: 'Elevate Privilege',
 				// Only show it when right-clicking text
 
-				visible: !node,
+				visible: !browserWindow.node,
 				click: () => {
 					let options  = {
 						 title : "Elevate the Allowed Privileges of websites",
@@ -356,16 +349,152 @@ contextMenu({
 					}
 				}
 			},
+			/////////////
+			{
+				label: 'Change media device',
+				// Only show it when right-clicking text
+				visible: true,
+				type: 'submenu',
+				submenu: [
+					{
+						label: 'Change audio output',
+						// Only show it when right-clicking text
+
+						visible: browserWindow.node,
+						click: () => {
+							var buttons = ["Cancel"];
+							var details = [false];
+							
+							browserWindow.webContents.send('postMessage', {'getDeviceList':true});
+							
+							ipcMain.once('deviceList', (event, deviceList) => {
+								
+								for (var i=0;i<deviceList.length;i++){
+									if (deviceList[i].kind === "audiooutput"){
+										buttons.push(deviceList[i].label);
+										details.push(deviceList[i].deviceId);
+									}
+								}
+								
+								let options  = {
+									 title : "Change audio output device",
+									 buttons: buttons,
+									 message: "Change where to send audio; as a viewer or sender"
+								};
+								let response = dialog.showMessageBoxSync(options);
+								console.log(response);
+								if (response){
+									console.log({'changeAudioOutputDevice':details[response]});
+									browserWindow.webContents.send('postMessage', {'changeAudioOutputDevice':details[response]});
+								}
+									
+							})
+							
+							
+						}
+					},
+					{
+						label: 'Change audio input',
+						// Only show it when right-clicking text
+
+						visible: browserWindow.node,
+						click: () => {
+							var buttons = ["Cancel"];
+							var details = [false];
+							
+							browserWindow.webContents.send('postMessage', {'getDeviceList':true});
+							
+							ipcMain.once('deviceList', (event, deviceList) => {
+								
+								for (var i=0;i<deviceList.length;i++){
+									if (deviceList[i].kind === "audioinput"){
+										buttons.push(deviceList[i].label);
+										details.push(deviceList[i].deviceId);
+									}
+								}
+								
+								let options  = {
+									 title : "Change audio input device",
+									 buttons: buttons,
+									 message: "Change your local audio input source"
+								};
+								let response = dialog.showMessageBoxSync(options);
+								console.log(response);
+								if (response){
+									browserWindow.webContents.send('postMessage', {'changeAudioDevice':details[response]});
+								}
+							})
+							
+							
+						}
+					},
+					{
+						label: 'Change video input',
+						// Only show it when right-clicking text
+
+						visible: browserWindow.node,
+						click: () => {
+							var buttons = ["Cancel"];
+							var details = [false];
+							
+							browserWindow.webContents.send('postMessage', {'getDeviceList':true});
+							
+							ipcMain.once('deviceList', (event, deviceList) => {
+								
+								for (var i=0;i<deviceList.length;i++){
+									if (deviceList[i].kind === "videoinput"){
+										buttons.push(deviceList[i].label);
+										details.push(deviceList[i].deviceId);
+									}
+								}
+								
+								let options  = {
+									 title : "Change video input device",
+									 buttons: buttons,
+									 message: "Change your local camera source"
+								};
+								let response = dialog.showMessageBoxSync(options);
+								console.log(response);
+								if (response){
+									browserWindow.webContents.send('postMessage', {'changeVideoDevice':details[response]});
+								}
+							})
+							
+							
+						}
+					},
+					{
+						label: 'Requires Elevated Privileges',
+						visible: !browserWindow.node,
+						click: () => {
+							let options  = {
+								 title : "Elevate the Allowed Privileges of websites",
+								 buttons: ["Yes","Cancel"],
+								 message: "This will reload the current page, allowing for screen-share, global-hotkeys, and message prompts.\n\nIt will however also decrease app-security, especially if on an untrusted website.\n\nContinue?"
+							};
+							let response = dialog.showMessageBoxSync(options);
+							if (response==0){
+								var URL = browserWindow.webContents.getURL();
+								DoNotClose = true; // avoids fully closing the app if no other windows are open
+								browserWindow.destroy();
+								createWindow(URL, true); // we close the window and open it again; a faked refresh
+								DoNotClose = false;
+							}
+						}
+					}
+				]
+			},
+			
 			{
 				label: 'Edit URL',
 				// Only show it when right-clicking text
 				visible: true,
 				click: () => {
 					var URL = browserWindow.webContents.getURL();
-          var onTop = browserWindow.isAlwaysOnTop();
-          if (onTop) {
-            browserWindow.setAlwaysOnTop(false);
-          }
+					var onTop = browserWindow.isAlwaysOnTop();
+					if (onTop) {
+						browserWindow.setAlwaysOnTop(false);
+					}
 					prompt({
 						title: 'Edit the URL',
 						label: 'URL:',
@@ -375,7 +504,7 @@ contextMenu({
 						},
 						resizable: true,
 						type: 'input',
-            alwaysOnTop: true
+						alwaysOnTop: true
 					})
 					.then((r) => {
 						if(r === null) {
