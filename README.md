@@ -196,11 +196,11 @@ sudo -E npm run build
 
 ```
 
-### Trouble shooting
-
-#### can't hide cursor when window capturing using OBS?
+### Trouble shooting  -- if can't hide cursor when window capturing using OBS:
 Change the capture method in OBS to "BitBlt"and uncheck the Capture Cursor. Also make sure OBS runs in compatibility mode for win 7, so you don't get a black screen
+
 ![image](https://user-images.githubusercontent.com/2575698/126881460-1d8fe840-6ec4-4c35-bde2-fc6db5a9ae30.png)
+
 ![image](https://user-images.githubusercontent.com/2575698/126881462-b6916972-aa46-41bd-be01-54e3c2a58906.png)
 
 Adding &nocursor to VDO.Ninja will hide the cursor in that browser window, but that often isn't enough. If the above fails, make sure you are window capturing with OBS using the same display adapter for both OBS and the Electron window.
