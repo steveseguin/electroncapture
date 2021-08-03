@@ -96,6 +96,7 @@ if (!(hwa)){
 app.commandLine.appendSwitch('enable-features', 'WebAssemblySimd'); // Might not be needed in the future with Chromium; not supported on older Chromium. For faster greenscreen effects.
 app.commandLine.appendSwitch('webrtc-max-cpu-consumption-percentage', '100');
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
+app.commandLine.appendSwitch('max-web-media-player-count', '5000');
 
 var counter=0;
 var forcingAspectRatio = false;
@@ -185,6 +186,7 @@ function createWindow (URL=url, NODE=node) {
 		webPreferences: {
 			preload: path.join(__dirname, 'preload.js'),
 			pageVisibility: true,
+			partition: 'persist:abc',
 			contextIsolation: !NODE,
 			backgroundThrottling: false,
 			nodeIntegrationInSubFrames: NODE,
