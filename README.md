@@ -144,14 +144,14 @@ Please note that the Electron Capture app does not auto-update to newer versions
 
 ### Windows Version
 - Installs the app for easy loading from Start Menu
-https://github.com/steveseguin/electroncapture/releases/download/2.1.2/elecap_installer_win.zip
+https://github.com/steveseguin/electroncapture/releases/download/2.4.0/elecap_installer_x64_win.zip
 
 - Portable version; no install needed and easy to use from the command-line.
-https://github.com/steveseguin/electroncapture/releases/download/2.1.2/elecap_portable_win.zip
+https://github.com/steveseguin/electroncapture/releases/download/2.4.0/elecap_portable_win.zip
 
 ### Mac Version 
 - Unsigned, but newer version (v2.1.2)
-https://github.com/steveseguin/electroncapture/releases/download/2.1.2/elecap-2.1.2.dmg
+https://github.com/steveseguin/electroncapture/releases/download/2.4.0/elecap-2.4.0.dmg
 
 - Signed and notarized, but older version (v1.1.3)
 https://github.com/steveseguin/electroncapture/releases/download/1.1.3/obsn-1.1.3.dmg
