@@ -18,7 +18,7 @@ Lastly, since playback is agnostic, you can window-capture the same video multip
 
 ## a Video Guide (primarily for macOS users)
 
-[![Video Guide for Electron](https://user-images.githubusercontent.com/2575698/129783457-f51bdbbb-8af8-4586-8409-a194d3c07138.png)(https://youtu.be/mZ7X7WvRcRA "Video Guide for Electron")]
+[![Video Guide for Electron](https://user-images.githubusercontent.com/2575698/129783457-f51bdbbb-8af8-4586-8409-a194d3c07138.png)](https://youtu.be/mZ7X7WvRcRA "Video Guide for Electron")
 
 ## Settings and Parameters
 
