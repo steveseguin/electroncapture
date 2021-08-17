@@ -17,8 +17,7 @@ The Electron Capture app uses recent versions of Chromium, which is more resista
 Lastly, since playback is agnostic, you can window-capture the same video multiple times, using one copy in a mixed-down live stream, while using a window-capture to record a clean full-resolution isolated video stream.
 
 ## a Video Guide (primarily for macOS users)
-
-[![Video Guide for Electron](https://user-images.githubusercontent.com/2575698/129783457-f51bdbbb-8af8-4586-8409-a194d3c07138.png)](https://youtu.be/mZ7X7WvRcRA "Video Guide for Electron")
+[![Video Guide for Electron](https://user-images.githubusercontent.com/2575698/129784167-278f0252-d186-4a29-896f-a02636c2ee2f.png)](https://youtu.be/mZ7X7WvRcRA "Video Guide for Electron")
 
 ## Settings and Parameters
 
