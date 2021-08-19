@@ -168,7 +168,9 @@ npm run build:linux
 ## Building the App from Source
 
 You'll need to download and extract the source code; or git clone it.
-You'll also need npm installed.
+You'll also need nodejs  and npm installed. 
+
+If on Windows, you can find the latest NPM/Nodejs install files here: https://nodejs.org/en/download/current/
 
 ### To just run the app from source without building, you can:
 ```
