@@ -14,11 +14,10 @@ Windows users may find it beneficial too, as it offers support for VDO.Ninja's <
 
 The Electron Capture app uses recent versions of Chromium, which is more resistant to desync, video smearing, and other issues that might exist in the native OBS browser source capture method. [More benefits listed here](https://github.com/steveseguin/electroncapture/blob/master/BENEFITS.md)
 
-Lastly, since playback is agnostic, you can window-capture the same video multiple times, using one copy in a mixed-down live stream, while using a window-capture to record a clean full-resolution isolated video stream.
+Lastly, since playback is agnostic, you can window-capture the same video multiple times, using one copy in a mixed-down live stream, while using a window-capture to record a clean full-resolution isolated video stream
 
-## a Video Guide (primarily for macOS users)
-
-[![Video Guide for Electron on macOS](https://user-images.githubusercontent.com/2575698/112656019-583a0c00-8e27-11eb-9b2a-7a4499aa150c.png)](https://www.youtube.com/watch?v=z3uDpGMzHCg "Video Guide for Electron on macOS")
+## Video guide on how to use Electron Capture
+[![Video Guide for Electron](https://user-images.githubusercontent.com/2575698/129784248-3270a876-6831-4595-9eb5-63665843e631.png)](https://youtu.be/mZ7X7WvRcRA "Video Guide for Electron")
 
 ## Settings and Parameters
 
@@ -144,14 +143,14 @@ Please note that the Electron Capture app does not auto-update to newer versions
 
 ### Windows Version
 - Installs the app for easy loading from Start Menu
-https://github.com/steveseguin/electroncapture/releases/download/2.1.2/elecap_installer_win.zip
+https://github.com/steveseguin/electroncapture/releases/download/2.4.0/elecap_installer_x64_win.zip
 
 - Portable version; no install needed and easy to use from the command-line.
-https://github.com/steveseguin/electroncapture/releases/download/2.1.2/elecap_portable_win.zip
+https://github.com/steveseguin/electroncapture/releases/download/2.4.0/elecap_portable_win.zip
 
 ### Mac Version 
 - Unsigned, but newer version (v2.1.2)
-https://github.com/steveseguin/electroncapture/releases/download/2.1.2/elecap-2.1.2.dmg
+https://github.com/steveseguin/electroncapture/releases/download/2.4.0/elecap-2.4.0.dmg
 
 - Signed and notarized, but older version (v1.1.3)
 https://github.com/steveseguin/electroncapture/releases/download/1.1.3/obsn-1.1.3.dmg
@@ -169,7 +168,9 @@ npm run build:linux
 ## Building the App from Source
 
 You'll need to download and extract the source code; or git clone it.
-You'll also need npm installed.
+You'll also need nodejs  and npm installed. 
+
+If on Windows, you can find the latest NPM/Nodejs install files here: https://nodejs.org/en/download/current/
 
 ### To just run the app from source without building, you can:
 ```
