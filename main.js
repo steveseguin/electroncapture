@@ -486,6 +486,20 @@ contextMenu({
 					}
 				]
 			},
+			{
+				label: '🔈 Mute the window',
+				type: 'checkbox',
+				visible: true,
+				checked: browserWindow.webContents.isAudioMuted(),
+				click: () => {
+					if (browserWindow.webContents.isAudioMuted()) {
+						browserWindow.webContents.setAudioMuted(false);
+					} else {
+						browserWindow.webContents.setAudioMuted(true);
+					}
+
+				}
+			},
 			
 			{
 				label: 'Edit URL',
@@ -525,43 +539,43 @@ contextMenu({
 					.catch(console.error);
 				}
 			},
-      {
-        label: 'Insert CSS',
-        // Only show it when right-clicking text
-        visible: true,
-        click: () => {
-          var onTop = browserWindow.isAlwaysOnTop();
-          if (onTop) {
-            browserWindow.setAlwaysOnTop(false);
-          }
-          prompt({
-            title: 'Insert Custom CSS',
-            label: 'CSS:',
-            value: "body {background-color:#0000;}",
-            inputAttrs: {
-              type: 'text'
-            },
-            resizable: true,
-            type: 'input',
-            alwaysOnTop: true
-          })
-          .then((r) => {
-            if(r === null) {
-              console.log('user cancelled');
-              if (onTop) {
-                browserWindow.setAlwaysOnTop(true);
-              }
-            } else {
-              console.log('result', r);
-              if (onTop) {
-                browserWindow.setAlwaysOnTop(true);
-              }
-              browserWindow.webContents.insertCSS(r);
-            }
-          })
-          .catch(console.error);
-        }
-      },
+		  {
+			label: 'Insert CSS',
+			// Only show it when right-clicking text
+			visible: true,
+			click: () => {
+			  var onTop = browserWindow.isAlwaysOnTop();
+			  if (onTop) {
+				browserWindow.setAlwaysOnTop(false);
+			  }
+			  prompt({
+				title: 'Insert Custom CSS',
+				label: 'CSS:',
+				value: "body {background-color:#0000;}",
+				inputAttrs: {
+				  type: 'text'
+				},
+				resizable: true,
+				type: 'input',
+				alwaysOnTop: true
+			  })
+			  .then((r) => {
+				if(r === null) {
+				  console.log('user cancelled');
+				  if (onTop) {
+					browserWindow.setAlwaysOnTop(true);
+				  }
+				} else {
+				  console.log('result', r);
+				  if (onTop) {
+					browserWindow.setAlwaysOnTop(true);
+				  }
+				  browserWindow.webContents.insertCSS(r);
+				}
+			  })
+			  .catch(console.error);
+			}
+		  },
 			{
 				label: 'Edit Window Title',
 				// Only show it when right-clicking text
