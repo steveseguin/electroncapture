@@ -11,8 +11,6 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 })
 
-
-
 window.addEventListener('message', ({ data }) => {
     ipcRenderer.send('postMessage', data)
 })
@@ -33,24 +31,20 @@ ipcRenderer.on('postMessage', (event, ...args) => {
 		
 		if ("getDeviceList" in args[0]) {
 			return enumerateDevices().then(function(deviceInfos) {
-				console.log(deviceInfos);
 				deviceInfos = JSON.parse(JSON.stringify(deviceInfos));
 				return ipcRenderer.send('deviceList', deviceInfos);
-			});
+			}).catch(console.error);;
 		}
 		
 		if ("changeVideoDevice" in args[0]) {
-			console.log(args[0].changeVideoDevice);
 			changeVideoDeviceById(args[0].changeVideoDevice);
 		}
 		
 		if ("changeAudioDevice" in args[0]) {
-			console.log(args[0].changeAudioDevice);
 			changeAudioDeviceById(args[0].changeAudioDevice);
 		}
 		
 		if ("changeAudioOutputDevice" in args[0]) {
-			console.log("INDEX"+args[0].changeAudioOutputDevice);
 			changeAudioOutputDeviceById(args[0].changeAudioOutputDevice);
 		}
 		

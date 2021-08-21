@@ -104,8 +104,6 @@ var forcingAspectRatio = false;
 function createWindow (URL=url, NODE=node) {
 
 	let currentTitle = "ElectronCapture";
-
-	
 	
 	if (title===null){
 		counter+=1;
@@ -125,7 +123,7 @@ function createWindow (URL=url, NODE=node) {
 		}
 	})
 
-	ipcMain.on('postMessage', () => {
+	ipcMain.on('postMessage', (msg) => {
 	    console.log('We received a postMessage from the preload script')
 	})
 
@@ -134,40 +132,43 @@ function createWindow (URL=url, NODE=node) {
 	}
 
 	ipcMain.on('getAppVersion', function(eventRet) {
-		if (mainWindow) {
-			mainWindow.webContents.send('appVersion', app.getVersion());
-		}
+		try{
+			if (mainWindow) {
+				mainWindow.webContents.send('appVersion', app.getVersion());
+			}
+		} catch(e){errorlog(e);}
 	});
 	
 	
 
 	ipcMain.on('prompt', function(eventRet, arg) {  // this enables a PROMPT pop up , which is used to BLOCK the main thread until the user provides input. VDO.Ninja uses prompt for passwords, etc.
-
-		arg.val = arg.val || '';
-		arg.title = arg.title.replace("\n","<br /><br />");
-		//arg.title = "<div style='max-width:100%;word-wrap: break-word;overflow-wrap: break-word;'>"+arg.title+"</div>";
-		prompt({
-			title: "",
-			label: arg.title,
-			width: 700,
-			useHtmlLabel: true,
-			inputAttrs: {
-				type: 'string',
-				placeholder: arg.val
-			},
-			type: 'input',
-			resizable: true,
-      alwaysOnTop: true
-		})
-		.then((r) => {
-			if(r === null) {
-				console.log('user cancelled');
-			} else {
-				console.log('result', r);
-				eventRet.returnValue = r;
-			}
-		})
-		.catch(console.error);
+		try {
+			arg.val = arg.val || '';
+			arg.title = arg.title.replace("\n","<br /><br />");
+			//arg.title = "<div style='max-width:100%;word-wrap: break-word;overflow-wrap: break-word;'>"+arg.title+"</div>";
+			prompt({
+				title: "",
+				label: arg.title,
+				width: 700,
+				useHtmlLabel: true,
+				inputAttrs: {
+					type: 'string',
+					placeholder: arg.val
+				},
+				type: 'input',
+				resizable: true,
+		  alwaysOnTop: true
+			})
+			.then((r) => {
+				if(r === null) {
+					console.log('user cancelled');
+				} else {
+					console.log('result', r);
+					eventRet.returnValue = r;
+				}
+			})
+			.catch(console.error);
+		} catch(e){errorlog(e);}
 
 	});
 
@@ -195,14 +196,18 @@ function createWindow (URL=url, NODE=node) {
 		},
 		title: currentTitle
 	});
-	
-	mainWindow.node = NODE;
 
-	if ((x!=-1) || (y!=-1)) {
-		if (x==-1){x=0;}
-		if (y==-1){y=0;}
-		mainWindow.setPosition(Math.floor(x/factor), Math.floor(y/factor))
-	}
+	mainWindow.cleanOutput = false;
+
+	try {
+		mainWindow.node = NODE;
+
+		if ((x!=-1) || (y!=-1)) {
+			if (x==-1){x=0;}
+			if (y==-1){y=0;}
+			mainWindow.setPosition(Math.floor(x/factor), Math.floor(y/factor))
+		}
+	} catch(e){errorlog(e);}
 
 	mainWindow.on('close', function(e) {
         //e.preventDefault();
@@ -218,62 +223,112 @@ function createWindow (URL=url, NODE=node) {
 		globalShortcut.unregister('CommandOrControl+M');
 		globalShortcut.unregisterAll();
 		mainWindow = null
-	})
+	});
 
 	mainWindow.on("page-title-updated", function(event) {
 		event.preventDefault();
 	});
 
-	mainWindow.webContents.on("did-fail-load", function() {
+	mainWindow.webContents.on("did-fail-load", function(e) {
+		console.error(e);
 		app.quit();
 	});
 	
+	mainWindow.webContents.on('did-finish-load', function(e){
+		if (mainWindow.webContents.getURL().includes('youtube.com') || mainWindow.webContents.getURL().includes('twitch.tv')){
+			if (mainWindow.cleanOutput){
+				var css = " \
+					.html5-video-player {\
+						z-index:unset!important;\
+					}\
+					.html5-video-container {	\
+						z-index:unset!important;\
+					}\
+					video { \
+						width: 100vw!important;height: 100vh!important;  \
+						left: 0px!important;    \
+						object-fit: cover!important;\
+						top: 0px!important;\
+						overflow:hidden;\
+						z-index: 2147483647;\
+						position: fixed!important;\
+					}\
+					body {\
+						overflow: hidden!important;\
+					}";
+				
+				mainWindow.webContents.insertCSS(css, {cssOrigin: 'user'});
+				
+				mainWindow.webContents.executeJavaScript('document.body.appendChild(document.querySelector("video"));');
+				
+				
+			}
+			
+			if (mainWindow.webContents.getURL().includes('youtube.com')){
+				console.log("Youtube ad skipper inserted");
+				mainWindow.webContents.executeJavaScript('\
+					if (!xxxxxx){\
+						var xxxxxx = setInterval(function(){\
+						if (document.querySelector(".ytp-ad-skip-button")){\
+							document.querySelector(".ytp-ad-skip-button").click();\
+						}\
+						},500);\
+					}\
+				');
+			}
+		}
+	});
+	
+	try {
+		if (pin == true) {
+			// "floating" + 1 is higher than all regular windows, but still behind things
+			// like spotlight or the screen saver
+			mainWindow.setAlwaysOnTop(true, "floating", 1);
+			// allows the window to show over a fullscreen window
+			mainWindow.setVisibleOnAllWorkspaces(true);
+		} else {
+			mainWindow.setAlwaysOnTop(false);
+			// allows the window to show over a fullscreen window
+			mainWindow.setVisibleOnAllWorkspaces(false);
+		}
 
-	if (pin == true) {
-		// "floating" + 1 is higher than all regular windows, but still behind things
-		// like spotlight or the screen saver
-		mainWindow.setAlwaysOnTop(true, "floating", 1);
-		// allows the window to show over a fullscreen window
-   		mainWindow.setVisibleOnAllWorkspaces(true);
-	} else {
-		mainWindow.setAlwaysOnTop(false);
-		// allows the window to show over a fullscreen window
-		mainWindow.setVisibleOnAllWorkspaces(false);
-	}
+		if (fullscreen){
+			 if (process.platform == "XXXXdarwin"){
+				mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize();
+			 } else {
+				mainWindow.isFullScreen() ? mainWindow.setFullScreen(false) : mainWindow.setFullScreen(true);
+			 }
+		}
 
-    if (fullscreen){
-		 if (process.platform == "XXXXdarwin"){
-         	mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize();
-         } else {
-            mainWindow.isFullScreen() ? mainWindow.setFullScreen(false) : mainWindow.setFullScreen(true);
-         }
-	}
+		if (process.platform == "darwin"){
+			try { // MacOS
+				app.dock.hide();
+			} catch (e){
+				// Windows?
+			}
+		}
 
-	if (process.platform == "darwin"){
-  		try { // MacOS
-			app.dock.hide();
-  		} catch (e){
-			// Windows?
-  		}
-	}
+		session.fromPartition("default").setPermissionRequestHandler((webContents, permission, callback) => {
+			try {
+				let allowedPermissions = ["audioCapture", "desktopCapture", "pageCapture", "tabCapture", "experimental"]; // Full list here: https://developer.chrome.com/extensions/declare_permissions#manifest
 
-	session.fromPartition("default").setPermissionRequestHandler((webContents, permission, callback) => {
-        let allowedPermissions = ["audioCapture", "desktopCapture", "pageCapture", "tabCapture", "experimental"]; // Full list here: https://developer.chrome.com/extensions/declare_permissions#manifest
+				if (allowedPermissions.includes(permission)) {
+					callback(true); // Approve permission request
+				} else {
+					console.error(
+						`The application tried to request permission for '${permission}'. This permission was not whitelisted and has been blocked.`
+					);
 
-        if (allowedPermissions.includes(permission)) {
-            callback(true); // Approve permission request
-        } else {
-            console.error(
-                `The application tried to request permission for '${permission}'. This permission was not whitelisted and has been blocked.`
-            );
-
-            callback(false); // Deny
-        }
-    });
+					callback(false); // Deny
+				}
+			} catch(e){errorlog(e);}
+		});
+	} catch(e){errorlog(e);}
 
 	try {
 		mainWindow.loadURL(URL);
 	} catch (e){
+		console.error(e);
 		app.quit();
   	}
 
@@ -283,7 +338,7 @@ function createWindow (URL=url, NODE=node) {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(createWindow);
+app.whenReady().then(createWindow).catch(console.error);;
 
 var DoNotClose = false;
 app.on('window-all-closed', () => {
@@ -384,9 +439,7 @@ contextMenu({
 									 message: "Change where to send audio; as a viewer or sender"
 								};
 								let response = dialog.showMessageBoxSync(options);
-								console.log(response);
 								if (response){
-									console.log({'changeAudioOutputDevice':details[response]});
 									browserWindow.webContents.send('postMessage', {'changeAudioOutputDevice':details[response]});
 								}
 									
@@ -421,7 +474,6 @@ contextMenu({
 									 message: "Change your local audio input source"
 								};
 								let response = dialog.showMessageBoxSync(options);
-								console.log(response);
 								if (response){
 									browserWindow.webContents.send('postMessage', {'changeAudioDevice':details[response]});
 								}
@@ -456,7 +508,6 @@ contextMenu({
 									 message: "Change your local camera source"
 								};
 								let response = dialog.showMessageBoxSync(options);
-								console.log(response);
 								if (response){
 									browserWindow.webContents.send('postMessage', {'changeVideoDevice':details[response]});
 								}
@@ -525,9 +576,9 @@ contextMenu({
 					.then((r) => {
 						if(r === null) {
 							console.log('user cancelled');
-              if (onTop) {
-                browserWindow.setAlwaysOnTop(true);
-              }
+							  if (onTop) {
+								browserWindow.setAlwaysOnTop(true);
+							  }
 						} else {
 							console.log('result', r);
               if (onTop) {
@@ -570,7 +621,7 @@ contextMenu({
 				  if (onTop) {
 					browserWindow.setAlwaysOnTop(true);
 				  }
-				  browserWindow.webContents.insertCSS(r);
+				  browserWindow.webContents.insertCSS(r, {cssOrigin: 'user'});
 				}
 			  })
 			  .catch(console.error);
@@ -729,6 +780,41 @@ contextMenu({
 						}
 					}
 				]
+			},
+			{
+				label: 'Clean Video Output',
+				type: 'checkbox',
+				visible: (browserWindow.webContents.getURL().includes('youtube.com') || browserWindow.webContents.getURL().includes('twitch.tv')),
+				checked: browserWindow.cleanOutput,
+				click: () => {
+					if (browserWindow.cleanOutput){
+						browserWindow.cleanOutput=false;
+					} else {
+						browserWindow.cleanOutput = true;
+						var css = " \
+							.html5-video-player {\
+								z-index:unset!important;\
+							}\
+							.html5-video-container {	\
+								z-index:unset!important;\
+							}\
+							video { \
+								width: 100vw!important;height: 100vh!important;  \
+								left: 0px!important;    \
+								object-fit: cover!important;\
+								top: 0px!important;\
+								overflow:hidden;\
+								z-index: 2147483647;\
+								position: fixed!important;\
+							}\
+							body {\
+								overflow: hidden!important;\
+							}";
+						
+						browserWindow.webContents.insertCSS(css, {cssOrigin: 'user'});
+						browserWindow.webContents.executeJavaScript('document.body.appendChild(document.querySelector("video"));');
+					}
+				}
 			},
 			{
 				label: 'Always on top',
