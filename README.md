@@ -170,7 +170,20 @@ npm run build:linux
 You'll need to download and extract the source code; or git clone it.
 You'll also need nodejs  and npm installed. 
 
-If on Windows, you can find the latest NPM/Nodejs install files here: https://nodejs.org/en/download/current/
+If on Windows, you can find theNPM/Nodejs install files here: https://nodejs.org/en/download/current/
+
+You may need to upgrade to the newer version after though, using
+
+```
+npm install -g npm@latest
+```
+
+and to get the source code for Electron Capture,
+
+```
+git clone https://github.com/steveseguin/electroncapture.git
+cd electroncapture
+```
 
 ### To just run the app from source without building, you can:
 ```
