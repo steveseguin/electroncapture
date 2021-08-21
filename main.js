@@ -197,7 +197,6 @@ function createWindow (URL=url, NODE=node) {
 		title: currentTitle
 	});
 
-	mainWindow.cleanOutput = false;
 
 	try {
 		mainWindow.node = NODE;
@@ -235,47 +234,17 @@ function createWindow (URL=url, NODE=node) {
 	});
 	
 	mainWindow.webContents.on('did-finish-load', function(e){
-		if (mainWindow.webContents.getURL().includes('youtube.com') || mainWindow.webContents.getURL().includes('twitch.tv')){
-			if (mainWindow.cleanOutput){
-				var css = " \
-					.html5-video-player {\
-						z-index:unset!important;\
+		if (mainWindow.webContents.getURL().includes('youtube.com')){
+			console.log("Youtube ad skipper inserted");
+			mainWindow.webContents.executeJavaScript('\
+				if (!xxxxxx){\
+					var xxxxxx = setInterval(function(){\
+					if (document.querySelector(".ytp-ad-skip-button")){\
+						document.querySelector(".ytp-ad-skip-button").click();\
 					}\
-					.html5-video-container {	\
-						z-index:unset!important;\
-					}\
-					video { \
-						width: 100vw!important;height: 100vh!important;  \
-						left: 0px!important;    \
-						object-fit: cover!important;\
-						top: 0px!important;\
-						overflow:hidden;\
-						z-index: 2147483647;\
-						position: fixed!important;\
-					}\
-					body {\
-						overflow: hidden!important;\
-					}";
-				
-				mainWindow.webContents.insertCSS(css, {cssOrigin: 'user'});
-				
-				mainWindow.webContents.executeJavaScript('document.body.appendChild(document.querySelector("video"));');
-				
-				
-			}
-			
-			if (mainWindow.webContents.getURL().includes('youtube.com')){
-				console.log("Youtube ad skipper inserted");
-				mainWindow.webContents.executeJavaScript('\
-					if (!xxxxxx){\
-						var xxxxxx = setInterval(function(){\
-						if (document.querySelector(".ytp-ad-skip-button")){\
-							document.querySelector(".ytp-ad-skip-button").click();\
-						}\
-						},500);\
-					}\
-				');
-			}
+					},500);\
+				}\
+			');
 		}
 	});
 	
@@ -784,36 +753,40 @@ contextMenu({
 			{
 				label: 'Clean Video Output',
 				type: 'checkbox',
-				visible: (browserWindow.webContents.getURL().includes('youtube.com') || browserWindow.webContents.getURL().includes('twitch.tv')),
-				checked: browserWindow.cleanOutput,
+				visible: (browserWindow.webContents.getURL().includes('youtube.com/watch') || browserWindow.webContents.getURL().includes('twitch.tv')),
+				checked: false,
 				click: () => {
-					if (browserWindow.cleanOutput){
-						browserWindow.cleanOutput=false;
-					} else {
-						browserWindow.cleanOutput = true;
-						var css = " \
-							.html5-video-player {\
-								z-index:unset!important;\
+					var css = " \
+						.html5-video-player {\
+							z-index:unset!important;\
+						}\
+						.html5-video-container {	\
+							z-index:unset!important;\
+						}\
+						video { \
+							width: 100vw!important;height: 100vh!important;  \
+							left: 0px!important;    \
+							object-fit: cover!important;\
+							top: 0px!important;\
+							overflow:hidden;\
+							z-index: 2147483647;\
+							position: fixed!important;\
+						}\
+						body {\
+							overflow: hidden!important;\
+						}";
+					browserWindow.webContents.insertCSS(css, {cssOrigin: 'user'});
+					browserWindow.webContents.executeJavaScript('document.body.appendChild(document.querySelector("video"));');
+					
+					browserWindow.webContents.executeJavaScript('\
+						if (!xxxxxx){\
+							var xxxxxx = setInterval(function(){\
+							if (document.querySelector(".ytp-ad-skip-button")){\
+								document.querySelector(".ytp-ad-skip-button").click();\
 							}\
-							.html5-video-container {	\
-								z-index:unset!important;\
-							}\
-							video { \
-								width: 100vw!important;height: 100vh!important;  \
-								left: 0px!important;    \
-								object-fit: cover!important;\
-								top: 0px!important;\
-								overflow:hidden;\
-								z-index: 2147483647;\
-								position: fixed!important;\
-							}\
-							body {\
-								overflow: hidden!important;\
-							}";
-						
-						browserWindow.webContents.insertCSS(css, {cssOrigin: 'user'});
-						browserWindow.webContents.executeJavaScript('document.body.appendChild(document.querySelector("video"));');
-					}
+							},500);\
+						}\
+					');
 				}
 			},
 			{
