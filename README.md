@@ -205,7 +205,7 @@ Building does not support cross-compiling. In order to build you must be logged 
 
 ```
 npm install
-npm run build
+npm run build:win32 ## or npm run build:linux  or npm run build:darwin , depending on operating system
 ```
 
 * For Mac, please also see this issue for building: https://github.com/electron-userland/electron-builder/issues/3828
