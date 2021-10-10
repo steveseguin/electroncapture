@@ -180,13 +180,13 @@ You may need to use sudo if there are permission issues, or change minimum versi
 sudo npm install -g node@14.6.0
 ```
 
-## Setting up the App from Source on Windows
+## Building from source on Windows
 
 You'll also need nodejs and npm installed. 
 
 If on Windows, you can find the NPM/Nodejs install files here: https://nodejs.org/en/download/current/
 
-and to get the source code for Electron Capture,
+and then to get the source code for Electron Capture,
 
 ```
 git clone https://github.com/steveseguin/electroncapture.git
@@ -203,40 +203,32 @@ If you get an error about node versions, you can install the required version wi
 
 ```
 npm install -g node@14.6.0
-```
-
-and then try the `npm install & npm start` commands again
-
-### Building the app from source on Windows :
-Building does not support cross-compiling. In order to build you must be logged in to a host having the target OS for the build. Once logged in, type the following:
-
-```
 npm install
-npm run build:win32 ## or npm run build:linux  or npm run build:darwin , depending on operating system
-```
-
+npm run build:win32
 
 ### Building the app from source on macOS :
 
 * For Mac, please also see this issue for building: https://github.com/electron-userland/electron-builder/issues/3828
 
-The basic idea is like this:
+The basic idea is is to first install node, npm, and git.  Then to clone and build the folder:
 
 ```
+git clone https://github.com/steveseguin/electroncapture.git
+cd electroncapture
+npm install -g node@14.6.0
 npm install
 npm run build:darwin
 ```
 
-If you need it signed, for distribution, you can try:
+If you need to sign the build, for distribution, you can then try:
 ```
 npm install
 export appleId={yourApp@dev.email}
 export appleIdPassword={app-specific-password-here}
 sudo -E npm run build:darwin
-
 ```
 
-### Trouble shooting  -- if can't hide cursor when window capturing using OBS:
+### Trouble-shooting  -- if can't hide cursor when window capturing using OBS:
 Change the capture method in OBS to "BitBlt"and uncheck the Capture Cursor. Also make sure OBS runs in compatibility mode for win 7, so you don't get a black screen
 
 ![image](https://user-images.githubusercontent.com/2575698/126881460-1d8fe840-6ec4-4c35-bde2-fc6db5a9ae30.png)
