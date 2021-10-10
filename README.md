@@ -170,22 +170,21 @@ We're recommending Linux users build it themselves for now; see below.
 ```
 git clone https://github.com/steveseguin/electroncapture.git
 cd electroncapture
+npm install -g node@14.6.0
 npm install
 npm run build:linux
 ```
 
-## Building the App from Source
-
-You'll need to download and extract the source code; or git clone it.
-You'll also need nodejs  and npm installed. 
-
-If on Windows, you can find theNPM/Nodejs install files here: https://nodejs.org/en/download/current/
-
-You may need to upgrade to the newer version after though, using
-
+You may need to use sudo if there are permission issues, or change minimum versions for node accordingly
 ```
-npm install -g npm@latest
+sudo npm install -g node@14.6.0
 ```
+
+## Setting up the App from Source on Windows
+
+You'll also need nodejs and npm installed. 
+
+If on Windows, you can find the NPM/Nodejs install files here: https://nodejs.org/en/download/current/
 
 and to get the source code for Electron Capture,
 
@@ -194,13 +193,21 @@ git clone https://github.com/steveseguin/electroncapture.git
 cd electroncapture
 ```
 
-### To just run the app from source without building, you can:
+To just run the app from source without building, you can:
 ```
 npm install
 npm start
 ```
 
-### Building the app from source:
+If you get an error about node versions, you can install the required version with something like this:
+
+```
+npm install -g node@14.6.0
+```
+
+and then try the `npm install & npm start` commands again
+
+### Building the app from source on Windows :
 Building does not support cross-compiling. In order to build you must be logged in to a host having the target OS for the build. Once logged in, type the following:
 
 ```
@@ -208,14 +215,24 @@ npm install
 npm run build:win32 ## or npm run build:linux  or npm run build:darwin , depending on operating system
 ```
 
+
+### Building the app from source on macOS :
+
 * For Mac, please also see this issue for building: https://github.com/electron-userland/electron-builder/issues/3828
 
-And for notorization on macOS,..
+The basic idea is like this:
+
+```
+npm install
+npm run build:darwin
+```
+
+If you need it signed, for distribution, you can try:
 ```
 npm install
 export appleId={yourApp@dev.email}
 export appleIdPassword={app-specific-password-here}
-sudo -E npm run build
+sudo -E npm run build:darwin
 
 ```
 
