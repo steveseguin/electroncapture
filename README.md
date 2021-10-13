@@ -167,18 +167,19 @@ https://github.com/steveseguin/electroncapture/releases/download/1.1.3/obsn-1.1.
 ### Linux Version
 We're recommending Linux users build it themselves for now; see below.
 
+Getting the correct nodejs/npm versions can be hard on linux, but using snap can help there.
 ```
-git clone https://github.com/steveseguin/electroncapture.git
-cd electroncapture
-npm install -g node@14.6.0
-npm install
-npm run build:linux
+sudo apt-get update
+sudo apt-get install snapd -y
+sudo snap install node --classic --channel=14
 ```
-
-You may need to use sudo if there are permission issues, or change minimum versions for node accordingly
+To get the actual app source code and to build a distributable version, see below
 ```
-sudo npm install -g node@14.6.0
+git clone https://github.com/steveseguin/electroncapture
+sudo npm install
+sudo npm run build:linux
 ```
+The file you need to run will be in the dist folder.
 
 ## Building from source on Windows
 
