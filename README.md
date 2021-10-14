@@ -176,6 +176,7 @@ sudo snap install node --classic --channel=14
 To get the actual app source code and to build a distributable version, see below
 ```
 git clone https://github.com/steveseguin/electroncapture
+cd electroncapture
 sudo npm install
 sudo npm run build:linux
 ```
