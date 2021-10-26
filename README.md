@@ -88,7 +88,7 @@ You can enable Elevated Privileges for the app via the command line with `--node
 
 Global Hotkeys, such as CTRL+M, are supported. CTRL+M will mute the mic, in the most recently opened window.
 
-Some features, like Screen Sharing, are only supported with VDO.Ninja v17 and newer, along with requiring Elevated Privileges to be enabled in the Electron Capture app.
+Some features, like Screen Sharing, are only supported with VDO.Ninja v17 and newer, along with requiring Elevated Privileges to be enabled in the Electron Capture app.  One unique feature about the Electron Capture app is that it can auto-select a screen or window when screen-sharing with VDO.Ninja, without user-input. Adding to the VDO.Ninja URL, &ss=1 will select display 1, &ss=2 for the second display, etc.  Or specify a window with &ss=window_name_here.
 
 Youtube has a built-in automatic ad-skipper, and for both Youtube and Twitch, when watching a Youtube of Twitch video, you can full-window the video with a clean output. This option is available via the right-click context menu itself when on those sites.
 
