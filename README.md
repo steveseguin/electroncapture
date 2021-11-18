@@ -173,6 +173,8 @@ sudo apt-get update
 sudo apt-get install snapd -y
 sudo snap install node --classic --channel=14
 ```
+Next, close the shell and open a new one, to ensure the installation is completed.
+
 To get the actual app source code and to build a distributable version, see below
 ```
 git clone https://github.com/steveseguin/electroncapture
