@@ -2,7 +2,7 @@
   "name": "VDON.Electron.Capture.App",
   "version": "2.5.0",
   "description": "A simple tool to aid with frameless window video capture and VDON publishing",
-  "author": "Steve Seguin",
+  "author": "Steve Seguin <steve@seguin.email>",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
