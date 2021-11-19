@@ -207,7 +207,7 @@ cd electroncapture
 npm install
 npm run build:rpi
 ```
-You should get a `.deb` file in the dist file with this option.
+You should get a `.deb` file in the dist file with this option. If you install the deb file, it should appear in the Raspbian start menu, under `Other -> ElectronCapture`
 
 ## Building from source on Windows
 
