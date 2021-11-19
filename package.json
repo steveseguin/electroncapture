@@ -10,6 +10,7 @@
     "build:win32": "electron-builder --win",
     "build:darwin": "electron-builder --mac",
     "build:linux": "electron-builder --linux",
+    "build:rpi": "USE_SYSTEM_FPM=true electron-builder --armv7l --linux deb",
     "clean": "rimraf ./dist",
     "release": "electron-builder --publish always"
   },
