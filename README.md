@@ -191,20 +191,21 @@ Much like with the Linux install, though we also need to install `fpm` before tr
 ```
 sudo apt-get update
 sudo apt-get install snapd -y
+sudo apt-get remove nodejs -y
 sudo snap install node --classic --channel=14
 
  ## close the current terminal shell and open a new one here ##
 
 sudo apt install ruby ruby-dev -y
-sudo gem install fpm -y
+sudo gem install fpm 
 ```
 
 We also need to build the app using `build:rpi` instead of `build:linux`, as we need to target ARM versus x64.
 ```
 git clone https://github.com/steveseguin/electroncapture
 cd electroncapture
-sudo npm install
-sudo npm run build:rpi
+npm install
+npm run build:rpi
 ```
 You should get a `.deb` file in the dist file with this option.
 
