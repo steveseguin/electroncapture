@@ -195,8 +195,8 @@ sudo snap install node --classic --channel=14
 
  ## close the current terminal shell and open a new one here ##
 
-sudo apt install ruby ruby-dev
-sudo gem install fpm
+sudo apt install ruby ruby-dev -y
+sudo gem install fpm -y
 ```
 
 We also need to build the app using `build:rpi` instead of `build:linux`, as we need to target ARM versus x64.
