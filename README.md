@@ -186,7 +186,9 @@ The file you need to run will be in the dist folder.
 
 ## Building for the Raspberry Pi
 
-Much like with the Linux install, though we also need to install `fpm` before trying to build the app.
+If you want to compile on Raspberry Pi, it's possible, but keep in mind the GPU may not work without also patching Electron.js to support the GPU. Currently you'll need to run it without hardware-acceleration disabled, which is rather disappointing.  Contributions that can help fix this are welcomed.
+
+Anyways, this is all much like with the Linux install, but we also need to install `fpm` before trying to build the app.
 
 ```
 sudo apt-get update
@@ -208,6 +210,8 @@ npm install
 npm run build:rpi
 ```
 You should get a `.deb` file in the dist file with this option. If you install the deb file, it should appear in the Raspbian start menu, under `Other -> ElectronCapture`
+
+This will probably file if you do not disable the GPU / hardware-acceration within the Electron Capture app first, but who knows -- maybe you can get it working?
 
 ## Building from source on Windows
 
