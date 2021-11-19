@@ -184,6 +184,30 @@ sudo npm run build:linux
 ```
 The file you need to run will be in the dist folder.
 
+## Building for the Raspberry Pi
+
+Much like with the Linux install, though we also need to install `fpm` before trying to build the app.
+
+```
+sudo apt-get update
+sudo apt-get install snapd -y
+sudo snap install node --classic --channel=14
+
+ ## close the current terminal shell and open a new one here ##
+
+sudo apt install ruby ruby-dev
+sudo gem install fpm
+```
+
+We also need to build the app using `build:rpi` instead of `build:linux`, as we need to target ARM versus x64.
+```
+git clone https://github.com/steveseguin/electroncapture
+cd electroncapture
+sudo npm install
+sudo npm run build:rpi
+```
+You should get a `.deb` file in the dist file with this option.
+
 ## Building from source on Windows
 
 You'll also need nodejs and npm installed. 
