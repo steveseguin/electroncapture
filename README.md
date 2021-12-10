@@ -169,7 +169,7 @@ https://github.com/steveseguin/electroncapture/releases/download/1.1.3/obsn-1.1.
 If on version of Electron doesn't work for you all that well, try a different version. There may be some issues with rounded edges depending on you macOS version and the Electron version used.
 
 ### Linux Version
-There are two build-versions of Electron Capture available currently. One built for PopOS and another for Raspbian. Those builds are here: https://github.com/steveseguin/electroncapture/releases/tag/2.5.0
+There are two pre-build versions of Electron Capture available currently. One built for PopOS and another for Raspbian. Those builds are here: https://github.com/steveseguin/electroncapture/releases/tag/2.5.0
 
 For most Linux users though, we're recommending Linux users build it themselves. Details below
 
