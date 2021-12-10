@@ -157,15 +157,21 @@ https://github.com/steveseguin/electroncapture/releases/download/2.4.0/elecap_in
 - Portable version; no install needed and easy to use from the command-line.
 https://github.com/steveseguin/electroncapture/releases/download/2.4.0/elecap_portable_win.zip
 
+If you have problems, try a different version.
+
 ### Mac Version 
-- Unsigned, but newer version (v2.1.2)
+- Unsigned, but newer version (v2.4.0)
 https://github.com/steveseguin/electroncapture/releases/download/2.4.0/elecap-2.4.0.dmg
 
 - Signed and notarized, but older version (v1.1.3)
 https://github.com/steveseguin/electroncapture/releases/download/1.1.3/obsn-1.1.3.dmg
 
+If on version of Electron doesn't work for you all that well, try a different version. There may be some issues with rounded edges depending on you macOS version and the Electron version used.
+
 ### Linux Version
-We're recommending Linux users build it themselves for now; see below.
+There are two build-versions of Electron Capture available currently. One built for PopOS and another for Raspbian. Those builds are here: https://github.com/steveseguin/electroncapture/releases/tag/2.5.0
+
+For most Linux users though, we're recommending Linux users build it themselves. Details below
 
 Getting the correct nodejs/npm versions can be hard on linux, but using snap can help there.
 ```
