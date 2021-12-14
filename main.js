@@ -4,6 +4,7 @@ const process = require('process')
 const prompt = require('electron-prompt');
 
 process.on('uncaughtException', function (error) {
+	console.error("uncaughtException");
     console.error(error);
 });
 
@@ -174,13 +175,30 @@ function createWindow (URL=url, NODE=node) {
 
 
 	let factor = screen.getPrimaryDisplay().scaleFactor;
-
+	var ttt = screen.getPrimaryDisplay().workAreaSize;
+	
+	var targetWidth = width / factor;
+	var targetHeight = height / factor;
+	
+	var tainted = false;
+	if (targetWidth > ttt.width){
+		targetHeight = parseInt(targetHeight * ttt.width / targetWidth);
+		targetWidth = ttt.width;
+		tainted=true;
+	}
+	if (targetHeight > ttt.height){
+		targetWidth = parseInt(targetWidth * ttt.height / targetHeight);
+		targetHeight = ttt.height;
+		tainted=true;
+	}
+	
 	// Create the browser window.
 	var mainWindow = new BrowserWindow({
-		width: width / factor,
-		height: height / factor,
+		transparent: true,
+		width: targetWidth,
+		height: targetHeight,
 		frame: false,
-		backgroundColor: '#141926',
+		backgroundColor: '#0000',
 		fullscreenable: true,
 		titleBarStyle: 'customButtonsOnHover',
 		roundedCorners: false,
@@ -192,11 +210,9 @@ function createWindow (URL=url, NODE=node) {
 			backgroundThrottling: false,
 			nodeIntegrationInSubFrames: NODE,
 			nodeIntegration: NODE  // this could be a security hazard, but useful for enabling screen sharing and global hotkeys
-
 		},
 		title: currentTitle
 	});
-
 
 	try {
 		mainWindow.node = NODE;
@@ -207,7 +223,7 @@ function createWindow (URL=url, NODE=node) {
 			mainWindow.setPosition(Math.floor(x/factor), Math.floor(y/factor))
 		}
 	} catch(e){errorlog(e);}
-
+	
 	mainWindow.on('close', function(e) {
         //e.preventDefault();
         mainWindow.destroy();
@@ -229,11 +245,16 @@ function createWindow (URL=url, NODE=node) {
 	});
 
 	mainWindow.webContents.on("did-fail-load", function(e) {
+		console.error("failed to load");
 		console.error(e);
 		app.quit();
 	});
 	
 	mainWindow.webContents.on('did-finish-load', function(e){
+		if (tainted){
+			mainWindow.setSize(width/factor, height/factor); // allows for larger than display resolution.
+			tainted=false;
+		}
 		if (mainWindow.webContents.getURL().includes('youtube.com')){
 			console.log("Youtube ad skipper inserted");
 			mainWindow.webContents.executeJavaScript('\
@@ -300,7 +321,6 @@ function createWindow (URL=url, NODE=node) {
 		console.error(e);
 		app.quit();
   	}
-
 
 }
 
@@ -650,8 +670,7 @@ contextMenu({
 							} else {
 								browserWindow.isFullScreen() ? browserWindow.setFullScreen(false) : browserWindow.setFullScreen(true);
 							}
-							browserWindow.setMenu(null);
-
+							//browserWindow.setMenu(null);
 							//const {width,height} = screen.getPrimaryDisplay().workAreaSize;
 							//browserWindow.setSize(width, height);
 						}
