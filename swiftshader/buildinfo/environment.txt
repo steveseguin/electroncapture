@@ -1,0 +1,15 @@
+Build environment
+-----------------
+Windows 10.0.17763
+7-Zip 21.06
+Git 2.34.1.1
+Visual Studio Enterprise 2019 v16.11.7
+Windows SDK 10.0.22000.0
+Python 3.10.0
+
+Python packages
+---------------
+pip        21.3.1
+setuptools 59.5.0
+
+CMake 3.22.0
