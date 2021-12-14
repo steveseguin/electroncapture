@@ -8,7 +8,7 @@
     "start": "electron .",
     "build": "run-os",
     "build:win32": "electron-builder --win",
-    "build:darwin": "electron-builder --mac",
+    "build:darwin": "electron-builder --mac --universal",
     "build:linux": "electron-builder --linux",
     "build:rpi": "USE_SYSTEM_FPM=true electron-builder --armv7l --linux deb",
     "clean": "rimraf ./dist",
