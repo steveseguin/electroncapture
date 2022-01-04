@@ -123,6 +123,12 @@ function createWindow (URL=url, NODE=node) {
 			mainWindow.webContents.send('postMessage', {'mic':'toggle'})
 		}
 	})
+	const ret_refresh = globalShortcut.register('CommandOrControl+Shift+R', () => {
+		console.log('CommandOrControl+Shift+R')
+		if (mainWindow) {
+			mainWindow.reload();
+		}
+	})
 
 	ipcMain.on('postMessage', (msg) => {
 	    console.log('We received a postMessage from the preload script')
@@ -357,7 +363,7 @@ contextMenu({
 				}
 			},
 			{
-				label: 'Reload',
+				label: 'Reload (Ctrl+Shift+R)',
 				// Only show it when right-clicking text
 				visible: true,
 				click: () => {
