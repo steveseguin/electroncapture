@@ -138,6 +138,10 @@ You can see a quick start / cheat sheet guide for example uses of the app with V
 
 - Multiple versions of the app can run on macOS; just make a copy of the file with a different name to open up a new window.
 
+- Desktop audio capture with screen share is not supported by Electron (https://www.electronjs.org/docs/latest/api/desktop-capturer#caveats)
+
+- You need to enable Screen Capture support in the macOS security preferences for the app to enable desktop capture support on macOS 10.15 Catalina or higher. Yuo also need to enable elevated privillges in the Electron Capture app itself.
+
 - If capturing the window with OBS, you can use either DISPLAY CAPTURE with a WINDOW CROP  -or-  WINDOW CAPTURE
 
 --- *WINDOW CAPTURE* will have a video delay of up to ~800ms, but Windows can be stacked without issue
