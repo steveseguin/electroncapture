@@ -248,7 +248,7 @@ If you get an error about node versions, you can install the required version wi
 npm install -g node@14.6.0
 npm install
 npm run build:win32
-
+```
 ### Building the app from source on macOS :
 
 * For Mac, please also see this issue for building: https://github.com/electron-userland/electron-builder/issues/3828
