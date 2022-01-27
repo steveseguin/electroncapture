@@ -189,8 +189,8 @@ To get the actual app source code and to build a distributable version, see belo
 ```
 git clone https://github.com/steveseguin/electroncapture
 cd electroncapture
-sudo npm install
-sudo npm run build:linux
+npm install
+npm run build:linux
 ```
 The file you need to run will be in the dist folder.
 
