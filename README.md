@@ -33,6 +33,7 @@ Lastly, since playback is agnostic, you can window-capture the same video multip
 | --node    	| --n   	| Use advanced features      	| 0 or 1                            	| Enable with 1. Allows for screen capture, global hotkeys, prompts and more. 	|
 | --hwa     	| --a   	| Hardware acceleration      	| 0 or 1                            	| Disable with 0.                                                             	|
 
+* note: Use the --help command to get the most recent available commands and options
 
 The default frameless resolution of the capture window is 1280x720. The app automatically accounts for high-DPI displays, so it is always 1:1 pixel-accurate with the specified resolution on even Apple Retina displays.
 
