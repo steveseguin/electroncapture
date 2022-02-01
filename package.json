@@ -1,6 +1,6 @@
 {
   "name": "VDON.Electron.Capture.App",
-  "version": "2.6.2",
+  "version": "2.7.0",
   "description": "A simple tool to aid with frameless window video capture and VDON publishing",
   "author": "Steve Seguin <steve@seguin.email>",
   "main": "main.js",
@@ -53,7 +53,7 @@
         }
       ],
       "artifactName": "elecap-${version}.${ext}",
-      "writeUpdateInfo":false
+      "writeUpdateInfo": false
     },
     "win": {
       "target": [
@@ -65,10 +65,10 @@
         },
         {
           "target": "portable",
-		  "arch": [
-			"ia32",
-			"x64"
-		  ]
+          "arch": [
+            "ia32",
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icons/win/icon.ico"
@@ -103,7 +103,7 @@
     "afterSign": "./afterSign.js"
   },
   "devDependencies": {
-    "electron": "^16.0.2",
+    "electron": "^17.0.0",
     "electron-builder": "^22.11.7",
     "electron-notarize": "^1.0.0",
     "rimraf": "^2.6.3",
