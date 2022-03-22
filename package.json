@@ -1,6 +1,6 @@
 {
   "name": "VDON.Electron.Capture.App",
-  "version": "2.8.0",
+  "version": "2.8.1",
   "description": "A simple tool to aid with frameless window video capture and VDON publishing",
   "author": "Steve Seguin <steve@seguin.email>",
   "main": "main.js",
@@ -113,6 +113,7 @@
     "electron-context-menu": "^2.5.2",
     "electron-is-dev": "^1.0.1",
     "electron-prompt": "^1.6.2",
+    "electron-unhandled": "^4.0.1",
     "minimalist": "^1.0.0",
     "minimist": "github:fortiZde/minimist",
     "yargs": "^15.4.1"
