@@ -2,6 +2,8 @@
 const electron = require('electron')
 const process = require('process')
 const prompt = require('electron-prompt');
+const unhandled = require('electron-unhandled');
+
 
 process.on('uncaughtException', function (error) {
 	console.error("uncaughtException");
@@ -11,6 +13,8 @@ process.on('uncaughtException', function (error) {
 const {app, BrowserWindow, BrowserView, ipcMain, screen, shell, globalShortcut , session, desktopCapturer, dialog} = require('electron')
 const path = require('path')
 const contextMenu = require('electron-context-menu');
+
+unhandled();
 
 var ver = app.getVersion();
 
@@ -263,15 +267,17 @@ function createWindow (URL=url, NODE=node) {
 		}
 		if (mainWindow.webContents.getURL().includes('youtube.com')){
 			console.log("Youtube ad skipper inserted");
-			mainWindow.webContents.executeJavaScript('\
-				if (!xxxxxx){\
-					var xxxxxx = setInterval(function(){\
-					if (document.querySelector(".ytp-ad-skip-button")){\
-						document.querySelector(".ytp-ad-skip-button").click();\
+			setInterval(function(){
+				mainWindow.webContents.executeJavaScript('\
+					if (!xxxxxx){\
+						var xxxxxx = setInterval(function(){\
+						if (document.querySelector(".ytp-ad-skip-button")){\
+							document.querySelector(".ytp-ad-skip-button").click();\
+						}\
+						},500);\
 					}\
-					},500);\
-				}\
-			');
+				');
+			},5000);
 		}
 	});
 	
