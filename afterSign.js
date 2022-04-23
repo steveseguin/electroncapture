@@ -10,7 +10,7 @@ module.exports = async function (params) {
     console.log('afterSign hook triggered', params);
 
     // Same appId in electron-builder.
-    let appId = 'ninja.obs'
+    let appId = 'ninja.vdo'
 
     let appPath = path.join(params.appOutDir, `${params.packager.appInfo.productFilename}.app`);
     if (!fs.existsSync(appPath)) {
