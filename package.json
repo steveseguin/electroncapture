@@ -53,7 +53,7 @@
         }
       ],
       "artifactName": "elecap-${version}.${ext}",
-      "writeUpdateInfo":false
+      "writeUpdateInfo": false
     },
     "win": {
       "target": [
@@ -65,10 +65,10 @@
         },
         {
           "target": "portable",
-		  "arch": [
-			"ia32",
-			"x64"
-		  ]
+          "arch": [
+            "ia32",
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icons/win/icon.ico"
@@ -114,6 +114,9 @@
     "electron-context-menu": "^2.5.2",
     "electron-is-dev": "^1.0.1",
     "electron-prompt": "^1.6.2",
+    "electron-unhandled": "^4.0.1",
+    "minimalist": "^1.0.0",
+    "minimist": "github:fortiZde/minimist",
     "yargs": "^15.4.1"
   },
   "engines": {

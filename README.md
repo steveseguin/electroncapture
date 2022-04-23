@@ -156,19 +156,18 @@ You can find the newest release builds of the app here: https://github.com/steve
 Please note that the Electron Capture app does not auto-update to newer versions of Chromium. This can become a security issue if it is left to become out of date. It's also recommended to not use the Electron Capture app with websites and remote VDO.Ninja peers that you do not trust.
 
 ### Windows Version
-- Installs the app for easy loading from Start Menu
-https://github.com/steveseguin/electroncapture/releases/download/2.4.0/elecap_installer_x64_win.zip
 
-- Portable version; no install needed and easy to use from the command-line.
-https://github.com/steveseguin/electroncapture/releases/download/2.4.0/elecap_portable_win.zip
+There are two versions for Windows. An installer for x64 systems. There's also a portable version, which is larger in size, but supports x64 and x86 (32-bit) systems. The portable version requires no install and is easier to use from the command-line or from a batch file.
 
-If you have problems, try a different version.
+New release here: https://github.com/steveseguin/electroncapture/releases/
+
+If you have problems, try a different version or contact me on Discord.
 
 ### Mac Version 
-- Unsigned, but newer version (v2.4.0)
-https://github.com/steveseguin/electroncapture/releases/download/2.4.0/elecap-2.4.0.dmg
+- Newest version can be found here:
+https://github.com/steveseguin/electroncapture/releases/
 
-- Signed and notarized, but older version (v1.1.3)
+- If having problems, there's an older version here (v1.1.3)
 https://github.com/steveseguin/electroncapture/releases/download/1.1.3/obsn-1.1.3.dmg
 
 If on version of Electron doesn't work for you all that well, try a different version. There may be some issues with rounded edges depending on you macOS version and the Electron version used.
