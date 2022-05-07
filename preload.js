@@ -12,9 +12,11 @@ window.addEventListener('DOMContentLoaded', () => {
 })
 
 window.addEventListener('message', ({ data }) => {
+	console.log("MessageIncoming:15:"+data);
     ipcRenderer.send('postMessage', data)
 })
 
+var PPTTimeout = null;
 ipcRenderer.on('postMessage', (event, ...args) => {
 	try{
 		if ("mic" in args[0]) { // this should work for the director's mic mute button as well. Needs to be manually enabled the first time still tho.
@@ -27,6 +29,30 @@ ipcRenderer.on('postMessage', (event, ...args) => {
 			} else if (args[0].mic === "toggle") { // toggle
 				toggleMute();
 			}
+			return;
+		}
+		
+		if (args[0].PPT){
+			if (PPTTimeout){
+				clearTimeout(PPTTimeout);
+				PPTTimeout = setTimeout(function(){
+					PPTTimeout=null;
+					session.muted = true;
+					toggleMute(true);
+					getById("mutebutton").classList.remove("PPTActive");
+				},200);
+			} else {
+				session.muted = false;
+				toggleMute(true);
+				getById("mutebutton").classList.add("PPTActive");
+				PPTTimeout = setTimeout(function(){
+					PPTTimeout=null;
+					session.muted = true;
+					toggleMute(true);
+					getById("mutebutton").classList.remove("PPTActive");
+				},600);
+			}
+			return;
 		}
 		
 		if ("getDeviceList" in args[0]) {
