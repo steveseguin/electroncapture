@@ -121,37 +121,6 @@ function createWindow (URL=url, NODE=node) {
 		currentTitle = title.toString() + " " +(counter.toString());
 	}
 
-	const ret = globalShortcut.register('CommandOrControl+M', () => {
-		console.log('CommandOrControl+N is pressed')
-		if (mainWindow) {
-			mainWindow.webContents.send('postMessage', {'mic':'toggle'})
-		}
-	})
-	const ret_refresh = globalShortcut.register('CommandOrControl+Shift+R', () => {
-		console.log('CommandOrControl+Shift+R')
-		if (mainWindow) {
-			mainWindow.reload();
-		}
-	})
-
-	ipcMain.on('postMessage', (msg) => {
-	    console.log('We received a postMessage from the preload script')
-	})
-
-	if (!ret) {
-		console.log('registration failed')
-	}
-
-	ipcMain.on('getAppVersion', function(eventRet) {
-		try{
-			if (mainWindow) {
-				mainWindow.webContents.send('appVersion', app.getVersion());
-			}
-		} catch(e){errorlog(e);}
-	});
-	
-	
-
 	ipcMain.on('prompt', function(eventRet, arg) {  // this enables a PROMPT pop up , which is used to BLOCK the main thread until the user provides input. VDO.Ninja uses prompt for passwords, etc.
 		try {
 			arg.val = arg.val || '';
@@ -279,6 +248,110 @@ function createWindow (URL=url, NODE=node) {
 				');
 			},5000);
 		}
+	});
+	
+	ipcMain.on('postMessage', (msg) => {
+	    console.log('We received a postMessage from the preload script')
+	})
+
+	ipcMain.on('getAppVersion', function(eventRet) {
+		try{
+			if (mainWindow) {
+				mainWindow.webContents.send('appVersion', app.getVersion());
+			}
+		} catch(e){errorlog(e);}
+	});
+	
+	if (mainWindow && mainWindow.node){
+		const ret = globalShortcut.register('CommandOrControl+M', () => {
+			console.log('CommandOrControl+M is pressed')
+			if (mainWindow) {
+				mainWindow.webContents.send('postMessage', {'mic':'toggle'})
+			}
+		});
+		if (!ret) {
+			console.log('registration failed1')
+		}
+	}
+	
+	const ret_refresh = globalShortcut.register('CommandOrControl+Shift+R', () => {
+		console.log('CommandOrControl+Shift+R')
+		if (mainWindow) {
+			mainWindow.reload();
+		}
+	});
+	if (!ret_refresh) {
+		console.log('registration failed2')
+	}
+	
+	
+	var PPTHotkey = false;
+	
+	ipcMain.on('PPTHotkey', function(event, value) {
+		if (!mainWindow){return;}
+		if (!mainWindow.node){return;}
+		if (PPTHotkey){
+			try {
+				if (globalShortcut.isRegistered(PPTHotkey)){
+					globalShortcut.unregister(PPTHotkey);
+				}
+			} catch(e){
+			}
+		}
+		
+		if (!value){
+			PPTHotkey=false;
+			return;
+		}
+		PPTHotkey = "";
+		if (value.ctrl){
+			PPTHotkey += "CommandOrControl";
+		}
+		if (value.alt){
+			if (PPTHotkey){PPTHotkey+="+";}
+			PPTHotkey += "Alt";
+		}
+		if (value.meta){
+			if (PPTHotkey){PPTHotkey+="+";}
+			PPTHotkey += "Meta";
+		}
+		if (value.key){
+			if (PPTHotkey){PPTHotkey+="+";}		
+			var matched = false;
+			if (value.key === "+"){
+				PPTHotkey += "Plus";
+				matched = true;
+			} else if (value.key === " "){
+				PPTHotkey += "Space";
+				matched = true;
+			} else if (value.key.length === 1){
+				PPTHotkey += value.key.toUpperCase();
+				matched = true;
+			} else {
+				var possibleKeyCodes = ["Space","Backspace","Tab","Capslock","Return","Enter","Plus","Numlock","Scrolllock","Delete","Insert","Return","Up","Down","Left","Right","Home","End","PageUp","PageDown","Escape","Esc","VolumeUp","VolumeDown","VolumeMute","MediaNextTrack","MediaPreviousTrack","MediaStop","MediaPlayPause","PrintScreen","num0","num1","num2","num3","num4","num5","num6","num7","num8","num9","numdec","numadd","numsub","nummult","numdiv"];
+				for (var i = 0;i<possibleKeyCodes.length;i++){
+					if (possibleKeyCodes[i].toLowerCase() === value.key.toLowerCase()){
+						PPTHotkey += possibleKeyCodes[i];
+						matched = true;
+						break;
+					}
+				}
+			}
+			if (!matched){
+				 PPTHotkey += value.key.toUpperCase(); // last resort
+			}
+		} else {
+			//console.log("Can't register just a control button; needs a key for global hotkeys");
+			return;
+		}
+		const ret_ppt = globalShortcut.register(PPTHotkey, function(){
+			if (mainWindow) {
+				mainWindow.webContents.send('postMessage', {'PPT':true})
+			}
+		});
+		if (!ret_ppt) {
+			//console.log('registration failed3')
+		};
 	});
 	
 	try {
@@ -444,7 +517,7 @@ contextMenu({
 									browserWindow.webContents.send('postMessage', {'changeAudioOutputDevice':details[response]});
 								}
 									
-							})
+							});
 							
 							
 						}
@@ -866,7 +939,9 @@ contextMenu({
 app.on('activate', function () {
   // On macOS it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
-  if (BrowserWindow.getAllWindows().length === 0) createWindow()
+  if (BrowserWindow.getAllWindows().length === 0) {
+	  createWindow()
+  }
 })
 
 electron.powerMonitor.on('on-battery', () => {
