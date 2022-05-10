@@ -420,6 +420,13 @@ app.on('window-all-closed', () => {
 	app.quit();
 })
 
+function checkVideoExists(page){
+	if (page.getURL().includes('youtube.com/watch') || page.getURL().includes('twitch.tv')){ // I'll handle these elsewhere
+		return false;
+	}
+			//document.querySelectorAll("video")[1].videoHeight;
+}
+
 contextMenu({
 		prepend: (defaultActions, params, browserWindow) => [
 			{
@@ -857,7 +864,7 @@ contextMenu({
 			{
 				label: 'Clean Video Output',
 				type: 'checkbox',
-				visible: (browserWindow.webContents.getURL().includes('youtube.com/watch') || browserWindow.webContents.getURL().includes('twitch.tv')),
+				visible: (browserWindow.webContents.getURL().includes('youtube.com') || browserWindow.webContents.getURL().includes('twitch.tv') || browserWindow.webContents.getURL().includes('facebook.com') || browserWindow.webContents.getURL().includes('linkedin.com')),
 				checked: false,
 				click: () => {
 					var css = " \
@@ -873,24 +880,41 @@ contextMenu({
 							object-fit: cover!important;\
 							top: 0px!important;\
 							overflow:hidden;\
-							z-index: 2147483647;\
+							z-index: 2147483647!important;\
 							position: fixed!important;\
 						}\
 						body {\
 							overflow: hidden!important;\
 						}";
 					browserWindow.webContents.insertCSS(css, {cssOrigin: 'user'});
-					browserWindow.webContents.executeJavaScript('document.body.appendChild(document.querySelector("video"));');
-					
-					browserWindow.webContents.executeJavaScript('\
-						if (!xxxxxx){\
-							var xxxxxx = setInterval(function(){\
-							if (document.querySelector(".ytp-ad-skip-button")){\
-								document.querySelector(".ytp-ad-skip-button").click();\
+					browserWindow.webContents.executeJavaScript('(function () {\
+						var videos = document.querySelectorAll("video");\
+						if (videos.length>1){\
+							var video = videos[0];\
+							for (var i=1;i<videos.length;i++){\
+								if (!video.videoWidth){\
+									video = videos[i];\
+								} else if (videos[i].videoWidth && (videos[i].videoWidth>video.videoWidth)){\
+									video = videos[i];\
+								}\
 							}\
-							},500);\
+							document.body.appendChild(video);\
+						} else if (videos.length){\
+							document.body.appendChild(videos[0]);\
 						}\
-					');
+					})();');
+					
+					if (browserWindow.webContents.getURL().includes('youtube.com')){
+						browserWindow.webContents.executeJavaScript('(function () {\
+							if (!xxxxxx){\
+								var xxxxxx = setInterval(function(){\
+								if (document.querySelector(".ytp-ad-skip-button")){\
+									document.querySelector(".ytp-ad-skip-button").click();\
+								}\
+								},500);\
+							}\
+						})();');
+					}
 				}
 			},
 			{
