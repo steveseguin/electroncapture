@@ -864,7 +864,7 @@ contextMenu({
 			{
 				label: 'Clean Video Output',
 				type: 'checkbox',
-				visible: (browserWindow.webContents.getURL().includes('youtube.com') || browserWindow.webContents.getURL().includes('twitch.tv') || browserWindow.webContents.getURL().includes('facebook.com') || browserWindow.webContents.getURL().includes('linkedin.com')),
+				visible: (!browserWindow.webContents.getURL().includes('vdo.ninja') && !browserWindow.webContents.getURL().includes('invite.cam')),
 				checked: false,
 				click: () => {
 					var css = " \
