@@ -420,13 +420,6 @@ app.on('window-all-closed', () => {
 	app.quit();
 })
 
-function checkVideoExists(page){
-	if (page.getURL().includes('youtube.com/watch') || page.getURL().includes('twitch.tv')){ // I'll handle these elsewhere
-		return false;
-	}
-			//document.querySelectorAll("video")[1].videoHeight;
-}
-
 contextMenu({
 		prepend: (defaultActions, params, browserWindow) => [
 			{
