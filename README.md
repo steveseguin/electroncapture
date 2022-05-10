@@ -14,7 +14,7 @@ Windows users may find it beneficial too, as it offers support for VDO.Ninja's <
 
 The Electron Capture app uses recent versions of Chromium, which is more resistant to desync, video smearing, and other issues that might exist in the native OBS browser source capture method. [More benefits listed here](https://github.com/steveseguin/electroncapture/blob/master/BENEFITS.md)
 
-Lastly, since playback is agnostic, you can window-capture the same video multiple times, using one copy in a mixed-down live stream, while using a window-capture to record a clean full-resolution isolated video stream.  Both YouTube, Twitch, Facebook, and more are supported in this regard, where a full-window clean output option is available for those sites as well. (To use, right-click on empty part of the website, then select Clean output from the Electron Capture context menu)
+Lastly, since playback is agnostic, you can window-capture the same video multiple times, using one copy in a mixed-down live stream, while using a window-capture to record a clean full-resolution isolated video stream.  Both YouTube, Twitch, Facebook, and more are supported in this regard, where a full-window clean output option is available for those sites as well. 
 
 ## Video guide on how to use Electron Capture
 [![Video Guide for Electron](https://user-images.githubusercontent.com/2575698/129784248-3270a876-6831-4595-9eb5-63665843e631.png)](https://youtu.be/mZ7X7WvRcRA "Video Guide for Electron")
@@ -91,7 +91,7 @@ Global Hotkeys, such as CTRL+M, are supported. CTRL+M will mute the mic, in the 
 
 Some features, like Screen Sharing, are only supported with VDO.Ninja v17 and newer, along with requiring Elevated Privileges to be enabled in the Electron Capture app.  One unique feature about the Electron Capture app is that it can auto-select a screen or window when screen-sharing with VDO.Ninja, without user-input. Adding to the VDO.Ninja URL, &ss=1 will select display 1, &ss=2 for the second display, etc.  Or specify a window with &ss=window_name_here.
 
-Youtube has a built-in automatic ad-skipper, and for both Youtube and Twitch, when watching a Youtube of Twitch video, you can full-window the video with a clean output. This option is available via the right-click context menu itself when on those sites.
+Youtube has a built-in automatic ad-skipper added, and for both Youtube, Twitch, and more, when watching a video, you can full-window the video, allowing for clean video capture. This option is available via the context menu of Electron Capture; just right-click somewhere on the page that is empty and select Clean Video Output.
 
 ![image](https://user-images.githubusercontent.com/2575698/130308991-4a6e15f2-00e3-453f-a79f-8a874d2a6417.png)
 
