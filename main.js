@@ -10,7 +10,7 @@ process.on('uncaughtException', function (error) {
     console.error(error);
 });
 
-const {app, BrowserWindow, BrowserView, ipcMain, screen, shell, globalShortcut , session, desktopCapturer, dialog} = require('electron')
+const {app, BrowserWindow, BrowserView, desktopCapturer, ipcMain, screen, shell, globalShortcut, session, dialog} = require('electron')
 const path = require('path')
 const contextMenu = require('electron-context-menu');
 
@@ -105,6 +105,7 @@ app.commandLine.appendSwitch('max-web-media-player-count', '5000');
 
 var counter=0;
 var forcingAspectRatio = false;
+
 
 function createWindow (URL=url, NODE=node) {
 
@@ -236,17 +237,22 @@ function createWindow (URL=url, NODE=node) {
 		}
 		if (mainWindow.webContents.getURL().includes('youtube.com')){
 			console.log("Youtube ad skipper inserted");
-			setInterval(function(){
-				mainWindow.webContents.executeJavaScript('\
-					if (!xxxxxx){\
-						var xxxxxx = setInterval(function(){\
-						if (document.querySelector(".ytp-ad-skip-button")){\
-							document.querySelector(".ytp-ad-skip-button").click();\
+			setInterval(function(mw){
+				try {
+					mw.webContents.executeJavaScript('\
+						if (!xxxxxx){\
+							var xxxxxx = setInterval(function(){\
+							if (document.querySelector(".ytp-ad-skip-button")){\
+								document.querySelector(".ytp-ad-skip-button").click();\
+							}\
+							},500);\
 						}\
-						},500);\
-					}\
-				');
-			},5000);
+					');
+				} catch(e){
+					clearInterval(this);
+					return;
+				}
+			},5000, mainWindow);
 		}
 	});
 	
@@ -261,6 +267,16 @@ function createWindow (URL=url, NODE=node) {
 			}
 		} catch(e){errorlog(e);}
 	});
+	
+	ipcMain.on('getSources', async function(eventRet, args) {
+		try{
+			if (mainWindow) {
+				const sources = await desktopCapturer.getSources({ types: args.types });
+				eventRet.returnValue = sources;
+			}
+		} catch(e){errorlog(e);}
+	});
+	
 	
 	if (mainWindow && mainWindow.node){
 		const ret = globalShortcut.register('CommandOrControl+M', () => {
@@ -500,6 +516,8 @@ contextMenu({
 							
 							ipcMain.once('deviceList', (event, deviceList) => {
 								
+								console.log(deviceList);
+								
 								for (var i=0;i<deviceList.length;i++){
 									if (deviceList[i].kind === "audiooutput"){
 										buttons.push(deviceList[i].label);
@@ -535,18 +553,29 @@ contextMenu({
 							
 							ipcMain.once('deviceList', (event, deviceList) => {
 								
+								console.log(deviceList);
+								
+								var counter = 0;
 								for (var i=0;i<deviceList.length;i++){
 									if (deviceList[i].kind === "audioinput"){
+										counter +=1;
 										buttons.push(deviceList[i].label);
 										details.push(deviceList[i].deviceId);
 									}
 								}
 								
 								let options  = {
-									 title : "Change audio input device",
-									 buttons: buttons,
-									 message: "Change your local audio input source"
+										 title : "Change audio input device",
+										 buttons: buttons,
+										 message: "Change your local audio input source"
+									};
+							
+							
+								if (!counter){
+									options.message = "No audio input devices available here";
 								};
+								
+								
 								let response = dialog.showMessageBoxSync(options);
 								if (response){
 									browserWindow.webContents.send('postMessage', {'changeAudioDevice':details[response]});
@@ -569,18 +598,28 @@ contextMenu({
 							
 							ipcMain.once('deviceList', (event, deviceList) => {
 								
+								
+								console.log(deviceList);
+								
+								var counter = 0;
 								for (var i=0;i<deviceList.length;i++){
 									if (deviceList[i].kind === "videoinput"){
+										counter+=1;
 										buttons.push(deviceList[i].label);
 										details.push(deviceList[i].deviceId);
 									}
 								}
-								
 								let options  = {
 									 title : "Change video input device",
 									 buttons: buttons,
 									 message: "Change your local camera source"
 								};
+							
+							
+								if (!counter){
+									options.message = "No video devices available here";
+								};
+								
 								let response = dialog.showMessageBoxSync(options);
 								if (response){
 									browserWindow.webContents.send('postMessage', {'changeVideoDevice':details[response]});
