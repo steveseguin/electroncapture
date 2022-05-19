@@ -112,7 +112,7 @@ https://docs.google.com/spreadsheets/d/1R-y7xZ2BCn-GzTlwqq63H8lorXecO02DU9Hu4twu
 
 You can still capture audio via OBS Browser source, appending &novideo to the URL to disable video.  Appending &noaudio to the Electron Capture URL would conversely disable audio there, allowing you to capture audio with OBS browser source and video with Electron Capture.  The audio/video sync might be slightly off in this setup, but not noticible in most cases.
 
-##### Changing the audio output device
+#### Changing the audio output device
 
 If you right click the app when on a site, you can change the audio output device for that site. This is useful for setting a Youtube or VDO.Ninja video to output to a virtual audio cable or headphones, rather than playout via the default audio device.
 
