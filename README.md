@@ -285,6 +285,17 @@ Lastly, if that still doesn't help, you can try Windows + Tab (on windows), and 
 You can also drag the Electron Capture far off screen, so the cursor can't approach it really.
 
 
+##### Issues with dependencies when compiling
+
+Sometimes a dependency won't update to the value stated in the package.json.
+
+This option might be able to update the package.json to the newest version of dependencies automatically, 
+```
+npx npm-check-updates -u
+npm install
+```
+Seems to work with newer npm versions
+
 ### Thank you
 
 "Electron capture is one process that unstable atoms can use to become more stable. " - https://education.jlab.org/glossary/electroncapture.html
