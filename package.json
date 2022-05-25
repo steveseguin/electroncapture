@@ -1,6 +1,6 @@
 {
   "name": "VDON.Electron.Capture.App",
-  "version": "2.12.0",
+  "version": "2.12.1",
   "description": "A simple tool to aid with frameless window video capture and VDON publishing",
   "author": "Steve Seguin <steve@seguin.email>",
   "main": "main.js",
@@ -103,30 +103,23 @@
     "afterSign": "./afterSign.js"
   },
   "devDependencies": {
-    "electron": "^18.0.0",
+    "electron": "^19.0.0",
     "electron-builder": "^23.0.3",
-    "electron-notarize": "^1.0.0",
-    "rimraf": "^2.6.3",
-    "@electron/universal": "^1.2.1",
+    "electron-notarize": "^1.2.1",
+    "rimraf": "^3.0.2",
     "run-script-os-fix": "^1.0.4"
   },
   "dependencies": {
-    "electron-context-menu": "^2.5.2",
-    "electron-is-dev": "^1.0.1",
-    "electron-prompt": "^1.6.2",
+    "electron-context-menu": "^3.1.2",
+    "electron-is-dev": "^2.0.0",
+    "electron-prompt": "^1.7.0",
     "electron-unhandled": "^4.0.1",
     "minimalist": "^1.0.0",
     "minimist": "github:fortiZde/minimist",
-    "yargs": "^15.4.1"
+    "yargs": "^17.5.1"
   },
   "engines": {
-    "node": "v16.14.0",
-    "npm": "8.7.0"
-  },
-  "resolutions": {
-    "@electron/universal": "^1.2.1"
-  },
-  "overrides": {
-    "@electron/universal": "^1.2.1"
-  } 
+    "node": "v16.*.*",
+    "npm": "8.*.*"
+  }
 }
