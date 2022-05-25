@@ -384,7 +384,7 @@ function createWindow (URL=url, NODE=node) {
 		}
 
 		if (fullscreen){
-			 if (process.platform == "XXXXdarwin"){
+			 if (process.platform == "darwin"){
 				mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize();
 			 } else {
 				mainWindow.isFullScreen() ? mainWindow.setFullScreen(false) : mainWindow.setFullScreen(true);
@@ -420,7 +420,7 @@ function createWindow (URL=url, NODE=node) {
 		mainWindow.loadURL(URL);
 	} catch (e){
 		console.error(e);
-		app.quit();
+		//app.quit();
   	}
 
 }
@@ -789,7 +789,7 @@ contextMenu({
 						// Only show if not already full-screen
 						visible: !browserWindow.isMaximized(),
 						click: () => {
-							if (process.platform == "XXXXdarwin"){ // On certain electron builds, fullscreen fails on macOS; this is in case it starts happening again
+							if (process.platform == "darwin"){ // On certain electron builds, fullscreen fails on macOS; this is in case it starts happening again
 								browserWindow.isMaximized() ? browserWindow.unmaximize() : browserWindow.maximize();
 							} else {
 								browserWindow.isFullScreen() ? browserWindow.setFullScreen(false) : browserWindow.setFullScreen(true);
