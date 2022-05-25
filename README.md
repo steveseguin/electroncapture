@@ -112,6 +112,14 @@ https://docs.google.com/spreadsheets/d/1R-y7xZ2BCn-GzTlwqq63H8lorXecO02DU9Hu4twu
 
 You can still capture audio via OBS Browser source, appending &novideo to the URL to disable video.  Appending &noaudio to the Electron Capture URL would conversely disable audio there, allowing you to capture audio with OBS browser source and video with Electron Capture.  The audio/video sync might be slightly off in this setup, but not noticible in most cases.
 
+#### Changing the audio output device
+
+If you right click the app when on a site, you can change the audio output device for that site. This is useful for setting a Youtube or VDO.Ninja video to output to a virtual audio cable or headphones, rather than playout via the default audio device.
+
+On macOS, this is especially helpful since there is a lack of audio routing controls.
+
+Please note:  To use this feature, you will need to elevate the app's privilleges, which can expose the user to security issues on untrusted websites. 
+
 ### Syphon Output
 
 While there is no native Syphon or NDI output option yet available, one user has mentioned a solution for some users:
@@ -284,6 +292,17 @@ Lastly, if that still doesn't help, you can try Windows + Tab (on windows), and 
 
 You can also drag the Electron Capture far off screen, so the cursor can't approach it really.
 
+
+##### Issues with dependencies when compiling
+
+Sometimes a dependency won't update to the value stated in the package.json.
+
+This option might be able to update the package.json to the newest version of dependencies automatically, 
+```
+npx npm-check-updates -u
+npm install
+```
+Seems to work with newer npm versions
 
 ### Thank you
 
