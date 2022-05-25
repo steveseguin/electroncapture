@@ -235,7 +235,7 @@ function createWindow (URL=url, NODE=node) {
 			mainWindow.setSize(width/factor, height/factor); // allows for larger than display resolution.
 			tainted=false;
 		}
-		if (mainWindow.webContents.getURL().includes('youtube.com')){
+		if (mainWindow && mainWindow.webContents.getURL().includes('youtube.com')){
 			console.log("Youtube ad skipper inserted");
 			setInterval(function(mw){
 				try {
