@@ -116,7 +116,7 @@ var forcingAspectRatio = false;
 
 async function createWindow(args){
 	var URL = args.url, NODE = args.node, WIDTH = args.width, HEIGHT = args.height, TITLE = args.title, PIN = args.pin, X = args.x, Y = args.y, FULLSCREEN = args.fullscreen;
-	
+	console.log(args);
 	try {
 		if (!(URL.startsWith("http"))){
 			URL = "https://"+URL.toString();
@@ -516,9 +516,10 @@ contextMenu({
 				if (response==0){
 					//var URL = browserWindow.webContents.getURL();
 					DoNotClose = true; // avoids fully closing the app if no other windows are open
+					//console.log(browserWindow.node);
 					var args = browserWindow.args;
 					args.url = browserWindow.webContents.getURL();
-					args.node != browserWindow.node;
+					args.node = !browserWindow.node;
 					browserWindow.destroy();
 					createWindow(args); // we close the window and open it again; a faked refresh
 					DoNotClose = false;
@@ -671,10 +672,10 @@ contextMenu({
 						if (response==0){
 							//var URL = browserWindow.webContents.getURL();
 							DoNotClose = true; // avoids fully closing the app if no other windows are open
-							
+							//console.log(browserWindow.node);
 							var args = browserWindow.args;
 							args.url = browserWindow.webContents.getURL();
-							args.node != browserWindow.node;
+							args.node = !browserWindow.node;
 							browserWindow.destroy();
 							createWindow(args);
 							DoNotClose = false;
@@ -836,7 +837,7 @@ contextMenu({
 					// Only show it when right-clicking text
 					visible: true,
 					click: () => {
-						if (process.platform !== "XXXXdarwin"){
+						if (process.platform !== "darwin"){
 							if (browserWindow.isFullScreen()){browserWindow.setFullScreen(false);}
 						} else {
 							if (browserWindow.isMaximized()){browserWindow.unmaximize();}
@@ -853,7 +854,7 @@ contextMenu({
 					// Only show it when right-clicking text
 					visible: true,
 					click: () => {
-						if (process.platform !== "XXXXdarwin"){
+						if (process.platform !== "darwin"){
 							if (browserWindow.isFullScreen()){browserWindow.setFullScreen(false);}
 						} else {
 							if (browserWindow.isMaximized()){browserWindow.unmaximize();}
@@ -868,7 +869,7 @@ contextMenu({
 					// Only show it when right-clicking text
 					visible: true,
 					click: () => {
-						if (process.platform !== "XXXXdarwin"){
+						if (process.platform !== "darwin"){
 							if (browserWindow.isFullScreen()){browserWindow.setFullScreen(false);}
 						} else {
 							if (browserWindow.isMaximized()){browserWindow.unmaximize();}
@@ -910,13 +911,15 @@ contextMenu({
 								if (onTop) {
 									browserWindow.setAlwaysOnTop(true);
 								}
-								if (process.platform !== "XXXXdarwin"){
+								if (process.platform !== "darwin"){
 									if (browserWindow.isFullScreen()){browserWindow.setFullScreen(false);}
 								} else {
 									if (browserWindow.isMaximized()){browserWindow.unmaximize();}
 								}	
 								let point =  screen.getCursorScreenPoint();
 								let factor = screen.getDisplayNearestPoint(point).scaleFactor;
+								console.log(r);
+								console.log(factor);
 								browserWindow.setSize(r.split('x')[0]/factor, r.split('x')[1]/factor);
 							}
 						})
@@ -1052,10 +1055,10 @@ app.whenReady().then(function(){
 var DoNotClose = false;
 app.on('window-all-closed', () => {
 	if (DoNotClose){
-		console.log("DO NOT CLOSE!");
+		//console.log("DO NOT CLOSE!");
 		return;
 	}
-	console.log("DO NOT CLOSE... erk?");
+	//console.log("DO NOT CLOSE... erk?");
 	app.quit();
 })
 
