@@ -114,7 +114,7 @@ app.commandLine.appendSwitch('disable-site-isolation-trials');
 var counter=0;
 var forcingAspectRatio = false;
 
-async function createWindow(args){
+async function createWindow(args, reuse=false){
 	var URL = args.url, NODE = args.node, WIDTH = args.width, HEIGHT = args.height, TITLE = args.title, PIN = args.pin, X = args.x, Y = args.y, FULLSCREEN = args.fullscreen;
 	console.log(args);
 	
@@ -128,7 +128,9 @@ async function createWindow(args){
 
 	let currentTitle = "ElectronCapture";
 	
-	if (TITLE===null){
+	if (reuse){
+		currentTitle = reuse;
+	} else if (TITLE===null){
 		counter+=1;
 		currentTitle = "Electron "+(counter.toString());
 	} else if (counter==0){
@@ -138,6 +140,7 @@ async function createWindow(args){
 		counter+=1;
 		currentTitle = TITLE.toString() + " " +(counter.toString());
 	}
+	
 
 	ipcMain.on('prompt', function(eventRet, arg) {  // this enables a PROMPT pop up , which is used to BLOCK the main thread until the user provides input. VDO.Ninja uses prompt for passwords, etc.
 		try {
@@ -491,12 +494,14 @@ contextMenu({
 				// Only show it when right-clicking text
 				visible: true,
 				click: () => {
+					
 					DoNotClose = true;
 					var ver = app.getVersion();
 					var args = browserWindow.args; // reloading doesn't work otherwise
 					args.url = "https://vdo.ninja/electron?version="+ver;
+					var title = browserWindow.getTitle();
 					browserWindow.destroy();
-					createWindow(args); // we close the window and open it again; a faked refresh
+					createWindow(args, title); // we close the window and open it again; a faked refresh
 					DoNotClose = false;
 					
 				}
@@ -523,8 +528,9 @@ contextMenu({
 					
 					var args = browserWindow.args; // reloading doesn't work otherwise
 					args.url = browserWindow.webContents.getURL();
+					var title = browserWindow.getTitle();
 					browserWindow.destroy();
-					createWindow(args); // we close the window and open it again; a faked refresh
+					createWindow(args, title); // we close the window and open it again; a faked refresh
 					DoNotClose = false;
 				}
 			},
@@ -558,8 +564,9 @@ contextMenu({
 						var args = browserWindow.args;
 						args.url = browserWindow.webContents.getURL();
 						args.node = !browserWindow.node;
+						var title = browserWindow.getTitle();
 						browserWindow.destroy();
-						createWindow(args); // we close the window and open it again; a faked refresh
+						createWindow(args, title); // we close the window and open it again; a faked refresh
 						DoNotClose = false;
 					}
 				}
@@ -675,8 +682,9 @@ contextMenu({
 								var args = browserWindow.args;
 								args.url = browserWindow.webContents.getURL();
 								args.node = !browserWindow.node;
+								var title = browserWindow.getTitle();
 								browserWindow.destroy();
-								createWindow(args);
+								createWindow(args, title);
 								DoNotClose = false;
 							}
 						}
@@ -747,8 +755,9 @@ contextMenu({
 								var args = browserWindow.args;
 								args.url = browserWindow.webContents.getURL();
 								args.node = !browserWindow.node;
+								var title = browserWindow.getTitle();
 								browserWindow.destroy();
-								createWindow(args);
+								createWindow(args, title);
 								DoNotClose = false;
 							}
 						}
@@ -857,8 +866,9 @@ contextMenu({
 							}
 							var args = browserWindow.args; // reloading doesn't work otherwise
 							args.url = r;
+							var title = browserWindow.getTitle();
 							browserWindow.destroy();
-							createWindow(args); // we close the window and open it again; a faked refresh
+							createWindow(args, title); // we close the window and open it again; a faked refresh
 							DoNotClose = false;
 						}
 					})
