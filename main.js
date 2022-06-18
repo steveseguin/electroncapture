@@ -156,11 +156,14 @@ try {
 			ttt.forEach(d=>{
 				try {
 					var ddd = getDirectories(dir+"/"+d);
-					var fd = fs.readFileSync(dir+"."+d+"/"+ddd[0]+"/manifest.json", 'utf8');
+					var fd = fs.readFileSync(dir+"/"+d+"/"+ddd[0]+"/manifest.json", 'utf8');
 					var json = JSON.parse(fd);
 					
 					if (json.name.startsWith("_")){
 						return;			
+					}
+					if (json.name == "Temp"){
+						return;
 					}
 					
 					extensions.push({
