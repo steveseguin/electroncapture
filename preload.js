@@ -1,21 +1,18 @@
-const { ipcRenderer, contextBridge } = require('electron');
+var { ipcRenderer, contextBridge } = require('electron');
 
 window.addEventListener('DOMContentLoaded', () => {
-  const replaceText = (selector, text) => {
-    const element = document.getElementById(selector)
-    if (element) element.innerText = text
-  }
-
-  for (const type of ['chrome', 'node', 'electron']) {
-    replaceText(`${type}-version`, process.versions[type])
-  }
-  
+	const replaceText = (selector, text) => {
+		const element = document.getElementById(selector)
+		if (element) element.innerText = text
+	}
+	for (const type of ['chrome', 'node', 'electron']) {
+		replaceText(`${type}-version`, process.versions[type])
+	}
 	try{
 		if (session && session.version){
 			ipcRenderer.send('vdonVersion', {ver:session.version});
 		}
 	} catch(e){}
-  
 })
 
 window.addEventListener('message', ({ data }) => {
@@ -26,13 +23,23 @@ window.addEventListener('message', ({ data }) => {
 
 var doSomethingInWebApp = null;
 
-ipcRenderer.send('vdonVersion', {ver:false}); // clear the current Version; let it load if needed.
 try {
+	if (session && session.version){
+		ipcRenderer.send('vdonVersion', {ver:session.version}); // clear the current Version; let it load if needed.
+	} else {
+		ipcRenderer.send('vdonVersion', {ver:false}); // clear the current Version; let it load if needed.
+	}
+} catch(e){
+	console.log(e);
+}
+try {
+	
 	contextBridge.exposeInMainWorld("electronApi", { // 
 	  'exposeDoSomethingInWebApp' : function (callback) {
 		 doSomethingInWebApp = callback;
 	  },
 	  'updateVersion' : function (version) { // window.electronApi.updateVersion(session.version);
+	     console.log("33:"+version);
 		 ipcRenderer.send('vdonVersion', {ver:version});
 	  },
 	  'updatePPT' : function (PPTHotkey) { // window.electronApi.updateVersion(session.version);
@@ -40,14 +47,27 @@ try {
 		 ipcRenderer.send('PPTHotkey', PPTHotkey);
 	  }
 	});
-} catch(e){console.log("Context isolation might be disabled already");}
+} catch(e){
+	
+}
 
 var storedEle = null;
 var PPTTimeout = null;
 ipcRenderer.on('postMessage', (event, ...args) => {
+	console.log(args);
+	
+	try {
+		if (!doSomethingInWebApp){
+			if (session && session.remoteInterfaceAPI){
+				doSomethingInWebApp = session.remoteInterfaceAPI;
+			}
+		}
+	}catch(e){}
+	
 	try {
 		if ("record" in args[0]) {
 			if (doSomethingInWebApp) {
+			  console.log("doSomethingInWebApp");
 			  var x = args[0].params.x;
 			  var y = args[0].params.y;
 			  var ele = document.elementFromPoint(x,y);
@@ -58,7 +78,12 @@ ipcRenderer.on('postMessage', (event, ...args) => {
 			      fauxEvent.data.record = ele.id;;
 				  doSomethingInWebApp(fauxEvent);
 			  }
+			} else {
+				console.log(doSomethingInWebApp);
+				console.log(session.remoteInterfaceAPI);
+				console.log("no doSomethingInWebApp");
 			}
+			
 		}
 		if (doSomethingInWebApp && ("mic" in args[0])){ // this is the new version.
 			var fauxEvent = {};
@@ -67,10 +92,10 @@ ipcRenderer.on('postMessage', (event, ...args) => {
 			doSomethingInWebApp(fauxEvent);
 			return;
 		} else if ("micOld" in args[0]) { // this is for old pre v22 version
-			if (args[0].micOld === true) { // unmute
+			if (session && (args[0].micOld === true)){ // unmute
 				session.muted = false; // set
 				toggleMute(true); // apply 
-			} else if (args[0].micOld === false) { // mute
+			} else if (session && (args[0].micOld === false)){ // mute
 				session.muted = true; // set
 				toggleMute(true); // apply
 			} else if (args[0].micOld === "toggle") { // toggle

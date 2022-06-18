@@ -100,6 +100,11 @@ if (!app.requestSingleInstanceLock(Argv)) {
 	app.quit();
 }
 
+function getDirectories(path) {
+  return fs.readdirSync(path).filter(function (file) {
+    return fs.statSync(path+'/'+file).isDirectory();
+  });
+}
 
 if (!(Argv.hwa)){
 	app.disableHardwareAcceleration();
@@ -111,10 +116,42 @@ app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
 app.commandLine.appendSwitch('max-web-media-player-count', '5000');
 app.commandLine.appendSwitch('disable-site-isolation-trials');
 app.commandLine.appendSwitch('ignore-certificate-errors')
+app.commandLine.appendSwitch('disable-http-cache')
 
 
 var counter=0;
 var forcingAspectRatio = false;
+
+var extensions = [];
+try {
+	var dir = false;
+	if (process.platform == 'win32'){
+		dir = process.env.APPDATA.replace("Roaming","")+"\\Local\\Google\\Chrome\\User Data\\Default\\Extensions";
+	} else if (process.platform == 'darwin'){
+		dir = process.env.HOME + "/Library/Application Support/Google/Chrome/Default/Extensions"";
+		consolog(dir);
+	}
+	if (dir){
+		//dir = dir.replace("Roaming","");
+		var ttt = getDirectories(dir);
+		ttt.forEach(d=>{
+			try {
+				var ddd = getDirectories(dir+"\\"+d);
+				var fd = fs.readFileSync(dir+"\\"+d+"\\"+ddd[0]+"\\manifest.json", 'utf8');
+				var json = JSON.parse(fd);
+				
+				if (json.name.startsWith("_")){
+					return;			
+				}
+				
+				extensions.push({
+					"name": json.name,
+					"location": dir+"\\"+d+"\\"+ddd[0]
+				});
+			} catch(e){}
+		});
+	}
+} catch(e){console.error(e);}
 
 async function createWindow(args, reuse=false){
 	var URL = args.url, NODE = args.node, WIDTH = args.width, HEIGHT = args.height, TITLE = args.title, PIN = args.pin, X = args.x, Y = args.y, FULLSCREEN = args.fullscreen;
@@ -193,6 +230,8 @@ async function createWindow(args, reuse=false){
 		tainted=true;
 	}
 	
+	
+
 	// Create the browser window.
 	var mainWindow = new BrowserWindow({
 		transparent: true,
@@ -228,6 +267,10 @@ async function createWindow(args, reuse=false){
 		}
 	);
 	
+	//var appData = process.env.APPDATA+"\\..\\Local" || (process.platform == 'darwin' ? process.env.HOME + '/Library/Preferences' : process.env.HOME + "/.local/share")
+
+	
+
 	mainWindow.args = args; // storing settings
 	mainWindow.vdonVersion = false;
 	mainWindow.PPTHotkey = false;
@@ -813,6 +856,36 @@ contextMenu({
 				]
 			},
 			{
+				label: '🧰 Enable Chrome Extension',
+				// Only show it when right-clicking text
+
+				visible: extensions.length,
+				click: () => {
+					var buttons = ["Cancel"];
+					
+					for (var i=0;i<extensions.length;i++){
+						buttons.push(extensions[i].name);
+					}
+					var options  = {
+						 title : "Choose an extension to enable",
+						 buttons: buttons,
+						 message: "Choose an extension to enable. You may need to reload the window to trigger once loaded."
+					};
+				
+				
+					let idx = dialog.showMessageBoxSync(options);
+					if (idx){
+						idx -= 1;
+						console.log(idx, extensions[idx].location);
+						
+						browserWindow.webContents.session.loadExtension(extensions[idx].location+"").then(({ id }) => {
+							console.log("loadExtension");
+						});
+						// extensions
+					}
+				}
+			},
+			{
 				label: '🔇 Mute the window',
 				type: 'checkbox',
 				visible: true,
@@ -831,7 +904,9 @@ contextMenu({
 				// Only show it when right-clicking text
 				visible: (browserWindow.vdonVersion && params.mediaType == "video") || false,
 				click: () => {
-					browserWindow.webContents.send('postMessage', {'record':true, 'params':params});
+					if (browserWindow){
+						browserWindow.webContents.send('postMessage', {'record':true, 'params':params});
+					}
 				}
 			},
 			{
