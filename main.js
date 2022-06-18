@@ -127,30 +127,51 @@ try {
 	var dir = false;
 	if (process.platform == 'win32'){
 		dir = process.env.APPDATA.replace("Roaming","")+"\\Local\\Google\\Chrome\\User Data\\Default\\Extensions";
+		if (dir){
+			//dir = dir.replace("Roaming","");
+			var ttt = getDirectories(dir);
+			ttt.forEach(d=>{
+				try {
+					var ddd = getDirectories(dir+"\\"+d);
+					var fd = fs.readFileSync(dir+"\\"+d+"\\"+ddd[0]+"\\manifest.json", 'utf8');
+					var json = JSON.parse(fd);
+					
+					if (json.name.startsWith("_")){
+						return;			
+					}
+					
+					extensions.push({
+						"name": json.name,
+						"location": dir+"\\"+d+"\\"+ddd[0]
+					});
+				} catch(e){console.error(e);}
+			});
+		}
 	} else if (process.platform == 'darwin'){
 		dir = process.env.HOME + "/Library/Application Support/Google/Chrome/Default/Extensions";
 		console.log(dir);
-	}
-	if (dir){
+		if (dir){
 		//dir = dir.replace("Roaming","");
-		var ttt = getDirectories(dir);
-		ttt.forEach(d=>{
-			try {
-				var ddd = getDirectories(dir+"\\"+d);
-				var fd = fs.readFileSync(dir+"\\"+d+"\\"+ddd[0]+"\\manifest.json", 'utf8');
-				var json = JSON.parse(fd);
-				
-				if (json.name.startsWith("_")){
-					return;			
-				}
-				
-				extensions.push({
-					"name": json.name,
-					"location": dir+"\\"+d+"\\"+ddd[0]
-				});
-			} catch(e){console.error(e);}
-		});
+			var ttt = getDirectories(dir);
+			ttt.forEach(d=>{
+				try {
+					var ddd = getDirectories(dir+"/"+d);
+					var fd = fs.readFileSync(dir+"."+d+"/"+ddd[0]+"/manifest.json", 'utf8');
+					var json = JSON.parse(fd);
+					
+					if (json.name.startsWith("_")){
+						return;			
+					}
+					
+					extensions.push({
+						"name": json.name,
+						"location": dir+"/"+d+"/"+ddd[0]
+					});
+				} catch(e){console.error(e);}
+			});
+		}
 	}
+	
 } catch(e){console.error(e);}
 
 async function createWindow(args, reuse=false){
