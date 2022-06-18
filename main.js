@@ -129,7 +129,7 @@ try {
 		dir = process.env.APPDATA.replace("Roaming","")+"\\Local\\Google\\Chrome\\User Data\\Default\\Extensions";
 	} else if (process.platform == 'darwin'){
 		dir = process.env.HOME + "/Library/Application Support/Google/Chrome/Default/Extensions";
-		consolog(dir);
+		console.log(dir);
 	}
 	if (dir){
 		//dir = dir.replace("Roaming","");
@@ -148,7 +148,7 @@ try {
 					"name": json.name,
 					"location": dir+"\\"+d+"\\"+ddd[0]
 				});
-			} catch(e){}
+			} catch(e){console.error(e);}
 		});
 	}
 } catch(e){console.error(e);}
