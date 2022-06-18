@@ -128,7 +128,7 @@ try {
 	if (process.platform == 'win32'){
 		dir = process.env.APPDATA.replace("Roaming","")+"\\Local\\Google\\Chrome\\User Data\\Default\\Extensions";
 	} else if (process.platform == 'darwin'){
-		dir = process.env.HOME + "/Library/Application Support/Google/Chrome/Default/Extensions"";
+		dir = process.env.HOME + "/Library/Application Support/Google/Chrome/Default/Extensions";
 		consolog(dir);
 	}
 	if (dir){
