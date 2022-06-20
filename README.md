@@ -30,8 +30,8 @@ Lastly, since playback is agnostic, you can window-capture the same video multip
 | --pin     	| --p   	| Pin window on top          	| (Takes no values)                 	| Display this window always on top.                                          	|
 | --url     	| --u   	| Set a custom link on start 	| https://vdo.ninja/?view=aCustomID 	| You can push and pull with single links or rooms.                           	|
 | --title   	| --t   	| Set a custom window title  	| Guest 1                           	| Handy for use with OBS window capture                                       	|
-| --node    	| --n   	| Use advanced features      	| 0 or 1                            	| Enable with 1. Allows for screen capture, global hotkeys, prompts and more. 	|
-| --hwa     	| --a   	| Hardware acceleration      	| 0 or 1                            	| Disable with 0.                                                             	|
+| --node    	| --n   	| Use advanced features      	| true                              	| Enable with `true`. Allows for screen capture, global hotkeys, prompts and more. 	|
+| --hwa     	| --a   	| Hardware acceleration      	| false                             	| Disable with `false`                                                             	|
 
 * note: Use the --help command to get the most recent available commands and options
 
