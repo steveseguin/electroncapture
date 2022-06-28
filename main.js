@@ -108,6 +108,7 @@ function getDirectories(path) {
 
 if (!(Argv.hwa)){
 	app.disableHardwareAcceleration();
+	console.log("HWA DISABLED");
 }
 
 app.commandLine.appendSwitch('enable-features', 'WebAssemblySimd'); // Might not be needed in the future with Chromium; not supported on older Chromium. For faster greenscreen effects.
@@ -156,14 +157,11 @@ try {
 			ttt.forEach(d=>{
 				try {
 					var ddd = getDirectories(dir+"/"+d);
-					var fd = fs.readFileSync(dir+"/"+d+"/"+ddd[0]+"/manifest.json", 'utf8');
+					var fd = fs.readFileSync(dir+"."+d+"/"+ddd[0]+"/manifest.json", 'utf8');
 					var json = JSON.parse(fd);
 					
 					if (json.name.startsWith("_")){
 						return;			
-					}
-					if (json.name == "Temp"){
-						return;
 					}
 					
 					extensions.push({
@@ -1276,7 +1274,7 @@ contextMenu({
 	});
 
 app.on('second-instance', (event, commandLine, workingDirectory, argv2) => {
-	createWindow(argv2);
+	createWindow(argv2, argv2.title);
 });
 
 const folder = path.join(app.getPath('appData'), `${app.name}`);
