@@ -176,11 +176,15 @@ try {
 } catch(e){console.error(e);}
 
 async function createWindow(args, reuse=false){
+	var webSecurity = true;
 	var URL = args.url, NODE = args.node, WIDTH = args.width, HEIGHT = args.height, TITLE = args.title, PIN = args.pin, X = args.x, Y = args.y, FULLSCREEN = args.fullscreen;
 	console.log(args);
 	
 	try {
-		if (!(URL.startsWith("http"))){
+		if (URL.startsWith("file:")){
+			webSecurity = false; // not ideal, but to open local files, this is needed.
+			// warn the user in some way that this window is tained.  perhaps detect if they navigate to a different website or load an iframe that it will be a security concern? 
+		} else if (!(URL.startsWith("http"))){
 			URL = "https://"+URL.toString();
 		}
 	} catch(e){
@@ -271,7 +275,7 @@ async function createWindow(args, reuse=false){
 			partition: 'persist:abc',
 			contextIsolation: !NODE,
 			backgroundThrottling: false,
-			webSecurity: true,
+			webSecurity: webSecurity,
 			nodeIntegrationInSubFrames: NODE,
 			nodeIntegration: NODE  // this could be a security hazard, but useful for enabling screen sharing and global hotkeys
 		},
@@ -373,7 +377,6 @@ async function createWindow(args, reuse=false){
 			//console.log('registration failed3')
 		};
 	});
-	
 	
 
 	try {
@@ -551,7 +554,6 @@ async function createWindow(args, reuse=false){
 		console.error(e);
 		//app.quit();
   	}
-	
 	
 }
 contextMenu({
