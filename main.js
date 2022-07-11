@@ -184,6 +184,7 @@ async function createWindow(args, reuse=false){
 		if (URL.startsWith("file:")){
 			webSecurity = false; // not ideal, but to open local files, this is needed.
 			// warn the user in some way that this window is tained.  perhaps detect if they navigate to a different website or load an iframe that it will be a security concern? 
+			// maybe filter all requests to file:// and ensure they are made from a file:// resource already.
 		} else if (!(URL.startsWith("http"))){
 			URL = "https://"+URL.toString();
 		}
@@ -540,6 +541,17 @@ async function createWindow(args, reuse=false){
 	mainWindow.on("closed", function() {
 		mainWindow = null;
     });
+	
+
+	/* session.defaultSession.webRequest.onBeforeRequest({urls: ['file://*']}, (details, callback) => { // added for added security, but doesn't seem to be working.
+	  if (details.referrer.startsWith("http://")){
+		 callback({response:{cancel:true}});
+	  } else if (details.referrer.startsWith("https://")){ // do not let a third party load a local resource.
+		  callback({response:{cancel:true}});
+	  } else {
+		  callback({response:{cancel:false}});
+	  }
+	}); */
 	
 	try {
 		var HTML = '<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" /><style>body {padding:0;height:100%;width:100%;margin:0;}</style></head><body ><div style="-webkit-app-region: drag;height:25px;width:100%"></div></body></html>';
