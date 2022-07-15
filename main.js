@@ -5,7 +5,7 @@ const prompt = require('electron-prompt');
 const unhandled = require('electron-unhandled');
 const fs = require('fs');
 const path = require('path')
-const {app, BrowserWindow, BrowserView, desktopCapturer, ipcMain, screen, shell, globalShortcut, session, dialog} = require('electron')
+const {app, BrowserWindow, BrowserView, webFrameMain, desktopCapturer, ipcMain, screen, shell, globalShortcut, session, dialog} = require('electron')
 const contextMenu = require('electron-context-menu');
 const Yargs = require('yargs')
 
@@ -415,6 +415,29 @@ async function createWindow(args, reuse=false){
 		console.error(e);
 		//app.quit();
 	});
+	
+	mainWindow.webContents.on('new-window', (event, url, frameName, disposition, options, additionalFeatures, referrer, postBody) => {
+		
+		mainWindow.webContents.mainFrame.frames.forEach(frame => {
+			if (frame.url === referrer.url) {
+				event.preventDefault();
+				frame.executeJavaScript('(function () {\
+					window.location = "'+url+'";\
+				})();');
+			} else if (frame.frames){
+				frame.frames.forEach(subframe => {
+					if (subframe.url === referrer.url) {
+						event.preventDefault();
+						subframe.executeJavaScript('(function () {\
+							window.location = "'+url+'";\
+						})();');
+					} 
+				})
+			}
+		});
+	});
+						
+		
 	
 	mainWindow.webContents.on('did-finish-load', function(e){
 		if (tainted){
@@ -987,6 +1010,101 @@ contextMenu({
 					})
 					.catch(console.error);
 				}
+			},
+			{
+				label: '🪟 IFrame Options',
+				// Only show it when right-clicking text
+				visible: params.frameURL,
+				type: 'submenu',
+				submenu: [{
+					label: '✏ Edit IFrame URL',
+					// Only show it when right-clicking text
+					visible: true,
+					click: () => {
+						console.log(browserWindow.webContents);
+						console.log(params);
+						
+						var URL = params.frameURL;
+						var onTop = browserWindow.isAlwaysOnTop();
+						if (onTop) {
+							browserWindow.setAlwaysOnTop(false);
+						}
+						prompt({
+							title: 'Edit the target IFrame URL',
+							label: 'URL:',
+							value: URL,
+							inputAttrs: {
+								type: 'url'
+							},
+							resizable: true,
+							type: 'input',
+							alwaysOnTop: true
+						})
+						.then((r) => {
+							if(r === null) {
+								console.log('user cancelled');
+								  if (onTop) {
+									browserWindow.setAlwaysOnTop(true);
+								  }
+							} else {
+								console.log('result', r);
+								if (onTop) {
+									browserWindow.setAlwaysOnTop(true);
+								}
+								
+								browserWindow.webContents.executeJavaScript('(function () {\
+									var ele = document.elementFromPoint('+params.x+', '+params.y+');\
+									if (ele.tagName !== "IFRAME"){\
+										ele = false;\
+										document.querySelectorAll("iframe").forEach(ee=>{\
+											if (ee.src == "'+URL+'"){\
+												ele = ee;\
+											}\
+										});\
+									}\
+									if (ele && (ele.tagName == "IFRAME")){\
+										ele.src = "'+r+'";\
+									}\
+								})();');
+								
+							}
+						})
+						.catch(console.error);
+					}
+				},{
+					label: '♻ Reload IFrame',
+					// Only show it when right-clicking text
+					visible: true,
+					click: () => {
+						browserWindow.webContents.mainFrame.frames.forEach(frame => {
+						  if (frame.url === params.frameURL) {
+							frame.reload();
+						  }
+						});
+					}
+				},{
+					label: '🔙 Go Back in IFrame',
+					// Only show it when right-clicking text
+					visible: true,
+					click: () => {
+						browserWindow.webContents.mainFrame.frames.forEach(frame => {
+						  if (frame.url === params.frameURL) {
+							frame.executeJavaScript('(function () {window.history.back();})();');
+						  }
+						});
+					}
+				},{
+					label: 'Go Forward in IFrame',
+					// Only show it when right-clicking text
+					visible: true,
+					click: () => {
+						browserWindow.webContents.mainFrame.frames.forEach(frame => {
+						  if (frame.url === params.frameURL) {
+							frame.executeJavaScript('(function () {window.history.forward();})();');
+						  }
+						});
+					}
+				}]
 			},
 		  {
 			label: '📑 Insert CSS',
