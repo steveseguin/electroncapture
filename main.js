@@ -3,8 +3,9 @@ const electron = require('electron')
 const process = require('process')
 const prompt = require('electron-prompt');
 const unhandled = require('electron-unhandled');
+const got = require('got');
 const fs = require('fs');
-const path = require('path')
+const path = require('path');
 const {app, BrowserWindow, BrowserView, webFrameMain, desktopCapturer, ipcMain, screen, shell, globalShortcut, session, dialog} = require('electron')
 const contextMenu = require('electron-context-menu');
 const Yargs = require('yargs')
@@ -15,7 +16,6 @@ process.on('uncaughtException', function (error) {
 });
 
 unhandled();
-
 //app.setAppUserModelId("app."+Date.now());
 
 var ver = app.getVersion();
@@ -88,6 +88,12 @@ function createYargs(){
     type: "boolean",
     default: false
   })
+  .option("savefolder", {
+    alias: "sf",
+    describe: "Where to save a file on disk",
+    type: "string",
+    default: null
+  })
   .describe("help", "Show help."); // Override --help usage message.
   
   return argv.argv;
@@ -145,7 +151,7 @@ try {
 						"name": json.name,
 						"location": dir+"\\"+d+"\\"+ddd[0]
 					});
-				} catch(e){console.error(e);}
+				} catch(e){}
 			});
 		}
 	} else if (process.platform == 'darwin'){
@@ -310,6 +316,8 @@ async function createWindow(args, reuse=false){
 	});
 	
 	
+	
+	
 	ipcMain.on('PPTHotkey', function(eventRet, value) { // 
 		console.log("updatePPT recieved 2:", value);
 		if (!mainWindow){return;}
@@ -436,7 +444,29 @@ async function createWindow(args, reuse=false){
 			}
 		});
 	});
-						
+	
+	
+	
+	mainWindow.webContents.session.on('will-download', (event, item, webContents) => {
+	  var currentURL = mainWindow.webContents.getURL();
+	  if (currentURL.includes("autorecord") || (args.savefolder!==null)){
+		  var dir = args.savefolder;
+		  if (!dir && (process.platform == 'darwin')){ //process.env.USERPROFILE
+				dir = process.env.HOME + "/Downloads/";
+		  } else if (!dir && (process.platform == 'win32')){ //process.env.USERPROFILE
+				dir = process.env.USERPROFILE + "\\Downloads\\";
+		  } else if (!dir && process.env.HOME){ //process.env.USERPROFILE
+				dir = process.env.HOME + "/";
+		  } else if (!dir && process.env.USERPROFILE){ //process.env.USERPROFILE
+				dir = process.env.USERPROFILE + "/";
+		  }
+		  
+		  if (dir!==null){
+			console.log("Auto saving too "+dir + item.getFilename());
+			item.setSavePath(dir + item.getFilename())
+		  }
+	  }
+	});
 		
 	
 	mainWindow.webContents.on('did-finish-load', function(e){
@@ -540,20 +570,7 @@ async function createWindow(args, reuse=false){
 			}
 		}
 
-		session.fromPartition("default").setPermissionRequestHandler((webContents, permission, callback) => {
-			try {
-				let allowedPermissions = ["audioCapture", "desktopCapture", "pageCapture", "tabCapture", "experimental"]; // Full list here: https://developer.chrome.com/extensions/declare_permissions#manifest
-
-				if (allowedPermissions.includes(permission)) {
-					callback(true); // Approve permission request
-				} else {
-					console.error(
-						`The application tried to request permission for '${permission}'. This permission was not whitelisted and has been blocked.`
-					);
-					callback(false); // Deny
-				}
-			} catch(e){console.error(e);}
-		});
+		
 	} catch(e){console.error(e);}
 	
 	
@@ -1417,6 +1434,21 @@ app.setPath('userData', folder);
 
 app.whenReady().then(function(){
 	//app.allowRendererProcessReuse = false;
+	console.log("APP READY");
+	session.fromPartition("default").setPermissionRequestHandler((webContents, permission, callback) => {
+		try {
+			let allowedPermissions = ["audioCapture", "desktopCapture", "pageCapture", "tabCapture", "experimental"]; // Full list here: https://developer.chrome.com/extensions/declare_permissions#manifest
+
+			if (allowedPermissions.includes(permission)) {
+				callback(true); // Approve permission request
+			} else {
+				console.error(
+					`The application tried to request permission for '${permission}'. This permission was not whitelisted and has been blocked.`
+				);
+				callback(false); // Deny
+			}
+		} catch(e){console.error(e);}
+	});
 	createWindow(Argv);
 }).catch(console.error);;
 
