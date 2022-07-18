@@ -50,8 +50,13 @@ or for example
 If running from Windows command prompt, any ampersand "&" characters will need to be escaped with a "^" character, as seen below:
 
 ```
-C:\Users\Steve\Desktop>elecap -t feed2 -u https://vdo.ninja/?view=ePz9hnx^&scene^&codec=h264^&room=SOMETHINGTEST123
+C:\Users\Steve\Desktop>elecap -t feed2 --url https://vdo.ninja/?view=ePz9hnx^&scene^&codec=h264^&room=SOMETHINGTEST123
 ```
+
+You can also use it like this, if you are in the same folder as the app itself:
+```
+elecap.exe --node true --title feed2 --url "https://vdo.ninja/?view=ePz9hnx&scene&codec=h264&room=SOMETHINGTEST123"
+````
 
 If running from a Windows batch file with the goal of launching multiple instances at a time, try the following:
 
