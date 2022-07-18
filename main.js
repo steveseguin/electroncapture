@@ -3,7 +3,6 @@ const electron = require('electron')
 const process = require('process')
 const prompt = require('electron-prompt');
 const unhandled = require('electron-unhandled');
-const got = require('got');
 const fs = require('fs');
 const path = require('path');
 const {app, BrowserWindow, BrowserView, webFrameMain, desktopCapturer, ipcMain, screen, shell, globalShortcut, session, dialog} = require('electron')
