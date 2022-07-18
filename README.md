@@ -83,13 +83,28 @@ If you right-click the application, you'll get a context menu with additional op
 
 ### Screen-share, global hotkeys, and user-prompts
 
-Starting with version 1.6.0, to enable screen-share support and some other features, the app needs Node Integration enabled; aka, Elevated Privileges. This will allow remote websites to run node-based code, which is a security concern if visiting untrusted websites. 
+##### screen sharing
+Starting with version 1.6.0, to enable screen-share support and some other features, the app needs Node Integration enabled; aka, Elevated Privileges. This will allow remote websites to run node-based code, which is a security concern if visiting untrusted websites.
 
-You can enable Elevated Privileges for the app via the command line with `--node 1` or in the app by right-clicking and selecting "Elevate Privileges" from the context-menu.
+You can enable Elevated Privileges for the app via the command line with `--node 1` or in the app by right-clicking and selecting "Elevate Privileges" from the context-menu. If right-clicking to enable this mode, the app may reload the page afterwards.
 
-Global Hotkeys, such as CTRL+M, are supported. CTRL+M will mute the mic, in the most recently opened window.
+A unique feature about the Electron Capture app is that it can auto-select a screen or window when screen-sharing with VDO.Ninja, without user-input. Adding to the VDO.Ninja URL, &ss=1 will select display 1, &ss=2 for the second display, etc.  Or specify a window with &ss=window_name_here.
 
-Some features, like Screen Sharing, are only supported with VDO.Ninja v17 and newer, along with requiring Elevated Privileges to be enabled in the Electron Capture app.  One unique feature about the Electron Capture app is that it can auto-select a screen or window when screen-sharing with VDO.Ninja, without user-input. Adding to the VDO.Ninja URL, &ss=1 will select display 1, &ss=2 for the second display, etc.  Or specify a window with &ss=window_name_here.
+To select Screen 1 automatically on load, for example you can do:
+
+```elecap.exe --node 1 --url "https://vdo.ninja/beta/?ss=1&autostart"```
+
+or to select Discord automatically
+
+```
+elecap.exe --node 1 --url "https://vdo.ninja/beta/?ss=Discord&autostart"
+```
+
+It's also possible to select audio-only when screen sharing via Electron Capture with VDO.Ninja; you do not need to select a video if you wish to share audio-only.
+
+#### global hotkeys
+
+Global Hotkeys, such as CTRL+M, are supported. CTRL+M will mute the mic, in the most recently opened window.  You can assign a custom global hot-key in VDO.Ninja, and it will be respected by Electron Capture. (VDO.Ninja Settings -> User -> Global Hotkey)
 
 Youtube has a built-in automatic ad-skipper added, and for both Youtube, Twitch, and more, when watching a video, you can full-window the video, allowing for clean video capture. This option is available via the context menu of Electron Capture; just right-click somewhere on the page that is empty and select Clean Video Output.
 
