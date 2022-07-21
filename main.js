@@ -180,6 +180,12 @@ try {
 	
 } catch(e){console.error(e);}
 
+function sleep(ms) {
+  return new Promise((resolve) => {
+	setTimeout(resolve, ms);
+  });
+}
+
 async function createWindow(args, reuse=false){
 	var webSecurity = true;
 	var URL = args.url, NODE = args.node, WIDTH = args.width, HEIGHT = args.height, TITLE = args.title, PIN = args.pin, X = args.x, Y = args.y, FULLSCREEN = args.fullscreen;
@@ -315,8 +321,6 @@ async function createWindow(args, reuse=false){
 	});
 	
 	
-	
-	
 	ipcMain.on('PPTHotkey', function(eventRet, value) { // 
 		console.log("updatePPT recieved 2:", value);
 		if (!mainWindow){return;}
@@ -397,17 +401,22 @@ async function createWindow(args, reuse=false){
 		}
 	} catch(e){console.error(e);}
 	
+	
 	mainWindow.on('close', function(e) {
-        //e.preventDefault();
-        mainWindow.destroy();
+		e.preventDefault();
+		mainWindow.hide(); // hide, and wait 2 second before really closing; this allows for saving of files.
+		mainWindow.webContents.send('postMessage', {'hangup':true});
+		setTimeout(function(mainWindow){
+			mainWindow.destroy();
+			mainWindow = null
+		},1500,mainWindow); // takes 500ms to save properly; with a 1s buffer for safety
+				
 		globalShortcut.unregister('CommandOrControl+M');
 		globalShortcut.unregisterAll();
-		mainWindow = null
 	});
 
-	mainWindow.on('closed', function (e) {
+	mainWindow.on('closed', async function (e) {
 		//e.preventDefault();
-        mainWindow.destroy();
 		globalShortcut.unregister('CommandOrControl+M');
 		globalShortcut.unregisterAll();
 		mainWindow = null
@@ -577,10 +586,6 @@ async function createWindow(args, reuse=false){
 		mainWindow.show();
 	})
 	
-	mainWindow.on("closed", function() {
-		mainWindow = null;
-    });
-	
 
 	/* session.defaultSession.webRequest.onBeforeRequest({urls: ['file://*']}, (details, callback) => { // added for added security, but doesn't seem to be working.
 	  if (details.referrer.startsWith("http://")){
@@ -608,394 +613,445 @@ async function createWindow(args, reuse=false){
 	
 }
 contextMenu({
-		prepend: (defaultActions, params, browserWindow) => [
-			{
-				label: '🏠 Go to Homepage',
-				// Only show it when right-clicking text
-				visible: true,
-				click: () => {
-					
-					DoNotClose = true;
-					var ver = app.getVersion();
-					var args = browserWindow.args; // reloading doesn't work otherwise
-					args.url = "https://vdo.ninja/electron?version="+ver;
-					var title = browserWindow.getTitle();
-					browserWindow.destroy();
-					createWindow(args, title); // we close the window and open it again; a faked refresh
-					DoNotClose = false;
-					
-				}
-			},
-			{
-				label: '🔙 Go Back',
-				// Only show it when right-clicking text
-				visible: browserWindow.webContents.canGoBack() && browserWindow.webContents.getActiveIndex()>1,
-				click: () => {
-					//var args = browserWindow.args; // reloading doesn't work otherwise
-					//args.url = "https://vdo.ninja/electron?version="+ver;
-					//browserWindow.destroy();
-					//createWindow(args); // we close the window and open it again; a faked refresh
-					//DoNotClose = false;
-					browserWindow.webContents.goBack();
-				}
-			},
-			{
-				label: '♻ Reload (Ctrl+Shift+R)',
-				// Only show it when right-clicking text
-				visible: true,
-				click: () => {
-					DoNotClose = true; // avoids fully closing the app if no other windows are open
-					
-					var args = browserWindow.args; // reloading doesn't work otherwise
-					args.url = browserWindow.webContents.getURL();
-					var title = browserWindow.getTitle();
-					browserWindow.destroy();
-					createWindow(args, title); // we close the window and open it again; a faked refresh
-					DoNotClose = false;
-				}
-			},
-			{
-				label: '✖ Open New Window',
-				// Only show it when right-clicking text
-				visible: true,
-				click: () => {
-					var ver = app.getVersion();
-					var args = browserWindow.args;
-					args.url = "https://vdo.ninja/electron?version="+ver;
-					createWindow(args);
-				}
-			},
-			{
-				label: '⚠ Elevate Privilege',
-				// Only show it when right-clicking text
+	prepend: (defaultActions, params, browserWindow) => [
+		{
+			label: '🏠 Go to Homepage',
+			// Only show it when right-clicking text
+			visible: true,
+			click: () => {
+				
+				DoNotClose = true;
+				var ver = app.getVersion();
+				var args = browserWindow.args; // reloading doesn't work otherwise
+				args.url = "https://vdo.ninja/electron?version="+ver;
+				var title = browserWindow.getTitle();
+				browserWindow.destroy();
+				createWindow(args, title); // we close the window and open it again; a faked refresh
+				DoNotClose = false;
+				
+			}
+		},
+		{
+			label: '🔙 Go Back',
+			// Only show it when right-clicking text
+			visible: browserWindow.webContents.canGoBack() && browserWindow.webContents.getActiveIndex()>1,
+			click: () => {
+				//var args = browserWindow.args; // reloading doesn't work otherwise
+				//args.url = "https://vdo.ninja/electron?version="+ver;
+				//browserWindow.destroy();
+				//createWindow(args); // we close the window and open it again; a faked refresh
+				//DoNotClose = false;
+				browserWindow.webContents.goBack();
+			}
+		},
+		{
+			label: '♻ Reload (Ctrl+Shift+R)',
+			// Only show it when right-clicking text
+			visible: true,
+			click: () => {
+				DoNotClose = true; // avoids fully closing the app if no other windows are open
+				
+				var args = browserWindow.args; // reloading doesn't work otherwise
+				args.url = browserWindow.webContents.getURL();
+				var title = browserWindow.getTitle();
+				browserWindow.destroy();
+				createWindow(args, title); // we close the window and open it again; a faked refresh
+				DoNotClose = false;
+			}
+		},
+		{
+			label: '✖ Open New Window',
+			// Only show it when right-clicking text
+			visible: true,
+			click: () => {
+				var ver = app.getVersion();
+				var args = browserWindow.args;
+				args.url = "https://vdo.ninja/electron?version="+ver;
+				createWindow(args);
+			}
+		},
+		{
+			label: '⚠ Elevate Privilege',
+			// Only show it when right-clicking text
 
-				visible: !browserWindow.node,
-				click: () => {
-					let options  = {
-						 title : "Elevate the Allowed Privileges of websites",
-						 buttons: ["Yes","Cancel"],
-						 message: "This will reload the current page, allowing for screen-share, global-hotkeys, and message prompts.\n\nIt will however also decrease app-security, especially if on an untrusted website.\n\nContinue?"
-					};
-					let response = dialog.showMessageBoxSync(options);
-					if (response==0){
-						//var URL = browserWindow.webContents.getURL();
-						DoNotClose = true; // avoids fully closing the app if no other windows are open
-						//console.log(browserWindow.node);
-						var args = browserWindow.args;
-						args.url = browserWindow.webContents.getURL();
-						args.node = !browserWindow.node;
+			visible: !browserWindow.node,
+			click: () => {
+				let options  = {
+					 title : "Elevate the Allowed Privileges of websites",
+					 buttons: ["Yes","Cancel"],
+					 message: "This will reload the current page, allowing for screen-share, global-hotkeys, and message prompts.\n\nIt will however also decrease app-security, especially if on an untrusted website.\n\nContinue?"
+				};
+				let response = dialog.showMessageBoxSync(options);
+				if (response==0){
+					//var URL = browserWindow.webContents.getURL();
+					DoNotClose = true; // avoids fully closing the app if no other windows are open
+					//console.log(browserWindow.node);
+					var args = browserWindow.args;
+					args.url = browserWindow.webContents.getURL();
+					args.node = !browserWindow.node;
+					var title = browserWindow.getTitle();
+					browserWindow.destroy();
+					createWindow(args, title); // we close the window and open it again; a faked refresh
+					DoNotClose = false;
+				}
+			}
+		},
+		/////////////
+		{
+			label: '🎶 Change media device',
+			// Only show it when right-clicking text
+			visible: true,
+			type: 'submenu',
+			submenu: [
+				{
+					label: "🔈 Change audio destination for THIS element only",
+					// Only show it when right-clicking text
+
+					visible: params.mediaType == "video" || params.mediaType == "audio" || false,
+					click: () => {
+						var buttons = ["Cancel"];
+						var details = [false];
+						
+						
+						// browserWindow.inspectElement(params.x, params.y)
+						browserWindow.webContents.send('postMessage', {'getDeviceList':true, 'params':params});
+						
+						ipcMain.once('deviceList', (event, data) => {
+							console.log(data);
+							var deviceList = data.deviceInfos;
+							
+							//data.menu = menu || false;
+							//data.eleId = ele.id || false;
+							//data.UUID = ele.dataset.UUID || false;
+							//data.deviceInfos;
+							//data.params = params;
+							
+							for (var i=0;i<deviceList.length;i++){
+								if (deviceList[i].kind === "audiooutput"){
+									buttons.push(deviceList[i].label);
+									details.push(deviceList[i].deviceId);
+								}
+							}
+							let options  = {
+								title : "Change audio output device",
+								buttons: buttons,
+								message: "Change audio output specifically for this media element"
+							};
+							
+							let response = dialog.showMessageBoxSync(options);
+							if (response){
+								browserWindow.webContents.send('postMessage', {'changeAudioOutputDevice':details[response], data:data});
+							}
+								
+						});
+					}
+				},
+				{
+					label: '🔈 Change audio destination',
+					// Only show it when right-clicking text
+
+					visible: true, //browserWindow.node,
+					click: () => {
+						var buttons = ["Cancel"];
+						var details = [false];
+						
+						// browserWindow.inspectElement(params.x, params.y)
+						browserWindow.webContents.send('postMessage', {'getDeviceList':true, 'params':params});
+						
+						ipcMain.once('deviceList', (event, data) => {
+							console.log(data);
+							var deviceList = data.deviceInfos;
+							
+							//data.menu = menu || false;
+							//data.eleId = ele.id || false;
+							//data.UUID = ele.dataset.UUID || false;
+							//data.deviceInfos;
+							//data.params = params;
+							
+							for (var i=0;i<deviceList.length;i++){
+								if (deviceList[i].kind === "audiooutput"){
+									buttons.push(deviceList[i].label);
+									details.push(deviceList[i].deviceId);
+								}
+							}
+							let options  = {
+								title : "Change audio output device",
+								buttons: buttons,
+								message: "Change the audio output device"
+							};
+							
+							let response = dialog.showMessageBoxSync(options);
+							if (response){
+								browserWindow.webContents.send('postMessage', {'changeAudioOutputDevice':details[response]});
+							}
+								
+						});
+						
+						
+					}
+				},
+				{
+					label: '🎤 Change audio input [Requires Elevated Privileges]',
+					visible: !browserWindow.vdonVersion && !browserWindow.node,//!browserWindow.node,
+					click: () => {
+						let options  = {
+							 title : "Elevate the Allowed Privileges of websites",
+							 buttons: ["Yes","Cancel"],
+							 message: "This will reload the current page, allowing for screen-share, global-hotkeys, and message prompts.\n\nIt will however also decrease app-security, especially if on an untrusted website.\n\nContinue?"
+						};
+						let response = dialog.showMessageBoxSync(options);
+						if (response==0){
+							//var URL = browserWindow.webContents.getURL();
+							DoNotClose = true; // avoids fully closing the app if no other windows are open
+							//console.log(browserWindow.node);
+							var args = browserWindow.args;
+							args.url = browserWindow.webContents.getURL();
+							args.node = !browserWindow.node;
+							var title = browserWindow.getTitle();
+							browserWindow.destroy();
+							createWindow(args, title);
+							DoNotClose = false;
+						}
+					}
+				},
+				{
+					label: '🎤 Change audio input',
+					// Only show it when right-clicking text
+
+					visible: browserWindow.vdonVersion, //browserWindow.node,
+					click: () => {
+						var buttons = ["Cancel"];
+						var details = [false];
+						
+						browserWindow.webContents.send('postMessage', {'getDeviceList':true, 'params':params});
+						
+						ipcMain.once('deviceList', (event, data) => {
+							console.log(data);
+							var deviceList = data.deviceInfos;
+							
+							//data.menu = menu || false;
+							//data.eleId = ele.id || false;
+							//data.UUID = ele.dataset.UUID || false;
+							//data.deviceInfos;
+							//data.params = params;
+							
+							var deviceCounter = 0;
+							for (var i=0;i<deviceList.length;i++){
+								if (deviceList[i].kind === "audioinput"){
+									deviceCounter +=1;
+									buttons.push(deviceList[i].label);
+									details.push(deviceList[i].deviceId);
+								}
+							}
+							
+							let options  = { 
+								 title : "Change audio input device",
+								 buttons: buttons,
+								 message: "Change your local audio input source"
+							};
+						
+						
+							if (!deviceCounter){
+								options.message = "No audio input devices available here";
+							};
+							
+							
+							let response = dialog.showMessageBoxSync(options);
+							if (response){
+								browserWindow.webContents.send('postMessage', {'changeAudioDevice':details[response]});
+							}
+						})
+					}
+				},
+				{
+					label: '🎥 Change video input [Requires Elevated Privileges]',
+					visible: !browserWindow.vdonVersion && !browserWindow.node,//!browserWindow.node,
+					click: () => {
+						let options  = {
+							 title : "Elevate the Allowed Privileges of websites",
+							 buttons: ["Yes","Cancel"],
+							 message: "This will reload the current page, allowing for screen-share, global-hotkeys, and message prompts.\n\nIt will however also decrease app-security, especially if on an untrusted website.\n\nContinue?"
+						};
+						let response = dialog.showMessageBoxSync(options);
+						if (response==0){
+							//var URL = browserWindow.webContents.getURL();
+							DoNotClose = true; // avoids fully closing the app if no other windows are open
+							//console.log(browserWindow.node);
+							var args = browserWindow.args;
+							args.url = browserWindow.webContents.getURL();
+							args.node = !browserWindow.node;
+							var title = browserWindow.getTitle();
+							browserWindow.destroy();
+							createWindow(args, title);
+							DoNotClose = false;
+						}
+					}
+				},
+				{
+					label: '🎥 Change video input',
+					// Only show it when right-clicking text
+
+					visible: browserWindow.vdonVersion, //browserWindow.node,
+					click: () => {
+						var buttons = ["Cancel"];
+						var details = [false];
+						
+						browserWindow.webContents.send('postMessage', {'getDeviceList':true, 'params':params});
+						
+						ipcMain.once('deviceList', (event, data) => {
+							console.log(data);
+							var deviceList = data.deviceInfos;
+							
+							//data.menu = menu || false;
+							//data.eleId = ele.id || false;
+							//data.UUID = ele.dataset.UUID || false;
+							//data.deviceInfos;
+							//data.params = params;
+							var deviceCounter = 0;
+							for (var i=0;i<deviceList.length;i++){
+								if (deviceList[i].kind === "videoinput"){
+									deviceCounter+=1;
+									buttons.push(deviceList[i].label);
+									details.push(deviceList[i].deviceId);
+								}
+							}
+							let options  = {
+								 title : "Change video input device",
+								 buttons: buttons,
+								 message: "Change your local camera source"
+							};
+						
+						
+							if (!deviceCounter){
+								options.message = "No video devices available here";
+							};
+							
+							let response = dialog.showMessageBoxSync(options);
+							if (response){
+								browserWindow.webContents.send('postMessage', {'changeVideoDevice':details[response]});
+							}
+						})
+					}
+				}
+			]
+		},
+		{
+			label: '🧰 Enable Chrome Extension',
+			// Only show it when right-clicking text
+
+			visible: extensions.length,
+			click: () => {
+				var buttons = ["Cancel"];
+				
+				for (var i=0;i<extensions.length;i++){
+					buttons.push(extensions[i].name);
+				}
+				var options  = {
+					 title : "Choose an extension to enable",
+					 buttons: buttons,
+					 message: "Choose an extension to enable. You may need to reload the window to trigger once loaded."
+				};
+			
+			
+				let idx = dialog.showMessageBoxSync(options);
+				if (idx){
+					idx -= 1;
+					console.log(idx, extensions[idx].location);
+					
+					browserWindow.webContents.session.loadExtension(extensions[idx].location+"").then(({ id }) => {
+						console.log("loadExtension");
+					});
+					// extensions
+				}
+			}
+		},
+		{
+			label: '🔇 Mute the window',
+			type: 'checkbox',
+			visible: true,
+			checked: browserWindow.webContents.isAudioMuted(),
+			click: () => {
+				if (browserWindow.webContents.isAudioMuted()) {
+					browserWindow.webContents.setAudioMuted(false);
+				} else {
+					browserWindow.webContents.setAudioMuted(true);
+				}
+
+			}
+		},
+		{
+			label: '🔴 Record Video (toggle)',
+			// Only show it when right-clicking text
+			visible: (browserWindow.vdonVersion && params.mediaType == "video") || false,
+			click: () => {
+				if (browserWindow){
+					browserWindow.webContents.send('postMessage', {'record':true, 'params':params});
+				}
+			}
+		},
+		{
+			label: '✏ Edit URL',
+			// Only show it when right-clicking text
+			visible: true,
+			click: () => {
+				var URL = browserWindow.webContents.getURL();
+				var onTop = browserWindow.isAlwaysOnTop();
+				if (onTop) {
+					browserWindow.setAlwaysOnTop(false);
+				}
+				prompt({
+					title: 'Edit the URL',
+					label: 'URL:',
+					value: URL,
+					inputAttrs: {
+						type: 'url'
+					},
+					resizable: true,
+					type: 'input',
+					alwaysOnTop: true
+				})
+				.then((r) => {
+					if(r === null) {
+						console.log('user cancelled');
+						  if (onTop) {
+							browserWindow.setAlwaysOnTop(true);
+						  }
+					} else {
+						console.log('result', r);
+						if (onTop) {
+							browserWindow.setAlwaysOnTop(true);
+						}
+						var args = browserWindow.args; // reloading doesn't work otherwise
+						args.url = r;
 						var title = browserWindow.getTitle();
 						browserWindow.destroy();
 						createWindow(args, title); // we close the window and open it again; a faked refresh
 						DoNotClose = false;
 					}
-				}
-			},
-			/////////////
-			{
-				label: '🎶 Change media device',
+				})
+				.catch(console.error);
+			}
+		},
+		{
+			label: '🪟 IFrame Options',
+			// Only show it when right-clicking text
+			visible: params.frameURL,
+			type: 'submenu',
+			submenu: [{
+				label: '✏ Edit IFrame URL',
 				// Only show it when right-clicking text
 				visible: true,
-				type: 'submenu',
-				submenu: [
-					{
-						label: "🔈 Change audio destination for THIS element only",
-						// Only show it when right-clicking text
-
-						visible: params.mediaType == "video" || params.mediaType == "audio" || false,
-						click: () => {
-							var buttons = ["Cancel"];
-							var details = [false];
-							
-							
-							// browserWindow.inspectElement(params.x, params.y)
-							browserWindow.webContents.send('postMessage', {'getDeviceList':true, 'params':params});
-							
-							ipcMain.once('deviceList', (event, data) => {
-								console.log(data);
-								var deviceList = data.deviceInfos;
-								
-								//data.menu = menu || false;
-								//data.eleId = ele.id || false;
-								//data.UUID = ele.dataset.UUID || false;
-								//data.deviceInfos;
-								//data.params = params;
-								
-								for (var i=0;i<deviceList.length;i++){
-									if (deviceList[i].kind === "audiooutput"){
-										buttons.push(deviceList[i].label);
-										details.push(deviceList[i].deviceId);
-									}
-								}
-								let options  = {
-									title : "Change audio output device",
-									buttons: buttons,
-									message: "Change audio output specifically for this media element"
-								};
-								
-								let response = dialog.showMessageBoxSync(options);
-								if (response){
-									browserWindow.webContents.send('postMessage', {'changeAudioOutputDevice':details[response], data:data});
-								}
-									
-							});
-						}
-					},
-					{
-						label: '🔈 Change audio destination',
-						// Only show it when right-clicking text
-
-						visible: true, //browserWindow.node,
-						click: () => {
-							var buttons = ["Cancel"];
-							var details = [false];
-							
-							// browserWindow.inspectElement(params.x, params.y)
-							browserWindow.webContents.send('postMessage', {'getDeviceList':true, 'params':params});
-							
-							ipcMain.once('deviceList', (event, data) => {
-								console.log(data);
-								var deviceList = data.deviceInfos;
-								
-								//data.menu = menu || false;
-								//data.eleId = ele.id || false;
-								//data.UUID = ele.dataset.UUID || false;
-								//data.deviceInfos;
-								//data.params = params;
-								
-								for (var i=0;i<deviceList.length;i++){
-									if (deviceList[i].kind === "audiooutput"){
-										buttons.push(deviceList[i].label);
-										details.push(deviceList[i].deviceId);
-									}
-								}
-								let options  = {
-									title : "Change audio output device",
-									buttons: buttons,
-									message: "Change the audio output device"
-								};
-								
-								let response = dialog.showMessageBoxSync(options);
-								if (response){
-									browserWindow.webContents.send('postMessage', {'changeAudioOutputDevice':details[response]});
-								}
-									
-							});
-							
-							
-						}
-					},
-					{
-						label: '🎤 Change audio input [Requires Elevated Privileges]',
-						visible: !browserWindow.vdonVersion && !browserWindow.node,//!browserWindow.node,
-						click: () => {
-							let options  = {
-								 title : "Elevate the Allowed Privileges of websites",
-								 buttons: ["Yes","Cancel"],
-								 message: "This will reload the current page, allowing for screen-share, global-hotkeys, and message prompts.\n\nIt will however also decrease app-security, especially if on an untrusted website.\n\nContinue?"
-							};
-							let response = dialog.showMessageBoxSync(options);
-							if (response==0){
-								//var URL = browserWindow.webContents.getURL();
-								DoNotClose = true; // avoids fully closing the app if no other windows are open
-								//console.log(browserWindow.node);
-								var args = browserWindow.args;
-								args.url = browserWindow.webContents.getURL();
-								args.node = !browserWindow.node;
-								var title = browserWindow.getTitle();
-								browserWindow.destroy();
-								createWindow(args, title);
-								DoNotClose = false;
-							}
-						}
-					},
-					{
-						label: '🎤 Change audio input',
-						// Only show it when right-clicking text
-
-						visible: browserWindow.vdonVersion, //browserWindow.node,
-						click: () => {
-							var buttons = ["Cancel"];
-							var details = [false];
-							
-							browserWindow.webContents.send('postMessage', {'getDeviceList':true, 'params':params});
-							
-							ipcMain.once('deviceList', (event, data) => {
-								console.log(data);
-								var deviceList = data.deviceInfos;
-								
-								//data.menu = menu || false;
-								//data.eleId = ele.id || false;
-								//data.UUID = ele.dataset.UUID || false;
-								//data.deviceInfos;
-								//data.params = params;
-								
-								var deviceCounter = 0;
-								for (var i=0;i<deviceList.length;i++){
-									if (deviceList[i].kind === "audioinput"){
-										deviceCounter +=1;
-										buttons.push(deviceList[i].label);
-										details.push(deviceList[i].deviceId);
-									}
-								}
-								
-								let options  = { 
-									 title : "Change audio input device",
-									 buttons: buttons,
-									 message: "Change your local audio input source"
-								};
-							
-							
-								if (!deviceCounter){
-									options.message = "No audio input devices available here";
-								};
-								
-								
-								let response = dialog.showMessageBoxSync(options);
-								if (response){
-									browserWindow.webContents.send('postMessage', {'changeAudioDevice':details[response]});
-								}
-							})
-						}
-					},
-					{
-						label: '🎥 Change video input [Requires Elevated Privileges]',
-						visible: !browserWindow.vdonVersion && !browserWindow.node,//!browserWindow.node,
-						click: () => {
-							let options  = {
-								 title : "Elevate the Allowed Privileges of websites",
-								 buttons: ["Yes","Cancel"],
-								 message: "This will reload the current page, allowing for screen-share, global-hotkeys, and message prompts.\n\nIt will however also decrease app-security, especially if on an untrusted website.\n\nContinue?"
-							};
-							let response = dialog.showMessageBoxSync(options);
-							if (response==0){
-								//var URL = browserWindow.webContents.getURL();
-								DoNotClose = true; // avoids fully closing the app if no other windows are open
-								//console.log(browserWindow.node);
-								var args = browserWindow.args;
-								args.url = browserWindow.webContents.getURL();
-								args.node = !browserWindow.node;
-								var title = browserWindow.getTitle();
-								browserWindow.destroy();
-								createWindow(args, title);
-								DoNotClose = false;
-							}
-						}
-					},
-					{
-						label: '🎥 Change video input',
-						// Only show it when right-clicking text
-
-						visible: browserWindow.vdonVersion, //browserWindow.node,
-						click: () => {
-							var buttons = ["Cancel"];
-							var details = [false];
-							
-							browserWindow.webContents.send('postMessage', {'getDeviceList':true, 'params':params});
-							
-							ipcMain.once('deviceList', (event, data) => {
-								console.log(data);
-								var deviceList = data.deviceInfos;
-								
-								//data.menu = menu || false;
-								//data.eleId = ele.id || false;
-								//data.UUID = ele.dataset.UUID || false;
-								//data.deviceInfos;
-								//data.params = params;
-								var deviceCounter = 0;
-								for (var i=0;i<deviceList.length;i++){
-									if (deviceList[i].kind === "videoinput"){
-										deviceCounter+=1;
-										buttons.push(deviceList[i].label);
-										details.push(deviceList[i].deviceId);
-									}
-								}
-								let options  = {
-									 title : "Change video input device",
-									 buttons: buttons,
-									 message: "Change your local camera source"
-								};
-							
-							
-								if (!deviceCounter){
-									options.message = "No video devices available here";
-								};
-								
-								let response = dialog.showMessageBoxSync(options);
-								if (response){
-									browserWindow.webContents.send('postMessage', {'changeVideoDevice':details[response]});
-								}
-							})
-						}
-					}
-				]
-			},
-			{
-				label: '🧰 Enable Chrome Extension',
-				// Only show it when right-clicking text
-
-				visible: extensions.length,
 				click: () => {
-					var buttons = ["Cancel"];
+					console.log(browserWindow.webContents);
+					console.log(params);
 					
-					for (var i=0;i<extensions.length;i++){
-						buttons.push(extensions[i].name);
-					}
-					var options  = {
-						 title : "Choose an extension to enable",
-						 buttons: buttons,
-						 message: "Choose an extension to enable. You may need to reload the window to trigger once loaded."
-					};
-				
-				
-					let idx = dialog.showMessageBoxSync(options);
-					if (idx){
-						idx -= 1;
-						console.log(idx, extensions[idx].location);
-						
-						browserWindow.webContents.session.loadExtension(extensions[idx].location+"").then(({ id }) => {
-							console.log("loadExtension");
-						});
-						// extensions
-					}
-				}
-			},
-			{
-				label: '🔇 Mute the window',
-				type: 'checkbox',
-				visible: true,
-				checked: browserWindow.webContents.isAudioMuted(),
-				click: () => {
-					if (browserWindow.webContents.isAudioMuted()) {
-						browserWindow.webContents.setAudioMuted(false);
-					} else {
-						browserWindow.webContents.setAudioMuted(true);
-					}
-
-				}
-			},
-			{
-				label: '🔴 Record Video (toggle)',
-				// Only show it when right-clicking text
-				visible: (browserWindow.vdonVersion && params.mediaType == "video") || false,
-				click: () => {
-					if (browserWindow){
-						browserWindow.webContents.send('postMessage', {'record':true, 'params':params});
-					}
-				}
-			},
-			{
-				label: '✏ Edit URL',
-				// Only show it when right-clicking text
-				visible: true,
-				click: () => {
-					var URL = browserWindow.webContents.getURL();
+					var URL = params.frameURL;
 					var onTop = browserWindow.isAlwaysOnTop();
 					if (onTop) {
 						browserWindow.setAlwaysOnTop(false);
 					}
 					prompt({
-						title: 'Edit the URL',
+						title: 'Edit the target IFrame URL',
 						label: 'URL:',
 						value: URL,
 						inputAttrs: {
@@ -1016,414 +1072,396 @@ contextMenu({
 							if (onTop) {
 								browserWindow.setAlwaysOnTop(true);
 							}
-							var args = browserWindow.args; // reloading doesn't work otherwise
-							args.url = r;
-							var title = browserWindow.getTitle();
-							browserWindow.destroy();
-							createWindow(args, title); // we close the window and open it again; a faked refresh
-							DoNotClose = false;
+							
+							browserWindow.webContents.executeJavaScript('(function () {\
+								var ele = document.elementFromPoint('+params.x+', '+params.y+');\
+								if (ele.tagName !== "IFRAME"){\
+									ele = false;\
+									document.querySelectorAll("iframe").forEach(ee=>{\
+										if (ee.src == "'+URL+'"){\
+											ele = ee;\
+										}\
+									});\
+								}\
+								if (ele && (ele.tagName == "IFRAME")){\
+									ele.src = "'+r+'";\
+								}\
+							})();');
+							
 						}
 					})
 					.catch(console.error);
 				}
-			},
-			{
-				label: '🪟 IFrame Options',
+			},{
+				label: '♻ Reload IFrame',
 				// Only show it when right-clicking text
-				visible: params.frameURL,
-				type: 'submenu',
-				submenu: [{
-					label: '✏ Edit IFrame URL',
+				visible: true,
+				click: () => {
+					browserWindow.webContents.mainFrame.frames.forEach(frame => {
+					  if (frame.url === params.frameURL) {
+						frame.reload();
+					  }
+					});
+				}
+			},{
+				label: '🔙 Go Back in IFrame',
+				// Only show it when right-clicking text
+				visible: true,
+				click: () => {
+					browserWindow.webContents.mainFrame.frames.forEach(frame => {
+					  if (frame.url === params.frameURL) {
+						frame.executeJavaScript('(function () {window.history.back();})();');
+					  }
+					});
+				}
+			},{
+				label: 'Go Forward in IFrame',
+				// Only show it when right-clicking text
+				visible: true,
+				click: () => {
+					browserWindow.webContents.mainFrame.frames.forEach(frame => {
+					  if (frame.url === params.frameURL) {
+						frame.executeJavaScript('(function () {window.history.forward();})();');
+					  }
+					});
+				}
+			}]
+		},
+	  {
+		label: '📑 Insert CSS',
+		// Only show it when right-clicking text
+		visible: true,
+		click: () => {
+		  var onTop = browserWindow.isAlwaysOnTop();
+		  if (onTop) {
+			browserWindow.setAlwaysOnTop(false);
+		  }
+		  prompt({
+			title: 'Insert Custom CSS',
+			label: 'CSS:',
+			value: "body {background-color:#0000;}",
+			inputAttrs: {
+			  type: 'text'
+			},
+			resizable: true,
+			type: 'input',
+			alwaysOnTop: true
+		  })
+		  .then((r) => {
+			if(r === null) {
+			  console.log('user cancelled');
+			  if (onTop) {
+				browserWindow.setAlwaysOnTop(true);
+			  }
+			} else {
+			  console.log('result', r);
+			  if (onTop) {
+				browserWindow.setAlwaysOnTop(true);
+			  }
+			  browserWindow.webContents.insertCSS(r, {cssOrigin: 'user'});
+			}
+		  })
+		  .catch(console.error);
+		}
+	  },
+		{
+			label: '✏ Edit Window Title',
+			// Only show it when right-clicking text
+			visible: true,
+			click: () => {
+				var title2 = browserWindow.getTitle();
+				var onTop = browserWindow.isAlwaysOnTop();
+				if (onTop) {
+					browserWindow.setAlwaysOnTop(false);
+				}
+				prompt({
+					title: 'Edit  Window Title',
+					label: 'Title:',
+					value: title2,
+					inputAttrs: {
+							type: 'string'
+					},
+					resizable: true,
+					type: 'input',
+					alwaysOnTop: true
+				}).then((r) => {
+					if(r === null) {
+						if (onTop) {
+						  browserWindow.setAlwaysOnTop(true);
+						}
+						console.log('user cancelled');
+					} else {
+						if (onTop) {
+							browserWindow.setAlwaysOnTop(true);
+						}
+						console.log('result', r);
+						browserWindow.args.title = r;
+						browserWindow.setTitle(r);
+					}
+				})
+				.catch(console.error);
+			}
+		},
+		{
+			label: '↔ Resize window',
+			// Only show it when right-clicking text
+			visible: true,
+			type: 'submenu',
+			submenu: [
+				{
+					label: 'Fullscreen',
+					// Only show if not already full-screen
+					visible: !browserWindow.isMaximized(),
+					click: () => {
+						if (process.platform == "darwin"){ // On certain electron builds, fullscreen fails on macOS; this is in case it starts happening again
+							browserWindow.isMaximized() ? browserWindow.unmaximize() : browserWindow.maximize();
+						} else {
+							browserWindow.isFullScreen() ? browserWindow.setFullScreen(false) : browserWindow.setFullScreen(true);
+						}
+						//browserWindow.setMenu(null);
+						//const {width,height} = screen.getPrimaryDisplay().workAreaSize;
+						//browserWindow.setSize(width, height);
+					}
+				},
+				{
+					label: '1920x1080',
 					// Only show it when right-clicking text
 					visible: true,
 					click: () => {
-						console.log(browserWindow.webContents);
-						console.log(params);
-						
-						var URL = params.frameURL;
+						if (process.platform !== "darwin"){
+							if (browserWindow.isFullScreen()){browserWindow.setFullScreen(false);}
+						} else {
+							if (browserWindow.isMaximized()){browserWindow.unmaximize();}
+						}
+						//let factor = screen.getPrimaryDisplay().scaleFactor;
+						//browserWindow.setSize(1920/factor, 1080/factor);
+						let point =  screen.getCursorScreenPoint();
+						let factor = screen.getDisplayNearestPoint(point).scaleFactor;
+						browserWindow.setSize(1920/factor, 1080/factor);
+					}
+				},
+				{
+					label: '1280x720',
+					// Only show it when right-clicking text
+					visible: true,
+					click: () => {
+						if (process.platform !== "darwin"){
+							if (browserWindow.isFullScreen()){browserWindow.setFullScreen(false);}
+						} else {
+							if (browserWindow.isMaximized()){browserWindow.unmaximize();}
+						}	
+						let point =  screen.getCursorScreenPoint();
+						let factor = screen.getDisplayNearestPoint(point).scaleFactor;
+						browserWindow.setSize(1280/factor, 720/factor);
+					}
+				},
+				{
+					label: '640x360',
+					// Only show it when right-clicking text
+					visible: true,
+					click: () => {
+						if (process.platform !== "darwin"){
+							if (browserWindow.isFullScreen()){browserWindow.setFullScreen(false);}
+						} else {
+							if (browserWindow.isMaximized()){browserWindow.unmaximize();}
+						}
+						let point =  screen.getCursorScreenPoint();
+						let factor = screen.getDisplayNearestPoint(point).scaleFactor;
+						browserWindow.setSize(640/factor, 360/factor);
+					}
+				},
+				{
+					label: 'Custom resolution',
+					// Only show it when right-clicking text
+					visible: true,
+					click: () => {
+						var URL = browserWindow.webContents.getURL();
 						var onTop = browserWindow.isAlwaysOnTop();
 						if (onTop) {
 							browserWindow.setAlwaysOnTop(false);
 						}
 						prompt({
-							title: 'Edit the target IFrame URL',
-							label: 'URL:',
-							value: URL,
+							title: 'Custom window resolution',
+							label: 'Enter a resolution:',
+							value: browserWindow.getSize()[0] + 'x' + browserWindow.getSize()[1],
 							inputAttrs: {
-								type: 'url'
+								type: 'string',
+								placeholder: '1280x720'
 							},
-							resizable: true,
 							type: 'input',
 							alwaysOnTop: true
 						})
 						.then((r) => {
 							if(r === null) {
 								console.log('user cancelled');
-								  if (onTop) {
-									browserWindow.setAlwaysOnTop(true);
-								  }
-							} else {
-								console.log('result', r);
 								if (onTop) {
 									browserWindow.setAlwaysOnTop(true);
 								}
-								
-								browserWindow.webContents.executeJavaScript('(function () {\
-									var ele = document.elementFromPoint('+params.x+', '+params.y+');\
-									if (ele.tagName !== "IFRAME"){\
-										ele = false;\
-										document.querySelectorAll("iframe").forEach(ee=>{\
-											if (ee.src == "'+URL+'"){\
-												ele = ee;\
-											}\
-										});\
-									}\
-									if (ele && (ele.tagName == "IFRAME")){\
-										ele.src = "'+r+'";\
-									}\
-								})();');
-								
+							} else {
+								console.log('Window resized to ', r);
+								if (onTop) {
+									browserWindow.setAlwaysOnTop(true);
+								}
+								if (process.platform !== "darwin"){
+									if (browserWindow.isFullScreen()){browserWindow.setFullScreen(false);}
+								} else {
+									if (browserWindow.isMaximized()){browserWindow.unmaximize();}
+								}	
+								let point =  screen.getCursorScreenPoint();
+								let factor = screen.getDisplayNearestPoint(point).scaleFactor;
+								console.log(r);
+								console.log(factor);
+								browserWindow.setSize(r.split('x')[0]/factor, r.split('x')[1]/factor);
 							}
 						})
 						.catch(console.error);
 					}
-				},{
-					label: '♻ Reload IFrame',
-					// Only show it when right-clicking text
-					visible: true,
-					click: () => {
-						browserWindow.webContents.mainFrame.frames.forEach(frame => {
-						  if (frame.url === params.frameURL) {
-							frame.reload();
-						  }
-						});
-					}
-				},{
-					label: '🔙 Go Back in IFrame',
-					// Only show it when right-clicking text
-					visible: true,
-					click: () => {
-						browserWindow.webContents.mainFrame.frames.forEach(frame => {
-						  if (frame.url === params.frameURL) {
-							frame.executeJavaScript('(function () {window.history.back();})();');
-						  }
-						});
-					}
-				},{
-					label: 'Go Forward in IFrame',
-					// Only show it when right-clicking text
-					visible: true,
-					click: () => {
-						browserWindow.webContents.mainFrame.frames.forEach(frame => {
-						  if (frame.url === params.frameURL) {
-							frame.executeJavaScript('(function () {window.history.forward();})();');
-						  }
-						});
-					}
-				}]
-			},
-		  {
-			label: '📑 Insert CSS',
+				}
+			]
+		},
+		{
+			label: '🚿 Clean Video Output',
+			type: 'checkbox',
+			visible: (!browserWindow.webContents.getURL().includes('vdo.ninja') && !browserWindow.webContents.getURL().includes('invite.cam')),
+			checked: false,
+			click: () => {
+				var css = " \
+					.html5-video-player {\
+						z-index:unset!important;\
+					}\
+					.html5-video-container {	\
+						z-index:unset!important;\
+					}\
+					video { \
+						width: 100vw!important;height: 100vh!important;  \
+						left: 0px!important;    \
+						object-fit: cover!important;\
+						top: 0px!important;\
+						overflow:hidden;\
+						z-index: 2147483647!important;\
+						position: fixed!important;\
+					}\
+					body {\
+						overflow: hidden!important;\
+					}";
+				browserWindow.webContents.insertCSS(css, {cssOrigin: 'user'});
+				browserWindow.webContents.executeJavaScript('(function () {\
+					var videos = document.querySelectorAll("video");\
+					if (videos.length>1){\
+						var video = videos[0];\
+						for (var i=1;i<videos.length;i++){\
+							if (!video.videoWidth){\
+								video = videos[i];\
+							} else if (videos[i].videoWidth && (videos[i].videoWidth>video.videoWidth)){\
+								video = videos[i];\
+							}\
+						}\
+						document.body.appendChild(video);\
+					} else if (videos.length){\
+						document.body.appendChild(videos[0]);\
+					}\
+				})();');
+				
+				if (browserWindow.webContents.getURL().includes('youtube.com')){
+					browserWindow.webContents.executeJavaScript('(function () {\
+						if (!xxxxxx){\
+							var xxxxxx = setInterval(function(){\
+							if (document.querySelector(".ytp-ad-skip-button")){\
+								document.querySelector(".ytp-ad-skip-button").click();\
+							}\
+							},500);\
+						}\
+					})();');
+				}
+			}
+		},
+		{
+			label: '📌 Always on top',
+			type: 'checkbox',
+			visible: true,
+			checked: browserWindow.isAlwaysOnTop(),
+			click: () => {
+				if (browserWindow.isAlwaysOnTop()) {
+					browserWindow.setAlwaysOnTop(false);
+					browserWindow.args.pin = false;
+					browserWindow.setVisibleOnAllWorkspaces(false);
+				} else {
+					browserWindow.args.pin = true;
+					browserWindow.setAlwaysOnTop(true, "floating", 1);
+					browserWindow.setVisibleOnAllWorkspaces(true);
+				}
+			}
+		},
+		{
+			label: 'Force 16/9 aspect ratio',
+			type: 'checkbox',
+			visible: false, // need to re-ensable this at some point
+			checked: forcingAspectRatio,
+			click: () => {
+				if (forcingAspectRatio) {
+					browserWindow.setAspectRatio(0)
+					forcingAspectRatio = false
+				} else {
+					browserWindow.setAspectRatio(16/9)
+					forcingAspectRatio = true
+				}
+
+			}
+		},
+		{
+			label: '🔍 Inspect Element',
+			visible: true,
+			click: () => {
+				browserWindow.inspectElement(params.x, params.y)
+			}
+		},
+		{
+			label: '❌ Close',
 			// Only show it when right-clicking text
 			visible: true,
 			click: () => {
-			  var onTop = browserWindow.isAlwaysOnTop();
-			  if (onTop) {
-				browserWindow.setAlwaysOnTop(false);
-			  }
-			  prompt({
-				title: 'Insert Custom CSS',
-				label: 'CSS:',
-				value: "body {background-color:#0000;}",
-				inputAttrs: {
-				  type: 'text'
-				},
-				resizable: true,
-				type: 'input',
-				alwaysOnTop: true
-			  })
-			  .then((r) => {
-				if(r === null) {
-				  console.log('user cancelled');
-				  if (onTop) {
-					browserWindow.setAlwaysOnTop(true);
-				  }
-				} else {
-				  console.log('result', r);
-				  if (onTop) {
-					browserWindow.setAlwaysOnTop(true);
-				  }
-				  browserWindow.webContents.insertCSS(r, {cssOrigin: 'user'});
-				}
-			  })
-			  .catch(console.error);
+				browserWindow.close() // hide, and wait 2 second before really closing; this allows for saving of files.
 			}
-		  },
-			{
-				label: '✏ Edit Window Title',
-				// Only show it when right-clicking text
-				visible: true,
-				click: () => {
-					var title2 = browserWindow.getTitle();
-					var onTop = browserWindow.isAlwaysOnTop();
-					if (onTop) {
-						browserWindow.setAlwaysOnTop(false);
-					}
-					prompt({
-						title: 'Edit  Window Title',
-						label: 'Title:',
-						value: title2,
-						inputAttrs: {
-								type: 'string'
-						},
-						resizable: true,
-						type: 'input',
-						alwaysOnTop: true
-					}).then((r) => {
-						if(r === null) {
-							if (onTop) {
-							  browserWindow.setAlwaysOnTop(true);
-							}
-							console.log('user cancelled');
-						} else {
-							if (onTop) {
-								browserWindow.setAlwaysOnTop(true);
-							}
-							console.log('result', r);
-							browserWindow.args.title = r;
-							browserWindow.setTitle(r);
-						}
-					})
-					.catch(console.error);
-				}
-			},
-			{
-				label: '↔ Resize window',
-				// Only show it when right-clicking text
-				visible: true,
-				type: 'submenu',
-				submenu: [
-					{
-						label: 'Fullscreen',
-						// Only show if not already full-screen
-						visible: !browserWindow.isMaximized(),
-						click: () => {
-							if (process.platform == "darwin"){ // On certain electron builds, fullscreen fails on macOS; this is in case it starts happening again
-								browserWindow.isMaximized() ? browserWindow.unmaximize() : browserWindow.maximize();
-							} else {
-								browserWindow.isFullScreen() ? browserWindow.setFullScreen(false) : browserWindow.setFullScreen(true);
-							}
-							//browserWindow.setMenu(null);
-							//const {width,height} = screen.getPrimaryDisplay().workAreaSize;
-							//browserWindow.setSize(width, height);
-						}
-					},
-					{
-						label: '1920x1080',
-						// Only show it when right-clicking text
-						visible: true,
-						click: () => {
-							if (process.platform !== "darwin"){
-								if (browserWindow.isFullScreen()){browserWindow.setFullScreen(false);}
-							} else {
-								if (browserWindow.isMaximized()){browserWindow.unmaximize();}
-							}
-							//let factor = screen.getPrimaryDisplay().scaleFactor;
-							//browserWindow.setSize(1920/factor, 1080/factor);
-							let point =  screen.getCursorScreenPoint();
-							let factor = screen.getDisplayNearestPoint(point).scaleFactor;
-							browserWindow.setSize(1920/factor, 1080/factor);
-						}
-					},
-					{
-						label: '1280x720',
-						// Only show it when right-clicking text
-						visible: true,
-						click: () => {
-							if (process.platform !== "darwin"){
-								if (browserWindow.isFullScreen()){browserWindow.setFullScreen(false);}
-							} else {
-								if (browserWindow.isMaximized()){browserWindow.unmaximize();}
-							}	
-							let point =  screen.getCursorScreenPoint();
-							let factor = screen.getDisplayNearestPoint(point).scaleFactor;
-							browserWindow.setSize(1280/factor, 720/factor);
-						}
-					},
-					{
-						label: '640x360',
-						// Only show it when right-clicking text
-						visible: true,
-						click: () => {
-							if (process.platform !== "darwin"){
-								if (browserWindow.isFullScreen()){browserWindow.setFullScreen(false);}
-							} else {
-								if (browserWindow.isMaximized()){browserWindow.unmaximize();}
-							}
-							let point =  screen.getCursorScreenPoint();
-							let factor = screen.getDisplayNearestPoint(point).scaleFactor;
-							browserWindow.setSize(640/factor, 360/factor);
-						}
-					},
-					{
-						label: 'Custom resolution',
-						// Only show it when right-clicking text
-						visible: true,
-						click: () => {
-							var URL = browserWindow.webContents.getURL();
-							var onTop = browserWindow.isAlwaysOnTop();
-							if (onTop) {
-								browserWindow.setAlwaysOnTop(false);
-							}
-							prompt({
-								title: 'Custom window resolution',
-								label: 'Enter a resolution:',
-								value: browserWindow.getSize()[0] + 'x' + browserWindow.getSize()[1],
-								inputAttrs: {
-									type: 'string',
-									placeholder: '1280x720'
-								},
-								type: 'input',
-								alwaysOnTop: true
-							})
-							.then((r) => {
-								if(r === null) {
-									console.log('user cancelled');
-									if (onTop) {
-										browserWindow.setAlwaysOnTop(true);
-									}
-								} else {
-									console.log('Window resized to ', r);
-									if (onTop) {
-										browserWindow.setAlwaysOnTop(true);
-									}
-									if (process.platform !== "darwin"){
-										if (browserWindow.isFullScreen()){browserWindow.setFullScreen(false);}
-									} else {
-										if (browserWindow.isMaximized()){browserWindow.unmaximize();}
-									}	
-									let point =  screen.getCursorScreenPoint();
-									let factor = screen.getDisplayNearestPoint(point).scaleFactor;
-									console.log(r);
-									console.log(factor);
-									browserWindow.setSize(r.split('x')[0]/factor, r.split('x')[1]/factor);
-								}
-							})
-							.catch(console.error);
-						}
-					}
-				]
-			},
-			{
-				label: '🚿 Clean Video Output',
-				type: 'checkbox',
-				visible: (!browserWindow.webContents.getURL().includes('vdo.ninja') && !browserWindow.webContents.getURL().includes('invite.cam')),
-				checked: false,
-				click: () => {
-					var css = " \
-						.html5-video-player {\
-							z-index:unset!important;\
-						}\
-						.html5-video-container {	\
-							z-index:unset!important;\
-						}\
-						video { \
-							width: 100vw!important;height: 100vh!important;  \
-							left: 0px!important;    \
-							object-fit: cover!important;\
-							top: 0px!important;\
-							overflow:hidden;\
-							z-index: 2147483647!important;\
-							position: fixed!important;\
-						}\
-						body {\
-							overflow: hidden!important;\
-						}";
-					browserWindow.webContents.insertCSS(css, {cssOrigin: 'user'});
-					browserWindow.webContents.executeJavaScript('(function () {\
-						var videos = document.querySelectorAll("video");\
-						if (videos.length>1){\
-							var video = videos[0];\
-							for (var i=1;i<videos.length;i++){\
-								if (!video.videoWidth){\
-									video = videos[i];\
-								} else if (videos[i].videoWidth && (videos[i].videoWidth>video.videoWidth)){\
-									video = videos[i];\
-								}\
-							}\
-							document.body.appendChild(video);\
-						} else if (videos.length){\
-							document.body.appendChild(videos[0]);\
-						}\
-					})();');
-					
-					if (browserWindow.webContents.getURL().includes('youtube.com')){
-						browserWindow.webContents.executeJavaScript('(function () {\
-							if (!xxxxxx){\
-								var xxxxxx = setInterval(function(){\
-								if (document.querySelector(".ytp-ad-skip-button")){\
-									document.querySelector(".ytp-ad-skip-button").click();\
-								}\
-								},500);\
-							}\
-						})();');
-					}
-				}
-			},
-			{
-				label: '📌 Always on top',
-				type: 'checkbox',
-				visible: true,
-				checked: browserWindow.isAlwaysOnTop(),
-				click: () => {
-					if (browserWindow.isAlwaysOnTop()) {
-						browserWindow.setAlwaysOnTop(false);
-						browserWindow.args.pin = false;
-						browserWindow.setVisibleOnAllWorkspaces(false);
-					} else {
-						browserWindow.args.pin = true;
-						browserWindow.setAlwaysOnTop(true, "floating", 1);
-						browserWindow.setVisibleOnAllWorkspaces(true);
-					}
-				}
-			},
-			{
-				label: 'Force 16/9 aspect ratio',
-				type: 'checkbox',
-				visible: false, // need to re-ensable this at some point
-				checked: forcingAspectRatio,
-				click: () => {
-					if (forcingAspectRatio) {
-						browserWindow.setAspectRatio(0)
-						forcingAspectRatio = false
-					} else {
-						browserWindow.setAspectRatio(16/9)
-						forcingAspectRatio = true
-					}
-
-				}
-			},
-			{
-				label: '🔍 Inspect Element',
-				visible: true,
-				click: () => {
-					browserWindow.inspectElement(params.x, params.y)
-				}
-			},
-			{
-				label: '❌ Close',
-				// Only show it when right-clicking text
-				visible: true,
-				click: () => {
-					browserWindow.destroy();
-				}
-			}
-		]
-	});
+		}
+	]
+});
 
 app.on('second-instance', (event, commandLine, workingDirectory, argv2) => {
 	createWindow(argv2, argv2.title);
 });
+
+var DoNotClose = false;
+app.on('window-all-closed', () => {
+	if (DoNotClose){
+		//console.log("DO NOT CLOSE!");
+		return;
+	}
+	//console.log("DO NOT CLOSE... erk?");
+	app.quit();
+})
+
+var closing = 0;
+app.on('before-quit', (event) => {
+	if (!BrowserWindow.getAllWindows().length){ // no windows open, so just close
+		return;
+	}
+	
+	if (closing!=2){
+		closing = 1;
+		event.preventDefault()
+	} else if (closing==2){
+		return;
+	}
+	
+	BrowserWindow.getAllWindows().forEach((bw)=>{
+		bw.hide();
+		bw.webContents.send('postMessage', {'hangup':true});
+	});
+	setTimeout(function(){
+	  closing = 2;
+	  app.quit();
+	},1600);
+})
 
 const folder = path.join(app.getPath('appData'), `${app.name}`);
 if (!fs.existsSync(folder)) {
@@ -1464,15 +1502,7 @@ app.on('ready', () => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 
-var DoNotClose = false;
-app.on('window-all-closed', () => {
-	if (DoNotClose){
-		//console.log("DO NOT CLOSE!");
-		return;
-	}
-	//console.log("DO NOT CLOSE... erk?");
-	app.quit();
-})
+
 
 app.on('activate', function () {
   // On macOS it's common to re-create a window in the app when the

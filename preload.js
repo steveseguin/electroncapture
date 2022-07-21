@@ -83,8 +83,38 @@ ipcRenderer.on('postMessage', (event, ...args) => {
 				console.log(session.remoteInterfaceAPI);
 				console.log("no doSomethingInWebApp");
 			}
-			
 		}
+		
+		if ("hangup" in args[0]) {
+			if (args[0].hangup == "estop"){
+				if (doSomethingInWebApp) {
+					console.log("HANG UP ESTOP1 ");
+					var fauxEvent = {};
+					fauxEvent.data = {};
+					fauxEvent.data.hangup = "estop";
+					doSomethingInWebApp(fauxEvent);
+				} else {
+					console.log("HANG UP ESTOP1 2");
+					session.hangup(false, true); // no reload, estop=true
+					console.log(session.remoteInterfaceAPI);
+					console.log("no doSomethingInWebApp");
+				}
+			} else {
+				if (doSomethingInWebApp) {
+					console.log("HANG UP 1");
+					var fauxEvent = {};
+					fauxEvent.data = {};
+					fauxEvent.data.hangup = true;
+					doSomethingInWebApp(fauxEvent);
+				} else {
+					console.log("HANG UP 2");
+					session.hangup();
+					console.log(session.remoteInterfaceAPI);
+					console.log("no doSomethingInWebApp");
+				}
+			}
+		}
+		
 		if (doSomethingInWebApp && ("mic" in args[0])){ // this is the new version.
 			var fauxEvent = {};
 			fauxEvent.data = {};
