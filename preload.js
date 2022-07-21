@@ -104,7 +104,7 @@ ipcRenderer.on('postMessage', (event, ...args) => {
 					console.log("HANG UP 1");
 					var fauxEvent = {};
 					fauxEvent.data = {};
-					fauxEvent.data.hangup = true;
+					fauxEvent.data.close = true; // close and hangup are the same; close is compatible with older vdon versions tho. no estop tho.
 					doSomethingInWebApp(fauxEvent);
 				} else {
 					console.log("HANG UP 2");
