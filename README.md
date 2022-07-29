@@ -1,7 +1,7 @@
+*Update*:  If looking to just use VDO.Ninja on PC/Mac, you do not need to use Electron capture.  Previously (2020/2021) it was needed, but as of 2022, OBS Studio works quite well with VDO.Ninja directly via a browser source.  Electron Capture offers some benefits, but it is optional.  Please join me on discord at https://discord.vdo.ninja for help.
+
 ## This is the **Electron Capture app**,
 Created for <a href="https://vdo.ninja">VDO.Ninja</a> users, it can provide users a clean way of window capturing websites. In the case of VDO.Ninja, it may offer a more flexible and reliable method of capturing live video than the browser source plugin built into OBS.
-
-*Update*:  If looking to just use VDO.Ninja on PC/Mac, you do not need to use Electron capture.  Previously (2020/2021) it was needed, but as of 2022, OBS Studio works quite well with VDO.Ninja directly via a browser source.  Electron Capture offers some benefits, but it is optional.  Please join me on discord at https://discord.vdo.ninja for help.
 
 #### <a href="https://github.com/steveseguin/electroncapture#links-to-downloads-below">Jump to Downloads Section</a>
 
