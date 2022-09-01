@@ -211,7 +211,7 @@ Getting the correct nodejs/npm versions can be hard on linux, but using snap can
 ```
 sudo apt-get update
 sudo apt-get install snapd -y
-sudo snap install node --classic --channel=14
+sudo snap install node --classic --channel=16
 ```
 Next, close the shell and open a new one, to ensure the installation is completed.
 
