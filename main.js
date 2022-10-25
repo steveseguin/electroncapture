@@ -553,7 +553,7 @@ async function createWindow(args, reuse=false){
 		if (PIN == true) {
 			// "floating" + 1 is higher than all regular windows, but still behind things
 			// like spotlight or the screen saver
-			mainWindow.setAlwaysOnTop(true, "floating", 1);
+			mainWindow.setAlwaysOnTop(true, "level");
 			// allows the window to show over a fullscreen window
 			mainWindow.setVisibleOnAllWorkspaces(true);
 		} else {
@@ -1387,7 +1387,7 @@ contextMenu({
 					browserWindow.setVisibleOnAllWorkspaces(false);
 				} else {
 					browserWindow.args.pin = true;
-					browserWindow.setAlwaysOnTop(true, "floating", 1);
+					browserWindow.setAlwaysOnTop(true, "level");
 					browserWindow.setVisibleOnAllWorkspaces(true);
 				}
 			}
