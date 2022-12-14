@@ -105,6 +105,12 @@ function createYargs(){
     type: "string",
     default: null
   })
+  .option("css", {
+    alias: "css",
+    describe: "Have local CSS script be auto-loaded into every page",
+    type: "string",
+    default: null
+  })
   .describe("help", "Show help."); // Override --help usage message.
   
   return argv.argv;
@@ -200,9 +206,43 @@ function sleep(ms) {
 
 async function createWindow(args, reuse=false){
 	var webSecurity = true;
-	var URL = args.url, NODE = args.node, WIDTH = args.width, HEIGHT = args.height, TITLE = args.title, PIN = args.pin, X = args.x, Y = args.y, FULLSCREEN = args.fullscreen, UNCLICKABLE = args.uc, MINIMIZED = args.min;
+	var URL = args.url, NODE = args.node, WIDTH = args.width, HEIGHT = args.height, TITLE = args.title, PIN = args.pin, X = args.x, Y = args.y, FULLSCREEN = args.fullscreen, UNCLICKABLE = args.uc, MINIMIZED = args.min, CSS = args.css;
 	console.log(args);
 	
+	var CSSCONTENT = false;
+	if (CSS){
+		var p = path.join(__dirname, '.', CSS);
+		console.log("Trying: "+p);
+		
+		var res, rej;
+		var promise = new Promise((resolve, reject) => {
+			res = resolve;
+			rej = reject;
+		});
+		promise.resolve = res;
+		promise.reject = rej;
+		
+		fs.readFile(p, 'utf8', function (err, data) {
+		  if (err) {
+			  console.log("Trying: "+CSS);
+			  fs.readFile(CSS, 'utf8', function (err, data) {
+				  if (err) {
+					  console.log("Couldn't read specified CSS file");
+				  } else{
+					  CSSCONTENT = data;
+				  }
+				  promise.resolve();
+			  });
+		  } else {
+			  CSSCONTENT = data;
+			  promise.resolve();
+		  } 
+		});
+		await promise;
+		if (CSSCONTENT){
+			console.log("Loaded specified file.");
+		}
+	}
 	try {
 		if (URL.startsWith("file:")){
 			webSecurity = false; // not ideal, but to open local files, this is needed.
@@ -520,6 +560,17 @@ async function createWindow(args, reuse=false){
 				}
 			},5000, mainWindow);
 		}
+		
+		if (CSSCONTENT && mainWindow && mainWindow.webContents){
+			try {
+				mainWindow.webContents.insertCSS(CSSCONTENT, {cssOrigin: 'user'});
+				console.log("Inserting specified CSS contained in the file");
+			} catch(e){
+				console.log(e);
+			}
+		}
+		
+		//
 	});
 	
 	//ipcMain.on('postMessage', (msg) => {
