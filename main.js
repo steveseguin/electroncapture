@@ -81,9 +81,21 @@ function createYargs(){
     type: "boolean",
 	default: false
   })
+  .option("minimized", {
+	alias: "min",
+    describe: "Starts the window minimized",
+    type: "boolean",
+	default: false
+  })
   .option("fullscreen", {
     alias: "f",
     describe: "Enables full-screen mode for the first window on its load.",
+    type: "boolean",
+    default: false
+  })
+  .option("unclickable", {
+    alias: "uc",
+    describe: "The page will pass thru any mouse clicks or other mouse events",
     type: "boolean",
     default: false
   })
@@ -188,7 +200,7 @@ function sleep(ms) {
 
 async function createWindow(args, reuse=false){
 	var webSecurity = true;
-	var URL = args.url, NODE = args.node, WIDTH = args.width, HEIGHT = args.height, TITLE = args.title, PIN = args.pin, X = args.x, Y = args.y, FULLSCREEN = args.fullscreen;
+	var URL = args.url, NODE = args.node, WIDTH = args.width, HEIGHT = args.height, TITLE = args.title, PIN = args.pin, X = args.x, Y = args.y, FULLSCREEN = args.fullscreen, UNCLICKABLE = args.uc, MINIMIZED = args.min;
 	console.log(args);
 	
 	try {
@@ -267,12 +279,11 @@ async function createWindow(args, reuse=false){
 		targetHeight = ttt.height;
 		tainted=true;
 	}
-	
-	
 
 	// Create the browser window.
 	var mainWindow = new BrowserWindow({
 		transparent: true,
+		//focusable: false,
 		width: targetWidth,
 		height: targetHeight,
 		frame: false,
@@ -293,6 +304,10 @@ async function createWindow(args, reuse=false){
 		},
 		title: currentTitle
 	});
+	
+	if (UNCLICKABLE){
+		mainWindow.setIgnoreMouseEvents(true);
+	}
 	
 	mainWindow.webContents.session.webRequest.onHeadersReceived({ urls: [ "*://*/*" ] },
 		(d, c)=>{
@@ -456,7 +471,11 @@ async function createWindow(args, reuse=false){
 	
 	
 	mainWindow.webContents.session.on('will-download', (event, item, webContents) => {
-	  var currentURL = mainWindow.webContents.getURL();
+	  if (mainWindow.webContents){
+		var currentURL = mainWindow.webContents.getURL();
+	  } else if (webContents.getURL){
+		  var currentURL = webContents.getURL();
+	  }
 	  if (currentURL.includes("autorecord") || (args.savefolder!==null)){
 		  var dir = args.savefolder;
 		  if (!dir && (process.platform == 'darwin')){ //process.env.USERPROFILE
@@ -553,7 +572,7 @@ async function createWindow(args, reuse=false){
 		if (PIN == true) {
 			// "floating" + 1 is higher than all regular windows, but still behind things
 			// like spotlight or the screen saver
-			mainWindow.setAlwaysOnTop(true, "floating", 1);
+			mainWindow.setAlwaysOnTop(true, "level");
 			// allows the window to show over a fullscreen window
 			mainWindow.setVisibleOnAllWorkspaces(true);
 		} else {
@@ -583,7 +602,11 @@ async function createWindow(args, reuse=false){
 	
 	
 	mainWindow.once('ready-to-show', () => {
-		mainWindow.show();
+		if (MINIMIZED){
+			mainWindow.minimize();
+		} else {
+			mainWindow.show();
+		}
 	})
 	
 
@@ -1387,8 +1410,17 @@ contextMenu({
 					browserWindow.setVisibleOnAllWorkspaces(false);
 				} else {
 					browserWindow.args.pin = true;
-					browserWindow.setAlwaysOnTop(true, "floating", 1);
+					browserWindow.setAlwaysOnTop(true, "level");
 					browserWindow.setVisibleOnAllWorkspaces(true);
+				}
+			}
+		},
+		{
+			label: '🚫🖱 ️Make window *Unclickable* until in focus',
+			visible: browserWindow.isAlwaysOnTop(), // Only show it when pinned
+			click: () => {
+				if (browserWindow){
+					browserWindow.setIgnoreMouseEvents(true);
 				}
 			}
 		},
@@ -1429,6 +1461,8 @@ contextMenu({
 app.on('second-instance', (event, commandLine, workingDirectory, argv2) => {
 	createWindow(argv2, argv2.title);
 });
+
+
 
 var DoNotClose = false;
 app.on('window-all-closed', () => {
@@ -1496,6 +1530,11 @@ app.on('ready', () => {
         wc.send('context-menu-ipc', params);
       });
     });
+	
+	app.on('browser-window-focus', (event, win) => {
+	  console.log('browser-window-focus', win.webContents.id);
+	  win.setIgnoreMouseEvents(false);
+	})
 });
 
 // This method will be called when Electron has finished

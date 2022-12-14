@@ -24,7 +24,7 @@ window.addEventListener('message', ({ data }) => {
 var doSomethingInWebApp = null;
 
 try {
-	if (session && session.version){
+	if ((typeof session !== 'undefined') && session.version){
 		ipcRenderer.send('vdonVersion', {ver:session.version}); // clear the current Version; let it load if needed.
 	} else {
 		ipcRenderer.send('vdonVersion', {ver:false}); // clear the current Version; let it load if needed.
