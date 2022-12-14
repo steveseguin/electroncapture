@@ -1,6 +1,6 @@
 {
   "name": "VDON.Electron.Capture.App",
-  "version": "2.16.1",
+  "version": "2.17.0",
   "description": "A simple tool to aid with frameless window video capture and VDON publishing",
   "author": "Steve Seguin <steve@seguin.email>",
   "main": "main.js",
@@ -105,14 +105,14 @@
     "afterSign": "./afterSign.js"
   },
   "devDependencies": {
-    "electron": "^19.0.6",
-    "electron-builder": "^23.2.0",
+    "electron": "^21.3.3",
+    "electron-builder": "^23.3.3",
     "electron-notarize": "^1.2.1",
     "rimraf": "^3.0.2",
     "run-script-os-fix": "^1.0.4"
   },
   "dependencies": {
-    "electron-context-menu": "^3.3.0",
+    "electron-context-menu": "^3.5.0",
     "electron-is-dev": "^2.0.0",
     "electron-prompt": "^1.7.0",
     "electron-unhandled": "^4.0.1",
