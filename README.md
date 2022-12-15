@@ -34,6 +34,8 @@ Lastly, since playback is agnostic, you can window-capture the same video multip
 | --title   	| --t   	| Set a custom window title  	| Guest 1                           	| Handy for use with OBS window capture                                       	|
 | --node    	| --n   	| Use advanced features      	| true                              	| Enable with `true`. Allows for screen capture, global hotkeys, prompts and more. 	|
 | --hwa     	| --a   	| Hardware acceleration      	| false                             	| Disable with `false`                                                             	|
+| --minimized     	| --min   	| start the app minimized      	| false                             	|                                                           	|
+| --css     	| --css   	| Pass a CSS file to insert into newly created windows      	| test.css                             	|                                                          	|
 
 * note: Use the --help command to get the most recent available commands and options
 
@@ -141,6 +143,14 @@ If you right click the app when on a site, you can change the audio output devic
 On macOS, this is especially helpful since there is a lack of audio routing controls.
 
 Please note:  To use this feature, you will need to elevate the app's privilleges, which can expose the user to security issues on untrusted websites. 
+
+### Pinning and click-pass thru
+
+You can pin the app on top of other apps via the right-click menu, and when enabled, you can then also enable "click thru" mode also via the context-menu, so no mouse input is captured. The app acts a bit like it is invisible, turning it into a bit of HUD for other applications and games.
+
+If using socialstream or vdo.ninja, you can append &transparent to those URLs to make the background transparent.  You can also use custom CSS to make web pages shown semi-transparent, so you can still see underneath.
+
+Once "click thru" mode is enabled, you can re-enable click-capture by just selecting the app via the task bar, as bringing the app into focus will disable the click-thru mode.
 
 ### Syphon Output
 
