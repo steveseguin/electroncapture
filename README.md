@@ -34,7 +34,7 @@ Lastly, since playback is agnostic, you can window-capture the same video multip
 | --title   	| --t   	| Set a custom window title  	| Guest 1                           	| Handy for use with OBS window capture                                       	|
 | --node    	| --n   	| Use advanced features      	| true                              	| Enable with `true`. Allows for screen capture, global hotkeys, prompts and more. 	|
 | --hwa     	| --a   	| Hardware acceleration      	| false                             	| Disable with `false`                                                             	|
-| --minimized     	| --min   	| start the app minimized      	| false                             	|                                                           	|
+| --minimized     	| --min   	| start the app minimized      	|                              	|                                                           	|
 | --css     	| --css   	| Pass a CSS file to insert into newly created windows      	| test.css                             	|                                                          	|
 
 * note: Use the --help command to get the most recent available commands and options
