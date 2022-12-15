@@ -1461,7 +1461,12 @@ contextMenu({
 					browserWindow.setVisibleOnAllWorkspaces(false);
 				} else {
 					browserWindow.args.pin = true;
-					browserWindow.setAlwaysOnTop(true, "level");
+					if (process.platform == 'darwin'){
+						browserWindow.setAlwaysOnTop(true, "floating", 1)
+					} else {
+						browserWindow.setAlwaysOnTop(true, "level");
+					}
+					
 					browserWindow.setVisibleOnAllWorkspaces(true);
 				}
 			}
