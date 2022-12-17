@@ -1,20 +1,22 @@
-*Update*:  If looking to just use VDO.Ninja on PC/Mac, you do not need to use Electron capture.  Previously (2020/2021) it was needed, but as of 2022, OBS Studio works quite well with VDO.Ninja directly via a browser source.  Electron Capture offers some benefits, but it is optional.  Please join me on discord at https://discord.vdo.ninja for help.
-
 ## This is the **Electron Capture app**,
-Created for <a href="https://vdo.ninja">VDO.Ninja</a> users, it can provide users a clean way of window capturing websites. In the case of VDO.Ninja, it may offer a more flexible and reliable method of capturing live video than the browser source plugin built into OBS.
+Created for <a href="https://vdo.ninja">VDO.Ninja</a> users, it can provide users a clean way of window capturing websites or as a production-oriented Chrome-alternative with numerous performance tweaks. It can also be used to pin live chat overlays on screen, such as those from <a href="https://socialstream.ninja">SocialStream</a>, screen share without user interaction, and much much more.
 
 #### <a href="https://github.com/steveseguin/electroncapture#links-to-downloads-below">Jump to Downloads Section</a>
 
 <img src="https://user-images.githubusercontent.com/2575698/121296394-94292d00-c8be-11eb-908e-638e5616691a.png " alt="" data-canonical-src="https://user-images.githubusercontent.com/2575698/121296394-94292d00-c8be-11eb-908e-638e5616691a.png"  style="display:inline-block" height="300" />
 
-## Why ?
-On some systems the OBS Browser Source plugin isn't available or doesn't work all that well, so this tool is a viable alternative. It lets you cleanly screen-grab just a video stream without the need of the Browser Source plugin. It also makes it easy to select the output audio playback device, such as a Virtual Audio device: ie) https://vb-audio.com/Cable/ (Windows & macOS; donationware) or VAC (Windows @ https://vac.muzychenko.net/), or Loopback (macOS).  
+## Why was this made ?
+On some systems the OBS Browser Source plugin isn't available or doesn't work all that well, so this tool was made as a viable alternative. It was originally built to let you cleanly screen-grab just a video stream without the need of the OBS Browser Source plugin. The app was also made to make selecting the output audio playback device easy, outputting audio to something such as a Virtual Audio device: ie) https://vb-audio.com/Cable/ (Windows & macOS; donationware) or VAC (Windows @ https://vac.muzychenko.net/), or Loopback (macOS).  
 
-The app can also be set to remain on top of other windows, attempts to hide the mouse cursor when possible, provides accurate window sizes for 1:1 pixel mapping, and supports global system hotkeys (CTRL+M on Windows, for example).
+While the OBS Browser source is ever maturing, and issues with video smearing, crashing, and dropped audio are far less common these days with recent versions of OBS, there are still user reports of desync issues and other mishaps with it. As a result, Electron Capture remains the preference for many professional VDO.Ninja users, and over time it has evolved to offer additional solutions for many different use cases in the video production world.
 
-Windows users may find it beneficial too, as it offers support for VDO.Ninja's <a href="https://github.com/steveseguin/vdoninja/wiki/Advanced-Settings#viewers-obs-link-options">&buffer</a> audio sync command and it has robust support for video packet loss. In other words, it can playback live video better than OBS can, with fewer video playback errors and with better audio/video sync. If you have a spare monitor, it may at times be worth the hassle to use instead of OBS alone.
+The app can be set to remain on top of other windows, can hide the mouse cursor when possible, provides accurate window sizes options for 1:1 pixel mapping, and supports global system hotkeys (CTRL+M on Windows, for example). It also offers relatively low-CPU usage, command-line launch tools, built-in recording options, and it won't crash if OBS crashes. If you have a spare monitor, it may at times be worth the hassle to use it instead of OBS alone for your next production.
 
-The Electron Capture app uses recent versions of Chromium, which is more resistant to desync, video smearing, and other issues that might exist in the native OBS browser source capture method. [More benefits listed here](https://github.com/steveseguin/electroncapture/blob/master/BENEFITS.md)
+The Electron Capture app uses recent versions of Chromium, and is setup to more resistant to desync, video smearing, and other issues that might exist in the native OBS browser source capture method. If a cutting edge web feature becomes available within browsers, it will also become available to Electron Capture first, making certain experimental features within VDO.Ninja accessible. The app is also optimized to not throttle when the system is stressed, ensuring that production-critical web-oriented code and media does not slow down or stop when its most needed.
+
+For non-VDO.Ninja users, the window-sharing focus of Electron Capture is also useful for Zoom or other users. For example, when screen sharing into Zoom, you get access to high-resolution Zoom streams when the sent video is a screen share, versus a virtual webcam or camera. You can screen share websites without the browser frame, search history, or nav bar from appearing. When doing a Power Point presentation, you can screen share the window via Electron Capture, while also pinning the it in place on top, avoiding having to toggle between multiple windows as you present. 
+
+[More benefits listed here](https://github.com/steveseguin/electroncapture/blob/master/BENEFITS.md)
 
 Lastly, since playback is agnostic, you can window-capture the same video multiple times, using one copy in a mixed-down live stream, while using a window-capture to record a clean full-resolution isolated video stream.  Both YouTube, Twitch, Facebook, and more are supported in this regard, where a full-window clean output option is available for those sites as well. 
 
