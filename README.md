@@ -1,5 +1,5 @@
 ## This is the **Electron Capture app**,
-Created originally for <a href="https://vdo.ninja">VDO.Ninja</a> users, it can provide users a clean way of window capturing websites or as a production-oriented Chrome-alternative with numerous performance tweaks. It can also be used to pin live chat overlays on screen, such as those from <a href="https://socialstream.ninja">SocialStream</a>, screen share without user interaction, increase the resolution of Zoom streams, and much much more.
+Created originally for <a href="https://vdo.ninja">VDO.Ninja</a> users, it can provide users a clean way of window capturing websites or as a production-oriented Chrome-alternative with numerous performance tweaks. It can also be used to pin <a href="https://socialstream.ninja">live chat overlays</a> on screen, screen share without user interaction, increase the resolution of Zoom streams, and much much more.
 
 #### <a href="https://github.com/steveseguin/electroncapture#links-to-downloads-below">Jump to Downloads Section</a>
 
