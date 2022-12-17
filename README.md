@@ -39,7 +39,7 @@ Lastly, since playback is agnostic, you can window-capture the same video multip
 | --minimized     	| --min   	| start the app minimized      	|                              	|                                                           	|
 | --css     	| --css   	| Pass a CSS file to insert into newly created windows      	| test.css                             	|                                                          	|
 
-* note: Use the --help command to get the most recent available commands and options
+* note: Use the --help command to get the most recent available commands and options.  While I try to keep the documenation update to date, I'm not always the best at it.
 
 The default frameless resolution of the capture window is 1280x720. The app automatically accounts for high-DPI displays, so it is always 1:1 pixel-accurate with the specified resolution on even Apple Retina displays.
 
