@@ -347,6 +347,7 @@ async function createWindow(args, reuse=false){
 	
 	if (UNCLICKABLE){
 		mainWindow.setIgnoreMouseEvents(true);
+		mainWindow.showInactive();
 	}
 	
 	mainWindow.webContents.session.webRequest.onHeadersReceived({ urls: [ "*://*/*" ] },
