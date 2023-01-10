@@ -653,14 +653,17 @@ async function createWindow(args, reuse=false){
 	
 	
 	mainWindow.once('ready-to-show', () => {
-		if (MINIMIZED){
-			mainWindow.minimize();
-		} else {
-			mainWindow.show();
-		}
-	})
+        if (MINIMIZED){
+            mainWindow.minimize();
+		//+ KravchenkoAndrey 08.01.2022
+        } else if (UNCLICKABLE){
+            mainWindow.showInactive();
+		//- KravchenkoAndrey 08.01.2022
+        } else {
+            mainWindow.show();
+        }
+    });
 	
-
 	/* session.defaultSession.webRequest.onBeforeRequest({urls: ['file://*']}, (details, callback) => { // added for added security, but doesn't seem to be working.
 	  if (details.referrer.startsWith("http://")){
 		 callback({response:{cancel:true}});

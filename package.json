@@ -68,7 +68,7 @@
           "arch": [
             "ia32",
             "x64",
-	    "arm64"
+            "arm64"
           ]
         }
       ],
@@ -106,8 +106,8 @@
     "afterSign": "./afterSign.js"
   },
   "devDependencies": {
-    "electron": "^21.3.3",
-    "electron-builder": "^23.3.3",
+    "electron": "^22.0.0",
+    "electron-builder": "^24.0.0-alpha.9",
     "electron-notarize": "^1.2.1",
     "rimraf": "^3.0.2",
     "run-script-os-fix": "^1.0.4"
@@ -123,6 +123,6 @@
   },
   "engines": {
     "node": "v16.*.*",
-    "npm": "8.*.*"
+    "npm": "9.*.*"
   }
 }
