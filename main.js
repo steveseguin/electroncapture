@@ -538,7 +538,7 @@ async function createWindow(args, reuse=false){
 	
 	mainWindow.webContents.on('did-finish-load', function(e){
 		if (tainted){
-			mainWindow.setSize(WIDTH/factor, HEIGHT/factor); // allows for larger than display resolution.
+			mainWindow.setSize(parseInt(WIDTH/factor), parseInt(HEIGHT/factor)); // allows for larger than display resolution.
 			tainted=false;
 		}
 		if (mainWindow && mainWindow.webContents.getURL().includes('youtube.com')){
@@ -1313,8 +1313,8 @@ contextMenu({
 						//let factor = screen.getPrimaryDisplay().scaleFactor;
 						//browserWindow.setSize(1920/factor, 1080/factor);
 						let point =  screen.getCursorScreenPoint();
-						let factor = screen.getDisplayNearestPoint(point).scaleFactor;
-						browserWindow.setSize(1920/factor, 1080/factor);
+						let factor = screen.getDisplayNearestPoint(point).scaleFactor || 1;
+						browserWindow.setSize(parseInt(1920/factor), parseInt(1080/factor));
 					}
 				},
 				{
@@ -1328,8 +1328,8 @@ contextMenu({
 							if (browserWindow.isMaximized()){browserWindow.unmaximize();}
 						}	
 						let point =  screen.getCursorScreenPoint();
-						let factor = screen.getDisplayNearestPoint(point).scaleFactor;
-						browserWindow.setSize(1280/factor, 720/factor);
+						let factor = screen.getDisplayNearestPoint(point).scaleFactor || 1;
+						browserWindow.setSize(parseInt(1280/factor), parseInt(720/factor));
 					}
 				},
 				{
@@ -1343,8 +1343,8 @@ contextMenu({
 							if (browserWindow.isMaximized()){browserWindow.unmaximize();}
 						}
 						let point =  screen.getCursorScreenPoint();
-						let factor = screen.getDisplayNearestPoint(point).scaleFactor;
-						browserWindow.setSize(640/factor, 360/factor);
+						let factor = screen.getDisplayNearestPoint(point).scaleFactor || 1;
+						browserWindow.setSize(parseInt(640/factor), parseInt(360/factor));
 					}
 				},
 				{
@@ -1385,10 +1385,10 @@ contextMenu({
 									if (browserWindow.isMaximized()){browserWindow.unmaximize();}
 								}	
 								let point =  screen.getCursorScreenPoint();
-								let factor = screen.getDisplayNearestPoint(point).scaleFactor;
+								let factor = screen.getDisplayNearestPoint(point).scaleFactor || 1;
 								console.log(r);
 								console.log(factor);
-								browserWindow.setSize(r.split('x')[0]/factor, r.split('x')[1]/factor);
+								browserWindow.setSize(parseInt(r.split('x')[0]/factor), parseInt(r.split('x')[1]/factor));
 							}
 						})
 						.catch(console.error);
