@@ -90,7 +90,7 @@
       "requestExecutionLevel": "user",
       "unpackDirName": true
     },
-    "setSizeappx": {
+    "appx": {
       "applicationId": "elecap",
       "backgroundColor": "#464646",
       "identityName": "elecap",
@@ -106,7 +106,7 @@
     "afterSign": "./afterSign.js"
   },
   "devDependencies": {
-    "electron": "^24.0.0",
+    "electron": "^22.0.0",
     "electron-builder": "^24.0.0-alpha.9",
     "electron-notarize": "^1.2.1",
     "rimraf": "^3.0.2",
