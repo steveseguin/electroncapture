@@ -345,9 +345,7 @@ async function createWindow(args, reuse=false){
 		title: currentTitle
 	});
 	
-	if (UNCLICKABLE){
-		mainWindow.setIgnoreMouseEvents(true);
-	}
+	
 	
 	mainWindow.webContents.session.webRequest.onHeadersReceived({ urls: [ "*://*/*" ] },
 		(d, c)=>{
@@ -367,6 +365,11 @@ async function createWindow(args, reuse=false){
 	mainWindow.args = args; // storing settings
 	mainWindow.vdonVersion = false;
 	mainWindow.PPTHotkey = false;
+	
+	if (UNCLICKABLE){
+		mainWindow.mouseEvent = true;
+		mainWindow.setIgnoreMouseEvents(mainWindow.mouseEvent);
+	}
 	
 	ipcMain.on("vdonVersion", function(eventRet, arg) {  // this enables a PROMPT pop up , which is used to BLOCK the main thread until the user provides input. VDO.Ninja uses prompt for passwords, etc.
 		if (mainWindow){
@@ -618,6 +621,37 @@ async function createWindow(args, reuse=false){
 	if (!ret_refresh) {
 		console.log('registration failed2')
 	}
+	
+	
+	
+	const socialstream = globalShortcut.register('CommandOrControl+Shift+X', () => {
+		console.log('CommandOrControl+Shift+X')
+		if (mainWindow) {
+			if (mainWindow.mouseEvent){
+				mainWindow.mouseEvent = false;
+				mainWindow.setIgnoreMouseEvents(mainWindow.mouseEvent);
+				mainWindow.show()
+				
+				if (!mainWindow.args.pin){
+					mainWindow.setAlwaysOnTop(false);
+				}
+			} else {
+				mainWindow.mouseEvent = true;
+				mainWindow.setIgnoreMouseEvents(mainWindow.mouseEvent);
+				
+				if (process.platform == 'darwin'){
+					mainWindow.setAlwaysOnTop(true, "floating", 1)
+				} else {
+					mainWindow.setAlwaysOnTop(true, "level");
+				}
+			}
+		}
+	});
+	if (!socialstream) {
+		console.log('registration failed3')
+	}
+	
+	// "CommandOrControl+Shift+X
 	
 	try {
 		if (PIN == true) {
@@ -1475,11 +1509,20 @@ contextMenu({
 			}
 		},
 		{
-			label: '🚫🖱 ️Make window *Unclickable* until in focus',
-			visible: browserWindow.isAlwaysOnTop(), // Only show it when pinned
+			label: '🚫🖱 ️Make UnClickable until in-focus or CTRL+SHIFT+X',
+			visible: true, // Only show it when pinned
 			click: () => {
 				if (browserWindow){
-					browserWindow.setIgnoreMouseEvents(true);
+					if (!browserWindow.isAlwaysOnTop()) {
+						if (process.platform == 'darwin'){
+							browserWindow.setAlwaysOnTop(true, "floating", 1)
+						} else {
+							browserWindow.setAlwaysOnTop(true, "level");
+						}
+						browserWindow.setVisibleOnAllWorkspaces(true);
+					}
+					browserWindow.mouseEvent = true;
+					browserWindow.setIgnoreMouseEvents(browserWindow.mouseEvent);
 				}
 			}
 		},
