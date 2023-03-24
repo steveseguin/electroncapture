@@ -1242,15 +1242,18 @@ contextMenu({
 		label: '📑 Insert CSS',
 		// Only show it when right-clicking text
 		visible: true,
-		click: () => {
+		click: async () => {
 		  var onTop = browserWindow.isAlwaysOnTop();
 		  if (onTop) {
 			browserWindow.setAlwaysOnTop(false);
 		  }
+		  const savedValue = await browserWindow.webContents.executeJavaScript(`localStorage.getItem('insertCSS');`);
+		  
+		  console.log(savedValue);
 		  prompt({
 			title: 'Insert Custom CSS',
 			label: 'CSS:',
-			value: "body {background-color:#0000;}",
+			value: savedValue || "body {background-color:#0000;}",
 			inputAttrs: {
 			  type: 'text'
 			},
@@ -1266,6 +1269,7 @@ contextMenu({
 			  }
 			} else {
 			  console.log('result', r);
+			  browserWindow.webContents.executeJavaScript(`localStorage.setItem('insertCSS', '${r}');`);
 			  if (onTop) {
 				browserWindow.setAlwaysOnTop(true);
 			  }
