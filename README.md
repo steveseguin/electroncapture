@@ -38,6 +38,7 @@ Lastly, since playback is agnostic, you can window-capture the same video multip
 | --hwa     	| --a   	| Hardware acceleration      	| false                             	| Disable with `false`                                                             	|
 | --minimized     	| --min   	| start the app minimized      	|                              	|                                                           	|
 | --css     	| --css   	| Pass a CSS file to insert into newly created windows      	| test.css                             	|                                                          	|
+| --chroma     	| --color   	| Pass a 3 or 4 character HEX value to change the background color of websites      	| 0F0C                             	|                                                          	|
 
 * note: Use the --help command to get the most recent available commands and options.  While I try to keep the documenation update to date, I'm not always the best at it.
 
