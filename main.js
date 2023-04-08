@@ -111,6 +111,12 @@ function createYargs(){
     type: "string",
     default: null
   })
+  .option("chroma", {
+    alias: "color",
+    describe: "Set background CSS to target hex color; FFF or 0000 are examples.",
+    type: "string",
+	default: null
+  })
   .describe("help", "Show help."); // Override --help usage message.
   
   return argv.argv;
@@ -206,10 +212,16 @@ function sleep(ms) {
 
 async function createWindow(args, reuse=false){
 	var webSecurity = true;
-	var URL = args.url, NODE = args.node, WIDTH = args.width, HEIGHT = args.height, TITLE = args.title, PIN = args.pin, X = args.x, Y = args.y, FULLSCREEN = args.fullscreen, UNCLICKABLE = args.uc, MINIMIZED = args.min, CSS = args.css;
+	var URL = args.url, NODE = args.node, WIDTH = args.width, HEIGHT = args.height, TITLE = args.title, PIN = args.pin, X = args.x, Y = args.y, FULLSCREEN = args.fullscreen, UNCLICKABLE = args.uc, MINIMIZED = args.min, CSS = args.css, BGCOLOR = args.chroma; 
+	
 	console.log(args);
 	
-	var CSSCONTENT = false;
+	var CSSCONTENT = "";
+	
+	if (BGCOLOR){
+		CSSCONTENT = "body {background-color:#"+BGCOLOR+"!important;}";
+	}
+	
 	if (CSS){
 		var p = path.join(__dirname, '.', CSS);
 		console.log("Trying: "+p);
@@ -229,12 +241,12 @@ async function createWindow(args, reuse=false){
 				  if (err) {
 					  console.log("Couldn't read specified CSS file");
 				  } else{
-					  CSSCONTENT = data;
+					  CSSCONTENT += data;
 				  }
 				  promise.resolve();
 			  });
 		  } else {
-			  CSSCONTENT = data;
+			  CSSCONTENT += data;
 			  promise.resolve();
 		  } 
 		});
@@ -243,6 +255,9 @@ async function createWindow(args, reuse=false){
 			console.log("Loaded specified file.");
 		}
 	}
+	
+	
+	
 	try {
 		if (URL.startsWith("file:")){
 			webSecurity = false; // not ideal, but to open local files, this is needed.
