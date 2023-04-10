@@ -1,6 +1,6 @@
 npx npm-check-updates -u
 npm install
 npm make clean
-export appleId=apple@seguin.email
-export appleIdPassword=irxybjapqaynltqv
+export appleId=YYYYYYYYYY
+export appleIdPassword=XXXXXXXXXX
 sudo -E npm run build:darwin
