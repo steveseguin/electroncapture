@@ -627,8 +627,8 @@ async function createWindow(args, reuse=false){
 		}
 	}
 	
-	const ret_refresh = globalShortcut.register('CommandOrControl+Shift+R', () => {
-		console.log('CommandOrControl+Shift+R')
+	const ret_refresh = globalShortcut.register('CommandOrControl+Shift+Alt+R', () => {
+		console.log('CommandOrControl+Shift+Alt+R')
 		if (mainWindow) {
 			mainWindow.reload();
 		}
@@ -639,8 +639,8 @@ async function createWindow(args, reuse=false){
 	
 	
 	
-	const socialstream = globalShortcut.register('CommandOrControl+Shift+X', () => {
-		console.log('CommandOrControl+Shift+X')
+	const socialstream = globalShortcut.register('CommandOrControl+Shift+Alt+X', () => {
+		console.log('CommandOrControl+Shift+Alt+X')
 		if (mainWindow) {
 			if (mainWindow.mouseEvent){
 				mainWindow.mouseEvent = false;
@@ -771,7 +771,7 @@ contextMenu({
 			}
 		},
 		{
-			label: '♻ Reload (Ctrl+Shift+R)',
+			label: '♻ Reload (Ctrl+Shift+Alt+R)',
 			// Only show it when right-clicking text
 			visible: true,
 			click: () => {
@@ -1528,7 +1528,7 @@ contextMenu({
 			}
 		},
 		{
-			label: '🚫🖱 ️Make UnClickable until in-focus or CTRL+SHIFT+X',
+			label: '🚫🖱 ️Make UnClickable until in-focus or CTRL+SHIFT+ALT+X',
 			visible: true, // Only show it when pinned
 			click: () => {
 				if (browserWindow){
