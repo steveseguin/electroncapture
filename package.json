@@ -106,20 +106,20 @@
     "afterSign": "./afterSign.js"
   },
   "devDependencies": {
-    "electron": "^22.0.0",
+    "electron": "^25.0.1",
     "electron-builder": "^24.0.0-alpha.9",
     "electron-notarize": "^1.2.1",
-    "rimraf": "^3.0.2",
+    "rimraf": "^5.0.1",
     "run-script-os-fix": "^1.0.4"
   },
   "dependencies": {
-    "electron-context-menu": "^3.5.0",
+    "electron-context-menu": "^3.6.1",
     "electron-is-dev": "^2.0.0",
     "electron-prompt": "^1.7.0",
     "electron-unhandled": "^4.0.1",
     "minimalist": "^1.0.0",
     "minimist": "github:fortiZde/minimist",
-    "yargs": "^17.5.1"
+    "yargs": "^17.7.2"
   },
   "engines": {
     "node": "v16.*.*",
