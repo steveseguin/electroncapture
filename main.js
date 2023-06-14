@@ -107,7 +107,7 @@ function createYargs(){
   })
    .option("mediafoundation", {
     alias: "mf",
-    describe: "Where to save a file on disk",
+    describe: "Enable media foundation video capture; helps capture some webcams",
     type: "string",
     default: null
   })
