@@ -27,18 +27,18 @@ Lastly, since playback is agnostic, you can window-capture the same video multip
 
 | Parameter 	| Alias 	| Description                	| Example values                    	| Notes                                                                       	|
 |-----------	|-------	|----------------------------	|-----------------------------------	|-----------------------------------------------------------------------------	|
-| --width   	| --w   	| Window width               	| 1280                              	| Value in px                                                                 	|
-| --height  	| --h   	| Window height              	| 720                               	| Value in px                                                                 	|
+| --width   	| -w   	| Window width               	| 1280                              	| Value in px                                                                 	|
+| --height  	| -h   	| Window height              	| 720                               	| Value in px                                                                 	|
 | --x       	|       	| X position on screen       	| 1                                 	| Left side is 1                                                              	|
 | --y       	|       	| Y position on screen       	| 1                                 	| Top side is 1                                                               	|
-| --pin     	| --p   	| Pin window on top          	| (Takes no values)                 	| Display this window always on top.                                          	|
-| --url     	| --u   	| Set a custom link on start 	| https://vdo.ninja/?view=aCustomID 	| You can push and pull with single links or rooms.                           	|
-| --title   	| --t   	| Set a custom window title  	| Guest 1                           	| Handy for use with OBS window capture                                       	|
-| --node    	| --n   	| Use advanced features      	| true                              	| Enable with `true`. Allows for screen capture, global hotkeys, prompts and more. 	|
-| --hwa     	| --a   	| Hardware acceleration      	| false                             	| Disable with `false`                                                             	|
-| --minimized     	| --min   	| start the app minimized      	|                              	|                                                           	|
-| --css     	| --css   	| Pass a CSS file to insert into newly created windows      	| test.css                             	|                                                          	|
-| --chroma     	| --color   	| Pass a 3 or 4 character HEX value to change the background color of websites      	| 0F0C                             	|                                                          	|
+| --pin     	| -p   	| Pin window on top          	| (Takes no values)                 	| Display this window always on top.                                          	|
+| --url     	| -u   	| Set a custom link on start 	| https://vdo.ninja/?view=aCustomID 	| You can push and pull with single links or rooms.                           	|
+| --title   	| -t   	| Set a custom window title  	| Guest 1                           	| Handy for use with OBS window capture                                       	|
+| --node    	| -n   	| Use advanced features      	| true                              	| Enable with `true`. Allows for screen capture, global hotkeys, prompts and more. 	|
+| --hwa     	| -a   	| Hardware acceleration      	| false                             	| Disable with `false`                                                             	|
+| --minimized     	| -min   	| start the app minimized      	|                              	|                                                           	|
+| --css     	| -css   	| Pass a CSS file to insert into newly created windows      	| test.css                             	|                                                          	|
+| --chroma     	| -color   	| Pass a 3 or 4 character HEX value to change the background color of websites      	| 0F0C                             	|                                                          	|
 
 * note: Use the --help command to get the most recent available commands and options.  While I try to keep the documenation update to date, I'm not always the best at it.
 
