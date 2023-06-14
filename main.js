@@ -107,7 +107,13 @@ function createYargs(){
   })
    .option("mediafoundation", {
     alias: "mf",
-    describe: "Enable media foundation video capture; helps capture some webcams",
+    describe: "Enable media foundation video capture",
+    type: "string",
+    default: null
+  })
+  .option("disablemediafoundation", {
+    alias: "dmf",
+    describe: "Disable media foundation video capture; helps capture some webcams",
     type: "string",
     default: null
   })
@@ -147,8 +153,16 @@ if (!(Argv.hwa)){
 }
 
 if (!(Argv.mf)){
-	app.commandLine.appendSwitch('enable-media-foundation-video-capture')
-	console.log("Media Foundations video cap ENABLED");
+	app.commandLine.appendSwitch('enable-features', 'MediaFoundationVideoCapture');
+	//app.commandLine.appendSwitch('force-directshow')
+	//console.log("Media Foundations video cap ENABLED");
+	// --force-directshow
+}
+if (!(Argv.dmf)){
+	app.commandLine.appendSwitch('disable-features', 'MediaFoundationVideoCapture');
+	//app.commandLine.appendSwitch('force-directshow')
+	//console.log("Media Foundations video cap ENABLED");
+	// --force-directshow
 }
 
 app.commandLine.appendSwitch('enable-features', 'WebAssemblySimd'); // Might not be needed in the future with Chromium; not supported on older Chromium. For faster greenscreen effects.
