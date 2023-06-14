@@ -105,6 +105,12 @@ function createYargs(){
     type: "string",
     default: null
   })
+   .option("mediafoundation", {
+    alias: "mf",
+    describe: "Where to save a file on disk",
+    type: "string",
+    default: null
+  })
   .option("css", {
     alias: "css",
     describe: "Have local CSS script be auto-loaded into every page",
@@ -138,6 +144,11 @@ function getDirectories(path) {
 if (!(Argv.hwa)){
 	app.disableHardwareAcceleration();
 	console.log("HWA DISABLED");
+}
+
+if (!(Argv.mf)){
+	app.commandLine.appendSwitch('enable-media-foundation-video-capture')
+	console.log("Media Foundations video cap ENABLED");
 }
 
 app.commandLine.appendSwitch('enable-features', 'WebAssemblySimd'); // Might not be needed in the future with Chromium; not supported on older Chromium. For faster greenscreen effects.
