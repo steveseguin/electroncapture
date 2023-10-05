@@ -106,7 +106,7 @@
     "afterSign": "./afterSign.js"
   },
   "devDependencies": {
-    "electron": "^25.8.1",
+    "electron": "^25.8.4",
     "electron-builder": "^24.0.0-alpha.9",
     "electron-notarize": "^1.2.1",
     "rimraf": "^5.0.1",
