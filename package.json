@@ -109,7 +109,7 @@
     "electron": "^26.3.0",
     "electron-builder": "^24.7.0",
     "electron-notarize": "^1.2.1",
-    "rimraf": "^5.0.1",
+    "rimraf": "^5.0.5",
     "run-script-os-fix": "^1.0.4"
   },
   "dependencies": {
@@ -123,6 +123,6 @@
   },
   "engines": {
     "node": "v18.*.*",
-    "npm": "9.*.*"
+    "npm": "10.*.*"
   }
 }
