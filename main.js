@@ -343,6 +343,11 @@ async function createWindow(args, reuse=false){
 	
 
 	let factor = screen.getPrimaryDisplay().scaleFactor;
+	
+	if (reuse){
+		factor = 1;
+	}
+	
 	var ttt = screen.getPrimaryDisplay().workAreaSize;
 	
 	var targetWidth = WIDTH / factor;
@@ -706,7 +711,15 @@ async function createWindow(args, reuse=false){
 			mainWindow.setVisibleOnAllWorkspaces(false);
 		}
 
-		if (FULLSCREEN){
+		if (reuse){
+			if (FULLSCREEN){
+				 if (process.platform == "darwin"){
+					mainWindow.maximize();
+				 } else {
+					mainWindow.setFullScreen(true);
+				 }
+			}
+		} else if (FULLSCREEN){
 			 if (process.platform == "darwin"){
 				mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize();
 			 } else {
@@ -1175,9 +1188,23 @@ contextMenu({
 						var args = browserWindow.args; // reloading doesn't work otherwise
 						args.url = r;
 						var title = browserWindow.getTitle();
+						
+						var size = browserWindow.getSize();
+						args.width = size[0];
+						args.height = size[1];
+						
+						if (process.platform !== "darwin"){
+							args.fullscreen = browserWindow.isFullScreen();
+						} else {
+							args.fullscreen = browserWindow.isMaximized();
+						}
+						
+						args.fullscreen = true;
+						
 						browserWindow.destroy();
 						createWindow(args, title); // we close the window and open it again; a faked refresh
 						DoNotClose = false;
+						
 					}
 				})
 				.catch(console.error);
