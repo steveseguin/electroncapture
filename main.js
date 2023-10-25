@@ -813,14 +813,17 @@ contextMenu({
 			// Only show it when right-clicking text
 			visible: true,
 			click: () => {
-				DoNotClose = true; // avoids fully closing the app if no other windows are open
+				
+				browserWindow.reload();
+				
+				/* DoNotClose = true; // avoids fully closing the app if no other windows are open
 				
 				var args = browserWindow.args; // reloading doesn't work otherwise
 				args.url = browserWindow.webContents.getURL();
 				var title = browserWindow.getTitle();
 				browserWindow.destroy();
 				createWindow(args, title); // we close the window and open it again; a faked refresh
-				DoNotClose = false;
+				DoNotClose = false; */
 			}
 		},
 		{
@@ -1154,7 +1157,7 @@ contextMenu({
 			}
 		},
 		{
-			label: '✏ Edit URL',
+			label: '✏ Edit URL', 
 			// Only show it when right-clicking text
 			visible: true,
 			click: () => {
@@ -1185,25 +1188,27 @@ contextMenu({
 						if (onTop) {
 							browserWindow.setAlwaysOnTop(true);
 						}
-						var args = browserWindow.args; // reloading doesn't work otherwise
-						args.url = r;
-						var title = browserWindow.getTitle();
+						browserWindow.loadURL(URL);
 						
-						var size = browserWindow.getSize();
-						args.width = size[0];
-						args.height = size[1];
+						// var args = browserWindow.args; // reloading doesn't work otherwise
+						// args.url = r;
+						// var title = browserWindow.getTitle();
 						
-						if (process.platform !== "darwin"){
-							args.fullscreen = browserWindow.isFullScreen();
-						} else {
-							args.fullscreen = browserWindow.isMaximized();
-						}
+						// var size = browserWindow.getSize();
+						// args.width = size[0];
+						// args.height = size[1];
 						
-						args.fullscreen = true;
+						// if (process.platform !== "darwin"){
+							// args.fullscreen = browserWindow.isFullScreen();
+						// } else {
+							// args.fullscreen = browserWindow.isMaximized();
+						// }
 						
-						browserWindow.destroy();
-						createWindow(args, title); // we close the window and open it again; a faked refresh
-						DoNotClose = false;
+						// args.fullscreen = true;
+						
+						// browserWindow.destroy();
+						// createWindow(args, title); // we close the window and open it again; a faked refresh
+						// DoNotClose = false;
 						
 					}
 				})
