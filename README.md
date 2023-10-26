@@ -101,12 +101,12 @@ A unique feature about the Electron Capture app is that it can auto-select a scr
 
 To select Screen 1 automatically on load, for example you can do:
 
-```elecap.exe --node 1 --url "https://vdo.ninja/beta/?ss=1&autostart"```
+```elecap.exe --node 1 --url="https://vdo.ninja/beta/?ss=1&autostart"```
 
 or to select Discord automatically
 
 ```
-elecap.exe --node 1 --url "https://vdo.ninja/beta/?ss=Discord&autostart"
+elecap.exe --node 1 --url="https://vdo.ninja/beta/?ss=Discord&autostart"
 ```
 
 It's also possible to select audio-only when screen sharing via Electron Capture with VDO.Ninja; you do not need to select a video if you wish to share audio-only.
