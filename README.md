@@ -25,20 +25,22 @@ Lastly, since playback is agnostic, you can window-capture the same video multip
 
 ## Settings and Parameters
 
-| Parameter 	| Alias 	| Description                	| Example values                    	| Notes                                                                       	|
-|-----------	|-------	|----------------------------	|-----------------------------------	|-----------------------------------------------------------------------------	|
-| --width   	| -w   	| Window width               	| 1280                              	| Value in px                                                                 	|
-| --height  	| -h   	| Window height              	| 720                               	| Value in px                                                                 	|
-| --x       	|       	| X position on screen       	| 1                                 	| Left side is 1                                                              	|
-| --y       	|       	| Y position on screen       	| 1                                 	| Top side is 1                                                               	|
-| --pin     	| -p   	| Pin window on top          	| (Takes no values)                 	| Display this window always on top.                                          	|
-| --url     	| -u   	| Set a custom link on start 	| https://vdo.ninja/?view=aCustomID 	| You can push and pull with single links or rooms.                           	|
-| --title   	| -t   	| Set a custom window title  	| Guest 1                           	| Handy for use with OBS window capture                                       	|
-| --node    	| -n   	| Use advanced features      	| true                              	| Enable with `true`. Allows for screen capture, global hotkeys, prompts and more. 	|
-| --hwa     	| -a   	| Hardware acceleration      	| false                             	| Disable with `false`                                                             	|
-| --minimized     	| -min   	| start the app minimized      	|                              	|                                                           	|
-| --css     	| -css   	| Pass a CSS file to insert into newly created windows      	| test.css                             	|                                                          	|
-| --chroma     	| -color   	| Pass a 3 or 4 character HEX value to change the background color of websites      	| 0F0C                             	|                                                          	|
+| Parameter          | Alias     | Description                                     | Example values                     | Notes                                           |
+|-------------------|-----------|-------------------------------------------------|-----------------------------------|------------------------------------------------|
+|  --width       |      -w     | The width of the window in pixels.             | 1280                              | Value in px                                     |
+| --height      |     -h       | The height of the window in pixels.            | 720                               | Value in px                                     |
+|  --url         |     -u      | The URL of the window to load.                 | "https://vdo.ninja/electron"     |                                                |
+| --title       |     -t       | The default Title for the app Window.          | "My App"                          | Handy for use with OBS window capture          |
+|  --pin         |      -p     | Toggle always on top.                          | (Takes no values)                 | Display this window always on top.             |
+|  --hwa         |      -a     | Enable Hardware Acceleration.                  | true/false                        | Enable with "true". Disable with "false".      |
+|  --node        |     -n      | Enables node-integration.                      | true/false                        | Enable with "true". Disable with "false".      |
+| --minimized  |     --min      | Starts the window minimized.                  | true/false                        | Enable with "true". Disable with "false".      |
+|  --fullscreen   |    -f      | Enables full-screen mode for the first window on its load. | true/false                | Enable with "true". Disable with "false".      |
+| --unclickable |    --uc      | The page will pass through any mouse clicks or other mouse events. | true/false              | Enable with "true". Disable with "false".      |
+| --savefolder  |    --sf       | Where to save a file on disk.                   | "/path/to/folder"                 |                                                |
+| --mediafoundation, |   --mf    | Enable media foundation video capture.          | true/false                        | Enable with "true". Disable with "false".      |
+| --disablemediafoundation  |--dmf | Disable media foundation video capture; helps capture some webcams. | true/false  | Enable with "true". Disable with "false".      |
+| --chroma  |     --color        | Set background CSS to target hex color.        | "FFF" or "0000"                   |                                                |
 
 * note: Use the --help command to get the most recent available commands and options.  While I try to keep the documentation update to date, I'm not always the best at it.
 
