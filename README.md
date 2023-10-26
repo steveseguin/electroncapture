@@ -42,7 +42,7 @@ Lastly, since playback is agnostic, you can window-capture the same video multip
 
 * note: Use the --help command to get the most recent available commands and options.  While I try to keep the documentation update to date, I'm not always the best at it.
 
-The default frameless resolution of the capture window is 1280x720. The app automatically accounts for high-DPI displays, so it is always 1:1 pixel-accurate with the specified resolution on even Apple Retina displays.
+* The default frameless resolution of the capture window is 1280x720. The app automatically accounts for high-DPI displays, so it is always 1:1 pixel-accurate with the specified resolution on even Apple Retina displays.
 
 The optional Command Line arguments can be seen as examples below, along with their default values.
 ```
