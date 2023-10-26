@@ -32,14 +32,14 @@ Lastly, since playback is agnostic, you can window-capture the same video multip
 |  --url         |     -u      | The URL of the window to load.                 | "https://vdo.ninja/electron"     |                                                |
 | --title       |     -t       | The default Title for the app Window.          | "My App"                          | Handy for use with OBS window capture          |
 |  --pin         |      -p     | Toggle always on top.                          | (Takes no values)                 | Display this window always on top.             |
-|  --hwa         |      -a     | Enable Hardware Acceleration.                  | true/false                        | Enable with "true". Disable with "false".      |
-|  --node        |     -n      | Enables node-integration.                      | true/false                        | Enable with "true". Disable with "false".      |
-| --minimized  |     --min      | Starts the window minimized.                  | true/false                        | Enable with "true". Disable with "false".      |
-|  --fullscreen   |    -f      | Enables full-screen mode for the first window on its load. | true/false                | Enable with "true". Disable with "false".      |
-| --unclickable |    --uc      | The page will pass through any mouse clicks or other mouse events. | true/false              | Enable with "true". Disable with "false".      |
+|  --hwa         |      -a     | Enables Hardware Acceleration.                  |                       |       |
+|  --node        |     -n      | Enables node-integration.                      |                       |        |
+| --minimized  |     --min      | Starts the window minimized.                  |                      |      |
+|  --fullscreen   |    -f      | Enables full-screen mode for the first window on its load. |             |      |
+| --unclickable |    --uc      | The page will pass through any mouse clicks or other mouse events. |                |       |
 | --savefolder  |    --sf       | Where to save a file on disk.                   | "/path/to/folder"                 |                                                |
-| --mediafoundation, |   --mf    | Enable media foundation video capture.          | true/false                        | Enable with "true". Disable with "false".      |
-| --disablemediafoundation  |--dmf | Disable media foundation video capture; helps capture some webcams. | true/false  | Enable with "true". Disable with "false".      |
+| --mediafoundation, |   --mf    | Enables media foundation video capture.          |                       |       |
+| --disablemediafoundation  |--dmf | Disables media foundation video capture; helps capture some webcams. |    |       |
 | --chroma  |     --color        | Set background CSS to target hex color.        | "FFF" or "0000"                   |                                                |
 
 * note: Use the --help command to get the most recent available commands and options.  While I try to keep the documentation update to date, I'm not always the best at it.
