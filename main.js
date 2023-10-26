@@ -132,6 +132,12 @@ function createYargs(){
     type: "string",
 	default: null
   })
+  .option("hidecursor", {
+    alias: "hc",
+    describe: "Hide the mouse pointer / cursor",
+    type: "boolean",
+	default: null
+  })
   .describe("help", "Show help.") // Override --help usage message.
   .wrap(process.stdout.columns); 
   
@@ -244,9 +250,16 @@ function sleep(ms) {
   });
 }
 
+function formatURL(inputURL){
+  if (!inputURL.startsWith("http://") && !inputURL.startsWith("https://") && !inputURL.startsWith("file://")) {
+    return "https://" + inputURL;
+  }
+  return inputURL;
+}
+
 async function createWindow(args, reuse=false){
 	var webSecurity = true;
-	var URL = args.url, NODE = args.node, WIDTH = args.width, HEIGHT = args.height, TITLE = args.title, PIN = args.pin, X = args.x, Y = args.y, FULLSCREEN = args.fullscreen, UNCLICKABLE = args.uc, MINIMIZED = args.min, CSS = args.css, BGCOLOR = args.chroma; 
+	var URL = args.url, NODE = args.node, WIDTH = args.width, HEIGHT = args.height, TITLE = args.title, PIN = args.pin, X = args.x, Y = args.y, FULLSCREEN = args.fullscreen, UNCLICKABLE = args.uc, MINIMIZED = args.min, CSS = args.css, BGCOLOR = args.chroma;
 	
 	console.log(args);
 	
@@ -379,7 +392,7 @@ async function createWindow(args, reuse=false){
 		frame: false,
 		backgroundColor: '#0000',
 		fullscreenable: true,
-		titleBarStyle: 'customButtonsOnHover',
+		titleBarStyle: 'hidden',
 		roundedCorners: false,
 		show: false,
 		webPreferences: {
@@ -510,6 +523,30 @@ async function createWindow(args, reuse=false){
 	} catch(e){console.error(e);}
 	
 	
+	mainWindow.on('blur', () => {
+		mainWindow.setBackgroundColor('#00000000'); // tmp fix for bug in e.js
+		globalShortcut.unregister('Alt+Enter');
+	});
+	
+	mainWindow.on('focus', () => {
+		mainWindow.setBackgroundColor('#00000000'); // tmp fix for bug in e.js
+		globalShortcut.register('Alt+Enter', () => {
+			if (mainWindow && mainWindow.isFocused()) {
+				if (process.platform == "darwin"){ // On certain electron builds, fullscreen fails on macOS; this is in case it starts happening again
+					mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize();
+				} else {
+					if (mainWindow.full || mainWindow.isFullScreen()){
+						mainWindow.full = false;
+						mainWindow.setFullScreen(false);
+					} else {
+						mainWindow.full = true;
+						mainWindow.setFullScreen(true);
+					}
+				}
+			}
+		});
+	});
+  
 	mainWindow.on('close', function(e) {
 		e.preventDefault();
 		mainWindow.hide(); // hide, and wait 2 second before really closing; this allows for saving of files.
@@ -599,7 +636,7 @@ async function createWindow(args, reuse=false){
 			setInterval(function(mw){
 				try {
 					mw.webContents.executeJavaScript('\
-						if (!xxxxxx){\
+						if (typeof xxxxxx == "undefined") {\
 							var xxxxxx = setInterval(function(){\
 							if (document.querySelector(".ytp-ad-skip-button")){\
 								document.querySelector(".ytp-ad-skip-button").click();\
@@ -726,9 +763,9 @@ async function createWindow(args, reuse=false){
 			}
 		} else if (FULLSCREEN){
 			 if (process.platform == "darwin"){
-				mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize();
+				mainWindow.maximize();
 			 } else {
-				mainWindow.isFullScreen() ? mainWindow.setFullScreen(false) : mainWindow.setFullScreen(true);
+				mainWindow.setFullScreen(true);
 			 }
 		}
 
@@ -744,6 +781,7 @@ async function createWindow(args, reuse=false){
 	} catch(e){console.error(e);}
 	
 	
+	
 	mainWindow.once('ready-to-show', () => {
         if (MINIMIZED){
             mainWindow.minimize();
@@ -754,6 +792,24 @@ async function createWindow(args, reuse=false){
         } else {
             mainWindow.show();
         }
+		if (mainWindow && mainWindow.isFocused()) {
+			globalShortcut.register('Alt+Enter', () => {
+				console.log("PRESSED")
+				if (process.platform == "darwin"){ // On certain electron builds, fullscreen fails on macOS; this is in case it starts happening again
+					mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize();
+				} else {
+					console.log("mainWindow.isFullScreen(): ",mainWindow.isFullScreen());
+					
+					if (mainWindow.full || mainWindow.isFullScreen()){
+						mainWindow.full = false;
+						mainWindow.setFullScreen(false);
+					} else {
+						mainWindow.full = true;
+						mainWindow.setFullScreen(true);
+					}
+				}
+			});
+		}
     });
 	
 	/* session.defaultSession.webRequest.onBeforeRequest({urls: ['file://*']}, (details, callback) => { // added for added security, but doesn't seem to be working.
@@ -773,8 +829,26 @@ async function createWindow(args, reuse=false){
 		console.error(e);
 	}
 	
+	
+	
+	
 	try {
 		mainWindow.loadURL(URL);
+		
+		mainWindow.webContents.on('dom-ready', (event)=> {
+			if (mainWindow.args.hidecursor){
+				mainWindow.webContents.insertCSS(`
+				  * {
+					cursor: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=), none !important;
+					user-select: none!important;
+				  }
+				  :root {
+					  --electron-drag-fix: none!important;
+					  
+				  }
+				`);
+			}
+		});
 	} catch (e){
 		console.error(e);
 		//app.quit();
@@ -1193,7 +1267,8 @@ contextMenu({
 						if (onTop) {
 							browserWindow.setAlwaysOnTop(true);
 						}
-						browserWindow.loadURL(URL);
+						
+						browserWindow.loadURL(formatURL(r));
 						
 						// var args = browserWindow.args; // reloading doesn't work otherwise
 						// args.url = r;
@@ -1401,15 +1476,22 @@ contextMenu({
 			type: 'submenu',
 			submenu: [
 				{
-					label: 'Fullscreen',
+					label: 'Fullscreen (alt+tab)',
 					// Only show if not already full-screen
 					visible: !browserWindow.isMaximized(),
 					click: () => {
 						if (process.platform == "darwin"){ // On certain electron builds, fullscreen fails on macOS; this is in case it starts happening again
 							browserWindow.isMaximized() ? browserWindow.unmaximize() : browserWindow.maximize();
 						} else {
-							browserWindow.isFullScreen() ? browserWindow.setFullScreen(false) : browserWindow.setFullScreen(true);
+							if (browserWindow.full || browserWindow.isFullScreen()){
+								browserWindow.full = false;
+								browserWindow.setFullScreen(false);
+							} else {
+								browserWindow.full = true;
+								browserWindow.setFullScreen(true);
+							}
 						}
+						
 						//browserWindow.setMenu(null);
 						//const {width,height} = screen.getPrimaryDisplay().workAreaSize;
 						//browserWindow.setSize(width, height);
@@ -1430,6 +1512,7 @@ contextMenu({
 						let point =  screen.getCursorScreenPoint();
 						let factor = screen.getDisplayNearestPoint(point).scaleFactor || 1;
 						browserWindow.setSize(parseInt(1920/factor), parseInt(1080/factor));
+						browserWindow.full = false;
 					}
 				},
 				{
@@ -1445,6 +1528,7 @@ contextMenu({
 						let point =  screen.getCursorScreenPoint();
 						let factor = screen.getDisplayNearestPoint(point).scaleFactor || 1;
 						browserWindow.setSize(parseInt(1280/factor), parseInt(720/factor));
+						browserWindow.full = false;
 					}
 				},
 				{
@@ -1460,6 +1544,7 @@ contextMenu({
 						let point =  screen.getCursorScreenPoint();
 						let factor = screen.getDisplayNearestPoint(point).scaleFactor || 1;
 						browserWindow.setSize(parseInt(640/factor), parseInt(360/factor));
+						browserWindow.full = false;
 					}
 				},
 				{
@@ -1472,6 +1557,7 @@ contextMenu({
 						if (onTop) {
 							browserWindow.setAlwaysOnTop(false);
 						}
+						
 						prompt({
 							title: 'Custom window resolution',
 							label: 'Enter a resolution:',
@@ -1491,6 +1577,7 @@ contextMenu({
 								}
 							} else {
 								console.log('Window resized to ', r);
+								browserWindow.full = false;
 								if (onTop) {
 									browserWindow.setAlwaysOnTop(true);
 								}
@@ -1564,6 +1651,37 @@ contextMenu({
 							},500);\
 						}\
 					})();');
+				}
+			}
+		},
+		{
+			label: '🖱️ Hide cursor',
+			type: 'checkbox',
+			visible: true,
+			checked: browserWindow.args.hidecursor || false,
+			click: () => { 
+				browserWindow.args.hidecursor = !browserWindow.args.hidecursor || false;
+				if (browserWindow.args.hidecursor){
+					browserWindow.webContents.insertCSS(`
+					  * {
+						cursor: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=), none !important;
+						user-select: none!important;
+					  }
+					  :root {
+						  --electron-drag-fix: none!important;
+						  
+					  }
+					`);
+				} else {
+					browserWindow.webContents.insertCSS(`
+					  * {
+						cursor: auto!important;
+					  }
+					  :root {
+						  --electron-drag-fix: drag!important;
+						  
+					  }
+					`);
 				}
 			}
 		},
@@ -1654,6 +1772,7 @@ app.on('window-all-closed', () => {
 		return;
 	}
 	//console.log("DO NOT CLOSE... erk?");
+	globalShortcut.unregisterAll();
 	app.quit();
 })
 
