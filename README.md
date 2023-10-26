@@ -29,6 +29,8 @@ Lastly, since playback is agnostic, you can window-capture the same video multip
 |-------------------|-----------|-------------------------------------------------|-----------------------------------|------------------------------------------------|
 |  --width       |      -w     | The width of the window in pixels.             | 1280                              | Value in px                                     |
 | --height      |     -h       | The height of the window in pixels.            | 720                               | Value in px                                     |
+|  --x       |      -x     | The x-position of the window in pixels.             | 100                              | Value in px                                     |
+| --y      |     -y       | The y-position of the window in pixels.           | 100                               | Value in px                                     |
 |  --url         |     -u      | The URL of the window to load.                 | "https://vdo.ninja/electron"     |                                                |
 | --title       |     -t       | The default Title for the app Window.          | "My App"                          | Handy for use with OBS window capture          |
 |  --pin         |      -p     | Enables always on top.                          |                  |            |
