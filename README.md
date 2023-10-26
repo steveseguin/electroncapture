@@ -68,15 +68,15 @@ elecap.exe --node true --title feed2 --url "https://vdo.ninja/?view=ePz9hnx&scen
 ````
 Note that the elecap.exe is the 'portable' version of Electron Capture; you can choose the installer or the single-file portable version. I personally find the portable one easier to use via command line, with the installer version better without command line usage.
 
-If running from a Windows batch file with the goal of launching multiple instances at a time, try the following:
+If running from a Windows batch file with the goal of launching multiple instances at a time, try the following as an example:
 ```
-start elecap.exe -t feed1 -w 640 -h 360 --x 0 --y 0 -u="https://vdo.ninja/?scene&fakeguests=1&room=SOMETHINGTEST123"
+start elecap.exe -w 640 -h 360 -x 0 -y 0 -s -u="https://vdo.ninja/?scene&fakeguests=1&room=SOMETHINGTEST123" -t="Guest 1" -p
 timeout /T 1
-start elecap.exe -t feed2 -w 640 -h 360 --x 640 --y 0 -u="https://vdo.ninja/?scene&fakeguests=1&room=SOMETHINGTEST123"
+start elecap.exe -w 640 -h 360 -x 640 -y 0 -u="https://vdo.ninja/?scene&fakeguests=1&room=SOMETHINGTEST123" -t="Guest 2" -p
 timeout /T 1
-start elecap.exe -t feed3 -w 640 -h 360 --x 0 --y 360 -u="https://vdo.ninja/?scene&fakeguests=1&room=SOMETHINGTEST123"
+start elecap.exe -w 640 -h 360 -x 0 -y 360 -u="https://vdo.ninja/?scene&fakeguests=1&room=SOMETHINGTEST123" -t="Guest 3" -p
 timeout /T 1
-start elecap.exe -t feed4 -w 640 -h 360 --x 640 --y 360 -u="https://vdo.ninja/?scene&fakeguests=1&room=SOMETHINGTEST123"
+start elecap.exe -w 640 -h 360 -x 640 -y 360 -u="https://vdo.ninja/?scene&fakeguests=1&room=SOMETHINGTEST123" -t="Guest 4" -p
 ```
 - If not using an equal sign (=) between the parameter and value, there may be issues with Windows command line
 - Please also note,the use ot timeout /T 1, as adding a delay between loading apps allows them to load correctly
