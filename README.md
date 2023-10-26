@@ -31,7 +31,7 @@ Lastly, since playback is agnostic, you can window-capture the same video multip
 | --height      |     -h       | The height of the window in pixels.            | 720                               | Value in px                                     |
 |  --url         |     -u      | The URL of the window to load.                 | "https://vdo.ninja/electron"     |                                                |
 | --title       |     -t       | The default Title for the app Window.          | "My App"                          | Handy for use with OBS window capture          |
-|  --pin         |      -p     | Toggle always on top.                          | (Takes no values)                 | Display this window always on top.             |
+|  --pin         |      -p     | Enables always on top.                          |                  |            |
 |  --hwa         |      -a     | Enables Hardware Acceleration.                  |                       |       |
 |  --node        |     -n      | Enables node-integration.                      |                       |        |
 | --minimized  |     --min      | Starts the window minimized.                  |                      |      |
