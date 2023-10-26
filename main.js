@@ -20,9 +20,9 @@ unhandled();
 var ver = app.getVersion();
 
 function createYargs(){
-  var argv = Yargs.usage("Usage: $0 -w num -h num -w string -p")
+  var argv = Yargs.usage('Usage: $0 -w=num -h=num -u="string" -p')
   .example(
-    "$0 -w 1280 -h 720 -u https://vdo.ninja/?view=xxxx",
+    '$0 -w=1280 -h=720 -u="https://vdo.ninja/?view=xxxx"',
     "Loads the stream with ID xxxx into a window sized 1280x720"
   )
   .option("w", {
@@ -44,6 +44,7 @@ function createYargs(){
     describe: "The URL of the window to load.",
 	default: "https://vdo.ninja/electron?version="+ver,
     type: "string"
+
   })
   .option("t", {
     alias: "title",
@@ -67,12 +68,14 @@ function createYargs(){
 	alias: "x",
     describe: "Window X position",
     type: "number",
+	nargs: 1,
 	default: -1
   })
   .option("y", {
 	alias: "y",
     describe: "Window Y position",
     type: "number",
+	nargs: 1,
 	default: -1
   })
   .option("node", {
@@ -129,12 +132,18 @@ function createYargs(){
     type: "string",
 	default: null
   })
-  .describe("help", "Show help."); // Override --help usage message.
+  .describe("help", "Show help.") // Override --help usage message.
+  .wrap(process.stdout.columns); 
   
   return argv.argv;
 }
 
 var Argv = createYargs();
+
+if (Argv.help) {
+  Argv.showHelp();
+  process.exit(0); // Exit the script after showing help.
+}
 
 if (!app.requestSingleInstanceLock(Argv)) {
 	console.log("requestSingleInstanceLock");
@@ -343,10 +352,6 @@ async function createWindow(args, reuse=false){
 	
 
 	let factor = screen.getPrimaryDisplay().scaleFactor;
-	
-	if (reuse){
-		factor = 1;
-	}
 	
 	var ttt = screen.getPrimaryDisplay().workAreaSize;
 	
