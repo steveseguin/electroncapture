@@ -45,47 +45,40 @@ Lastly, since playback is agnostic, you can window-capture the same video multip
 The default frameless resolution of the capture window is 1280x720. The app automatically accounts for high-DPI displays, so it is always 1:1 pixel-accurate with the specified resolution on even Apple Retina displays.
 
 The optional Command Line arguments can be seen as examples below, along with their default values.
+```
+elecap.exe --width=1280 --height=720 --url="https://vdo.ninja/electron" --title="my Window name" --x=1 --y=1 --node=1
+```
+As shown above, using an equal sign (`=`) and double quotes to encapsulate strings is recommended for Windows command line / batch file users. 
 
-```
-elecap.exe --width 1280 --height 720 --url 'https://vdo.ninja/electron' --title 'my Window name' --x 1 --y 1 --node 1
-```
-or for example
+On Linux or mac though, you might be able to get away with the following though:
 ```
 ./elecap -w 1280 -h 720 -u 'https://vdo.ninja/electron' -t 'my Window name' --x 10 --y 10 -n 1
 ```
 
-If running from Windows command prompt, any ampersand "&" characters will need to be escaped with a "^" character, as seen below:
-
+As well, if running from Windows command prompt, without encapsulating quotes, any ampersand "&" characters will need to be escaped with a "^" character, as seen below:
 ```
-C:\Users\Steve\Desktop>elecap -t feed2 --url https://vdo.ninja/?view=ePz9hnx^&scene^&codec=h264^&room=SOMETHINGTEST123
+elecap -t=feed2 --url https://vdo.ninja/?view=ePz9hnx^&scene^&codec=h264^&room=SOMETHINGTEST123
 ```
+The above usage isn't probably ideally suited for windows users though, but it might work.
 
-You can also use it like this, if you are in the same folder as the app itself:
+
+You can also use it like this, if you are in the same folder as the app itself, and so long as the complex string value is last.
 ```
 elecap.exe --node true --title feed2 --url "https://vdo.ninja/?view=ePz9hnx&scene&codec=h264&room=SOMETHINGTEST123"
 ````
+Note that the elecap.exe is the 'portable' version of Electron Capture; you can choose the installer or the single-file portable version. I personally find the portable one easier to use via command line, with the installer version better without command line usage.
 
 If running from a Windows batch file with the goal of launching multiple instances at a time, try the following:
-
 ```
-start elecap.exe -t feed1 -u https://vdo.ninja/?view=2P342n5^&scene^&codec=h264^&room=SOMETHINGTEST123
+start elecap.exe -t feed1 -w 640 -h 360 --x 0 --y 0 -u="https://vdo.ninja/?scene&fakeguests=1&room=SOMETHINGTEST123"
 timeout /T 1
-start elecap.exe -t feed2 -u https://vdo.ninja/?view=ePz9hnx^&scene^&codec=h264^&room=SOMETHINGTEST123
+start elecap.exe -t feed2 -w 640 -h 360 --x 640 --y 0 -u="https://vdo.ninja/?scene&fakeguests=1&room=SOMETHINGTEST123"
 timeout /T 1
-start elecap.exe -t feed3 -u https://vdo.ninja/?view=12342n5^&scene^&codec=h264^&room=SOMETHINGTEST123
+start elecap.exe -t feed3 -w 640 -h 360 --x 0 --y 360 -u="https://vdo.ninja/?scene&fakeguests=1&room=SOMETHINGTEST123"
 timeout /T 1
-start elecap.exe -t feed4 -u https://vdo.ninja/?view=eP543hnx^&scene^&codec=h264^&room=SOMETHINGTEST123
-timeout /T 1
-start elecap.exe -t feed5 -u https://vdo.ninja/?view=432n5^&scene^&codec=h264^&room=SOMETHINGTEST123
-timeout /T 1
-start elecap.exe -t feed6 -u https://vdo.ninja/?view=eP654x^&scene^&codec=h264^&room=SOMETHINGTEST123
-timeout /T 1
-start elecap.exe -t feed7 -u https://vdo.ninja/?view=76542n5^&scene^&codec=h264^&room=SOMETHINGTEST123
-timeout /T 1
-start elecap.exe -t feed8 -u https://vdo.ninja/?view=gfd9hnx^&scene^&codec=h264^&room=SOMETHINGTEST123
+start elecap.exe -t feed4 -w 640 -h 360 --x 640 --y 360 -u="https://vdo.ninja/?scene&fakeguests=1&room=SOMETHINGTEST123"
 ```
-
-- Please note, do not use double-quotes, rather single-quotes, if needing to enclose text via the command line.
+- If not using an equal sign (=) between the parameter and value, there may be issues with Windows command line
 - Please also note,the use ot timeout /T 1, as adding a delay between loading apps allows them to load correctly
 - x and y position is available in v1.5.2 and up; x or y values must be greater than 0.
 
