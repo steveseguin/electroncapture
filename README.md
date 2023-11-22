@@ -226,7 +226,8 @@ Getting the correct nodejs/npm versions can be hard on linux, but using snap can
 ```
 sudo apt-get update
 sudo apt-get install snapd -y
-sudo snap install node --classic --channel=16
+sudo snap install node --classic --channel=18
+# sudo snap refresh node --channel=20 ## If you need to update to a different version of node, to match the manifest's minimum ersion, you can do so like this I think
 ```
 Next, close the shell and open a new one, to ensure the installation is completed.
 
