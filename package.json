@@ -31,7 +31,7 @@
     ],
     "mac": {
       "category": "public.build.automation",
-      "icon": "assets/icons/mac/icon.ico",
+      "icon": "assets/icons/mac/icon.icns",
       "target": [
         "dmg",
         "zip"
