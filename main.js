@@ -185,8 +185,10 @@ app.commandLine.appendSwitch('webrtc-max-cpu-consumption-percentage', '100');
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
 app.commandLine.appendSwitch('max-web-media-player-count', '5000');
 app.commandLine.appendSwitch('disable-site-isolation-trials');
-app.commandLine.appendSwitch('ignore-certificate-errors')
-app.commandLine.appendSwitch('disable-http-cache')
+app.commandLine.appendSwitch('ignore-certificate-errors');
+app.commandLine.appendSwitch('disable-renderer-backgrounding');
+app.commandLine.appendSwitch('disable-http-cache');
+
 
 
 var counter=0;
