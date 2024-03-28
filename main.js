@@ -188,7 +188,7 @@ app.commandLine.appendSwitch('disable-site-isolation-trials');
 app.commandLine.appendSwitch('ignore-certificate-errors');
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
 app.commandLine.appendSwitch('disable-http-cache');
-
+app.commandLine.appendSwitch('unsafely-treat-insecure-origin-as-secure', 'http://vdo.ninja,http://insecure.vdo.ninja,http://insecure.versus.cam');
 
 
 var counter=0;
