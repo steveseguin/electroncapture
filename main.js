@@ -549,6 +549,18 @@ async function createWindow(args, reuse=false){
 		});
 	});
   
+  
+	mainWindow.webContents.on('will-prevent-unload', (event) => {
+		const options = {
+			type: 'question',
+			buttons: ['Cancel', 'Leave'],
+			message: 'Leave Site?',
+			detail: 'This will end any active streams and may cause any recording that are in progress to be lost.',
+		};
+		const response = dialog.showMessageBoxSync(null, options)
+		if (response === 1) event.preventDefault();
+	});
+
 	mainWindow.on('close', function(e) {
 		e.preventDefault();
 		mainWindow.hide(); // hide, and wait 2 second before really closing; this allows for saving of files.
@@ -570,6 +582,7 @@ async function createWindow(args, reuse=false){
 	});
 
 	mainWindow.on("page-title-updated", function(event) {
+		console.log("page-title-updated");
 		event.preventDefault();
 	});
 
@@ -580,7 +593,7 @@ async function createWindow(args, reuse=false){
 	});
 	
 	mainWindow.webContents.on('new-window', (event, url, frameName, disposition, options, additionalFeatures, referrer, postBody) => {
-		
+		console.log("new-window");
 		mainWindow.webContents.mainFrame.frames.forEach(frame => {
 			if (frame.url === referrer.url) {
 				event.preventDefault();
@@ -603,6 +616,7 @@ async function createWindow(args, reuse=false){
 	
 	
 	mainWindow.webContents.session.on('will-download', (event, item, webContents) => {
+		console.log("will-download");
 	  if (mainWindow.webContents){
 		var currentURL = mainWindow.webContents.getURL();
 	  } else if (webContents.getURL){
@@ -629,6 +643,7 @@ async function createWindow(args, reuse=false){
 		
 	
 	mainWindow.webContents.on('did-finish-load', function(e){
+		console.log("did-finish-load");
 		if (tainted){
 			mainWindow.setSize(parseInt(WIDTH/factor), parseInt(HEIGHT/factor)); // allows for larger than display resolution.
 			tainted=false;
@@ -785,6 +800,7 @@ async function createWindow(args, reuse=false){
 	
 	
 	mainWindow.once('ready-to-show', () => {
+		console.log("ready to show");
         if (MINIMIZED){
             mainWindow.minimize();
 		//+ KravchenkoAndrey 08.01.2022
@@ -838,6 +854,7 @@ async function createWindow(args, reuse=false){
 		mainWindow.loadURL(URL);
 		
 		mainWindow.webContents.on('dom-ready', (event)=> {
+			console.log('dom-ready');
 			if (mainWindow.args.hidecursor){
 				mainWindow.webContents.insertCSS(`
 				  * {
@@ -1266,11 +1283,16 @@ contextMenu({
 						  }
 					} else {
 						console.log('result', r);
+						try {
+							browserWindow.loadURL(formatURL(r));
+						} catch(e){
+							console.error(e);
+						}
 						if (onTop) {
 							browserWindow.setAlwaysOnTop(true);
 						}
-						
-						browserWindow.loadURL(formatURL(r));
+						console.log(browserWindow);
+						console.log(formatURL(r));
 						
 						// var args = browserWindow.args; // reloading doesn't work otherwise
 						// args.url = r;
