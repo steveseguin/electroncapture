@@ -110,9 +110,9 @@
     "afterSign": "./afterSign.js"
   },
   "devDependencies": {
-    "electron": "^29.1.6",
+    "electron": "^29.1.4",
     "electron-builder": "^24.13.3",
-    "electron-notarize": "^1.2.1",
+    "electron-notarize": "git://github.com/electron/notarize.git",
     "rimraf": "^5.0.5",
     "run-script-os-fix": "^1.0.4"
   },
