@@ -1,6 +1,6 @@
 {
   "name": "VDON.Electron.Capture.App",
-  "version": "2.178.0",
+  "version": "2.18.1",
   "description": "A simple tool to aid with frameless window video capture and VDON publishing",
   "author": "Steve Seguin <steve@seguin.email>",
   "main": "main.js",
@@ -81,6 +81,7 @@
     "linux": {
       "category": "public.build.automation",
       "icon": "assets/icons/png/256x256.png",
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
       "target": "AppImage"
     },
     "nsis": {
