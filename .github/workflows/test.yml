@@ -10,6 +10,9 @@ on:
 
 jobs:
   build:
+    env:
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
+      
     runs-on: ubuntu-latest
 
     steps:
