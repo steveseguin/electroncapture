@@ -896,7 +896,7 @@ contextMenu({
 		{
 			label: '🔙 Go Back',
 			// Only show it when right-clicking text
-			visible: browserWindow.webContents.canGoBack() && browserWindow.webContents.getActiveIndex()>1,
+			visible: browserWindow.webContents.canGoBack(),
 			click: () => {
 				//var args = browserWindow.args; // reloading doesn't work otherwise
 				//args.url = "https://vdo.ninja/electron?version="+ver;
