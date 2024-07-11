@@ -1,6 +1,6 @@
 {
   "name": "VDON.Electron.Capture.App",
-  "version": "2.18.3",
+  "version": "2.18.4",
   "description": "A simple tool to aid with frameless window video capture and VDON publishing",
   "author": "Steve Seguin <steve@seguin.email>",
   "main": "main.js",
@@ -15,8 +15,8 @@
     "release": "electron-builder --publish always"
   },
   "repository": {
-    "type" : "git",
-    "url" : "https://github.com/steveseguin/electroncapture.git"
+    "type": "git",
+    "url": "https://github.com/steveseguin/electroncapture.git"
   },
   "build": {
     "appId": "capture.electron",
@@ -111,7 +111,7 @@
     "afterSign": "./afterSign.js"
   },
   "devDependencies": {
-    "electron": "^29.1.4",
+    "electron": "^31.2.0",
     "electron-builder": "^24.13.3",
     "electron-notarize": "git://github.com/electron/notarize.git",
     "rimraf": "^5.0.5",
