@@ -15,7 +15,6 @@ process.on('uncaughtException', function (error) {
 });
 
 unhandled();
-//app.setAppUserModelId("app."+Date.now());
 
 var ver = app.getVersion();
 
@@ -161,6 +160,12 @@ function getDirectories(path) {
     return fs.statSync(path+'/'+file).isDirectory();
   });
 }
+if (Argv.title){
+	app.setAppUserModelId(Argv.title);
+} else {
+	app.setAppUserModelId("ele.cap");
+}
+
 
 if (!(Argv.hwa)){
 	app.disableHardwareAcceleration();
