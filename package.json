@@ -111,7 +111,7 @@
     "afterSign": "./afterSign.js"
   },
   "devDependencies": {
-    "electron": "^31.2.0",
+    "electron": "^32.1.2",
     "electron-builder": "^24.13.3",
     "electron-notarize": "git://github.com/electron/notarize.git",
     "rimraf": "^5.0.5",
@@ -127,7 +127,7 @@
     "yargs": "^17.7.2"
   },
   "engines": {
-    "node": ">=14.0.0",
-    "npm": ">=6.0.0"
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
   }
 }
