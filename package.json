@@ -1,6 +1,6 @@
 {
   "name": "VDON.Electron.Capture.App",
-  "version": "2.18.5",
+  "version": "2.18.6",
   "description": "A simple tool to aid with frameless window video capture and VDON publishing",
   "author": "Steve Seguin <steve@seguin.email>",
   "main": "main.js",
@@ -20,7 +20,7 @@
   },
   "build": {
     "appId": "capture.electron",
-    "productName": "ElectronCapture",
+    "productName": "elecap",
     "files": [
       "**/*",
       "build/Release/*",
@@ -88,7 +88,11 @@
       "runAfterFinish": true,
       "installerIcon": "assets/icons/win/icon.ico",
       "artifactName": "elecap-${version}.${ext}",
-      "differentialPackage": false
+      "differentialPackage": false,
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "include": "installer.nsh"
     },
     "portable": {
       "artifactName": "elecap.exe",
@@ -111,7 +115,7 @@
     "afterSign": "./afterSign.js"
   },
   "devDependencies": {
-    "electron": "^32.1.2",
+    "electron": "^33.0.1",
     "electron-builder": "^24.13.3",
     "electron-notarize": "git://github.com/electron/notarize.git",
     "rimraf": "^5.0.5",
