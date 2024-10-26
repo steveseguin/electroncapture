@@ -798,10 +798,10 @@ electron-unhandled@4.0.1:
     lodash.debounce "^4.0.8"
     serialize-error "^8.1.0"
 
-electron@^32.1.2:
-  version "32.1.2"
-  resolved "https://registry.npmjs.org/electron/-/electron-32.1.2.tgz"
-  integrity sha512-CXe6doFzhmh1U7daOvUzmF6Cj8hssdYWMeEPRnRO6rB9/bbwMlWctcQ7P8NJXhLQ88/vYUJQrJvlJPh8qM0BRQ==
+electron@^33.0.1:
+  version "33.0.1"
+  resolved "https://registry.npmjs.org/electron/-/electron-33.0.1.tgz"
+  integrity sha512-PipPnWH4gvf7o+P8jlKQZGgPfb5eHcLgTrnKkFzb98MXhyPjVJYCR7YWqcawZ8IfyJCut8vMxLuBFLT1Ag8TSQ==
   dependencies:
     "@electron/get" "^2.0.0"
     "@types/node" "^20.9.0"
