@@ -8,6 +8,7 @@ const path = require('path');
 const {app, BrowserWindow, BrowserView, webFrameMain, desktopCapturer, ipcMain, screen, shell, globalShortcut, session, dialog} = require('electron')
 const contextMenu = require('electron-context-menu');
 const Yargs = require('yargs')
+const isDev = require('electron-is-dev');
 
 process.on('uncaughtException', function (error) {
 	console.error("uncaughtException");
@@ -154,6 +155,87 @@ if (!app.requestSingleInstanceLock(Argv)) {
 	console.log("requestSingleInstanceLock");
 	app.quit();
 }
+
+function parseDeepLink(deepLinkUrl) {
+  console.log('Parsing deep link:', deepLinkUrl);
+  try {
+	
+    
+    // Create a copy of default args
+    const newArgs = {...Argv};
+	
+	deepLinkUrl = deepLinkUrl.replace("electroncapture://", "https://");
+    let url = new URL(deepLinkUrl);
+	
+    console.log('Parsed URL:', {
+      pathname: url.pathname,
+      search: url.search,
+      hash: url.hash
+    });
+    
+	newArgs.url = url.href;
+    
+    // Parse window parameters from query string
+    const params = new URLSearchParams(url.search);
+    
+    // Map URL parameters to window arguments
+    if (params.has('w')) newArgs.width = parseInt(params.get('w'));
+    if (params.has('h')) newArgs.height = parseInt(params.get('h'));
+    if (params.has('x')) newArgs.x = parseInt(params.get('x'));
+    if (params.has('y')) newArgs.y = parseInt(params.get('y'));
+    if (params.has('pin')) newArgs.pin = params.get('pin') === 'true';
+    if (params.has('title')) newArgs.title = params.get('title');
+    if (params.has('full')) newArgs.fullscreen = params.get('full') === 'true';
+    if (params.has('min')) newArgs.minimized = params.get('min') === 'true';
+
+    console.log('Parsed deep link args:', newArgs); // Add logging
+    return newArgs;
+  } catch (error) {
+    console.error('Error parsing deep link URL:', error);
+    return null;
+  }
+}
+
+function registerProtocolHandling() {
+  // Check if we're already the default protocol handler
+  if (process.defaultApp) {
+    if (process.argv.length >= 2) {
+      app.setAsDefaultProtocolClient('electroncapture', process.execPath, [path.resolve(process.argv[1])])
+    }
+  } else {
+    app.setAsDefaultProtocolClient('electroncapture');
+  }
+
+  // Handle the case where the app is not the default handler
+  if (!app.isDefaultProtocolClient('electroncapture')) {
+    // Try to register again with elevated permissions if needed
+    try {
+      app.setAsDefaultProtocolClient('electroncapture');
+    } catch (error) {
+      console.error('Failed to register protocol handler:', error);
+    }
+  }
+}
+// Handle deep linking on Windows
+if (process.platform === 'win32') {
+  const deepLinkUrl = process.argv.find(arg => arg.startsWith('electroncapture://'));
+  if (deepLinkUrl) {
+    console.log('Found deep link in initial launch:', deepLinkUrl);
+    const args = parseDeepLink(deepLinkUrl);
+    if (args && args.url) {
+        Argv = args; // Update initial arguments if valid
+    }
+  }
+}
+// Register protocol client
+if (process.defaultApp) {
+  if (process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient('electroncapture', process.execPath, [path.resolve(process.argv[1])])
+  }
+} else {
+  app.setAsDefaultProtocolClient('electroncapture');
+}
+
 
 function getDirectories(path) {
   return fs.readdirSync(path).filter(function (file) {
@@ -1788,11 +1870,40 @@ contextMenu({
 	]
 });
 
-app.on('second-instance', (event, commandLine, workingDirectory, argv2) => {
-	createWindow(argv2, argv2.title);
+// second-instance handler + deep linking
+app.on('second-instance', (event, commandLine, workingDirectory) => {
+  // Find the deep link URL in command line arguments
+  const deepLinkUrl = commandLine.find(arg => arg.startsWith('electroncapture://'));
+  if (deepLinkUrl) {
+    console.log('Received deep link URL:', deepLinkUrl);
+    const args = parseDeepLink(deepLinkUrl);
+    if (args) {
+      console.log('Creating window with args:', args);
+      createWindow(args);
+    }
+  }
 });
 
-
+// macOS deep linking support
+app.on('open-url', (event, url) => {
+  event.preventDefault();
+  console.log('Received open-url event:', url);
+  if (url.startsWith('electroncapture://')) {
+    const args = parseDeepLink(url);
+    if (args) {
+      // Ensure app is ready before creating window
+      if (app.isReady()) {
+        console.log('Creating window with args:', args);
+        createWindow(args);
+      } else {
+        app.on('ready', () => {
+          console.log('App ready, creating window with args:', args);
+          createWindow(args);
+        });
+      }
+    }
+  }
+});
 
 var DoNotClose = false;
 app.on('window-all-closed', () => {
@@ -1834,9 +1945,21 @@ if (!fs.existsSync(folder)) {
 }
 app.setPath('userData', folder);
 
+function checkProtocolHandler() {
+  const isDefault = app.isDefaultProtocolClient('electroncapture');
+  console.log('Is electroncapture protocol handler registered?', isDefault);
+  
+  if (!isDefault) {
+    const success = app.setAsDefaultProtocolClient('electroncapture');
+    console.log('Attempted to register protocol handler:', success);
+  }
+}
+
 app.whenReady().then(function(){
 	//app.allowRendererProcessReuse = false;
 	console.log("APP READY");
+	checkProtocolHandler();
+	
 	session.fromPartition("default").setPermissionRequestHandler((webContents, permission, callback) => {
 		try {
 			let allowedPermissions = ["audioCapture", "desktopCapture", "pageCapture", "tabCapture", "experimental"]; // Full list here: https://developer.chrome.com/extensions/declare_permissions#manifest
@@ -1852,7 +1975,50 @@ app.whenReady().then(function(){
 		} catch(e){console.error(e);}
 	});
 	createWindow(Argv);
+	
+	registerProtocolHandling();
+	if (process.platform === 'win32') {
+		const squirrelStartup = require('electron-squirrel-startup');
+		if (squirrelStartup) {
+		  app.quit();
+		  return;
+		}
+	}
+	
 }).catch(console.error);;
+
+
+// Add Windows installer events if you're using electron-squirrel-startup
+if (require('electron-squirrel-startup')) app.quit();
+
+if (process.platform === 'win32') {
+  const handleStartupEvent = () => {
+    if (process.platform !== 'win32') {
+      return false;
+    }
+
+    const squirrelCommand = process.argv[1];
+    switch (squirrelCommand) {
+      case '--squirrel-install':
+      case '--squirrel-updated':
+        // Register protocol handler
+        registerProtocolHandling();
+        return true;
+      case '--squirrel-uninstall':
+        // Remove protocol handler registration
+        app.removeAsDefaultProtocolClient('electroncapture');
+        return true;
+      case '--squirrel-obsolete':
+        app.quit();
+        return true;
+    }
+  };
+
+  if (handleStartupEvent()) {
+    app.quit();
+  }
+}
+
 
 app.on('ready', () => {
     // NB: Work around electron/electron#6643
@@ -1866,6 +2032,10 @@ app.on('ready', () => {
 	  console.log('browser-window-focus', win.webContents.id);
 	  win.setIgnoreMouseEvents(false);
 	})
+	
+	if (!isDev) {
+		registerProtocolHandling();
+	}
 });
 
 // This method will be called when Electron has finished

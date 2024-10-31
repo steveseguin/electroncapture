@@ -1,7 +1,7 @@
 {
   "name": "VDON.Electron.Capture.App",
-  "version": "2.18.6",
-  "description": "A simple tool to aid with frameless window video capture and VDON publishing",
+  "version": "2.18.7",
+  "description": "A simple tool to aid with frameless window video capture and VDO.Ninja publishing",
   "author": "Steve Seguin <steve@seguin.email>",
   "main": "main.js",
   "scripts": {
@@ -21,6 +21,12 @@
   "build": {
     "appId": "capture.electron",
     "productName": "elecap",
+	"protocols": {
+      "name": "electroncapture",
+      "schemes": [
+        "electroncapture"
+      ]
+    },
     "files": [
       "**/*",
       "build/Release/*",
@@ -128,7 +134,9 @@
     "electron-unhandled": "4.0.1",
     "minimalist": "^1.0.0",
     "minimist": "github:fortiZde/minimist",
-    "yargs": "^17.7.2"
+    "yargs": "^17.7.2",
+	"electron-is-dev": "^2.0.0",
+    "electron-squirrel-startup": "^1.0.0"
   },
   "engines": {
     "node": ">=18.0.0",
