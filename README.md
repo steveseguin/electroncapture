@@ -166,8 +166,7 @@ eg: `electroncapture://vdo.ninja/?view=abc123` will open Elecap and load a VDO.N
 The page below will let you customize deep links with additional settings, such as width, height, and position.
 [https://vdo.ninja/electroncapture](https://vdo.ninja/electroncapture)
 
-![image](https://github.com/user-attachments/assets/449820dd-8c07-46a1-bfa8-67a1bd197a78)
-
+![image](https://github.com/user-attachments/assets/48692af7-ae90-4fa0-b4b6-e5e01b444172)
 
 ### Syphon Output
 
