@@ -157,6 +157,18 @@ If using socialstream or vdo.ninja, you can append &transparent to those URLs to
 
 Once "click thru" mode is enabled, you can re-enable click-capture by just selecting the app via the task bar, as bringing the app into focus will disable the click-thru mode.
 
+### Deep linking
+
+You can load Electron Capture via deep-links in websites and web-apps; assuming you have already installed and have used the app before.
+
+eg: `electroncapture://vdo.ninja/?view=abc123` will open Elecap and load a VDO.Ninja view link.
+
+The page below will let you customize deep links with additional settings, such as width, height, and position.
+[https://vdo.ninja/electroncapture](https://vdo.ninja/electroncapture)
+
+![image](https://github.com/user-attachments/assets/449820dd-8c07-46a1-bfa8-67a1bd197a78)
+
+
 ### Syphon Output
 
 While there is no native Syphon or NDI output option yet available, one user has mentioned a solution for some users:
