@@ -25,13 +25,27 @@ jobs:
           node-version: '18'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build Electron app for Linux
         run: npm run build:linux
         
+      - name: Archive Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: electron-linux-AppImage
+          path: dist/*.AppImage
+          retention-days: 1
+        
       - name: Build Electron deb for RPI
         run: npm run build:rpideb
+        
+      - name: Archive Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: electron-rpi-deb
+          path: dist/*.deb
+          retention-days: 1
         
       - name: Build Electron appImage for RPI
         run: npm run build:rpi
@@ -39,9 +53,9 @@ jobs:
       - name: Archive Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: electron-linux-AppImage
+          name: electron-rpi-AppImage
           path: dist/*.AppImage
-          retention-days: 2
+          retention-days: 1
 
 
 
