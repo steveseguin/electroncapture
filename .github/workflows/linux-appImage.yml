@@ -29,6 +29,12 @@ jobs:
 
       - name: Build Electron app for Linux
         run: npm run build:linux
+        
+      - name: Build Electron deb for RPI
+        run: npm run build:rpideb
+        
+      - name: Build Electron appImage for RPI
+        run: npm run build:rpi
 
       - name: Archive Artifacts
         uses: actions/upload-artifact@v3

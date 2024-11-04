@@ -10,7 +10,9 @@
     "build:win32": "electron-builder --win",
     "build:darwin": "electron-builder --mac --universal",
     "build:linux": "electron-builder --linux",
-    "build:rpi": "USE_SYSTEM_FPM=true electron-builder --armv7l --linux deb",
+    "build:rpideb": "USE_SYSTEM_FPM=true electron-builder --armv7l --linux deb",
+	"build:rpi": "electron-builder --armv7l --linux  AppImage",
+    "build:arm64": "electron-builder --arm64 --linux deb rpm AppImage",
     "clean": "rimraf ./dist",
     "release": "electron-builder --publish always"
   },
@@ -21,7 +23,7 @@
   "build": {
     "appId": "capture.electron",
     "productName": "elecap",
-	"protocols": {
+    "protocols": {
       "name": "electroncapture",
       "schemes": [
         "electroncapture"
@@ -88,7 +90,15 @@
       "category": "public.build.automation",
       "icon": "assets/icons/png/256x256.png",
       "artifactName": "${productName}-${version}-${arch}.${ext}",
-      "target": "AppImage"
+      "target": ["AppImage", "deb", "rpm"],
+	  "executableName": "elecap",
+      "synopsis": "Video Capture Tool",
+      "description": "A simple tool for frameless window video capture",
+      "desktop": {
+	    "Name": "EleCap",
+        "Comment": "Video Capture Tool",
+        "Categories": "Utility;"
+	  }
     },
     "nsis": {
       "runAfterFinish": true,
@@ -121,7 +131,7 @@
     "afterSign": "./afterSign.js"
   },
   "devDependencies": {
-    "electron": "^33.0.1",
+    "electron": "^33.0.2",
     "electron-builder": "^24.13.3",
     "electron-notarize": "git://github.com/electron/notarize.git",
     "rimraf": "^5.0.5",
