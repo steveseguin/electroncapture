@@ -36,15 +36,15 @@ jobs:
           name: electron-linux-AppImage
           path: dist/*.AppImage
           retention-days: 1
-        
-      - name: Build Electron deb for RPI
-        run: npm run build:rpideb
-        
+          
+      - name: Build Electron appImage for ARM64
+        run: npm run build:arm64
+
       - name: Archive Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: electron-rpi-deb
-          path: dist/*.deb
+          name: electron-arm64-AppImage
+          path: dist/*.AppImage
           retention-days: 1
         
       - name: Build Electron appImage for RPI
