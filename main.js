@@ -151,9 +151,10 @@ if (Argv.help) {
   process.exit(0); // Exit the script after showing help.
 }
 
-if (!app.requestSingleInstanceLock(Argv)) {
-	console.log("requestSingleInstanceLock");
-	app.quit();
+if (!app.requestSingleInstanceLock()) {
+    console.log("Another instance is running - quitting this instance");
+    app.quit();
+    return;
 }
 
 function parseDeepLink(deepLinkUrl) {
@@ -348,6 +349,13 @@ function formatURL(inputURL){
 
 async function createWindow(args, reuse=false){
 	var webSecurity = true;
+	
+	// Check if args are valid
+	if (!args || typeof args !== 'object') {
+		console.error('Invalid args passed to createWindow:', args);
+		args = createYargs(); // Use default args if invalid
+	}
+	
 	var URL = args.url, NODE = args.node, WIDTH = args.width, HEIGHT = args.height, TITLE = args.title, PIN = args.pin, X = args.x, Y = args.y, FULLSCREEN = args.fullscreen, UNCLICKABLE = args.uc, MINIMIZED = args.min, CSS = args.css, BGCOLOR = args.chroma;
 	
 	console.log(args);
@@ -1872,16 +1880,23 @@ contextMenu({
 
 // second-instance handler + deep linking
 app.on('second-instance', (event, commandLine, workingDirectory) => {
-  // Find the deep link URL in command line arguments
-  const deepLinkUrl = commandLine.find(arg => arg.startsWith('electroncapture://'));
-  if (deepLinkUrl) {
-    console.log('Received deep link URL:', deepLinkUrl);
-    const args = parseDeepLink(deepLinkUrl);
-    if (args) {
-      console.log('Creating window with args:', args);
-      createWindow(args);
+    console.log('Second instance launched with args:', commandLine);
+    
+    // Check for deep link first
+    const deepLinkUrl = commandLine.find(arg => arg.startsWith('electroncapture://'));
+    if (deepLinkUrl) {
+        console.log('Processing deep link:', deepLinkUrl);
+        const args = parseDeepLink(deepLinkUrl);
+        if (args) {
+            createWindow(args);
+            return;
+        }
     }
-  }
+
+    // If no deep link, process as normal command line launch
+    const newArgv = createYargs();
+    console.log('Creating new window with args:', newArgv);
+    createWindow(newArgv);
 });
 
 // macOS deep linking support
@@ -2019,23 +2034,33 @@ if (process.platform === 'win32') {
   }
 }
 
-
 app.on('ready', () => {
-    // NB: Work around electron/electron#6643
+    // Clear any problematic cache entries on startup
+    const userDataPath = app.getPath('userData');
+    const cachePath = path.join(userDataPath, 'Cache');
+    try {
+        if (fs.existsSync(cachePath)) {
+            fs.rmdirSync(cachePath, { recursive: true });
+        }
+    } catch (error) {
+        console.warn('Could not clear cache:', error);
+    }
+
+    // Your existing ready handler code
     app.on('web-contents-created', (e, wc) => {
-      wc.on('context-menu', (ee, params) => {
-        wc.send('context-menu-ipc', params);
-      });
+        wc.on('context-menu', (ee, params) => {
+            wc.send('context-menu-ipc', params);
+        });
     });
-	
-	app.on('browser-window-focus', (event, win) => {
-	  console.log('browser-window-focus', win.webContents.id);
-	  win.setIgnoreMouseEvents(false);
-	})
-	
-	if (!isDev) {
-		registerProtocolHandling();
-	}
+    
+    app.on('browser-window-focus', (event, win) => {
+        console.log('browser-window-focus', win.webContents.id);
+        win.setIgnoreMouseEvents(false);
+    });
+    
+    if (!isDev) {
+        registerProtocolHandling();
+    }
 });
 
 // This method will be called when Electron has finished
