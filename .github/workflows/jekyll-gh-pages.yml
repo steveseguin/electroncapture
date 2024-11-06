@@ -29,10 +29,12 @@ jobs:
       - name: Install dependencies
         run: |
           gem install jekyll
-          gem install jekyll-theme-architect
+          gem install jekyll-remote-theme
       - name: Build with Jekyll
-        run: |
-          jekyll build --theme jekyll-theme-architect
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./
+          destination: ./_site
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
 
