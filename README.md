@@ -212,7 +212,7 @@ You can find the newest release builds of the app here: https://github.com/steve
 
 Please note that the Electron Capture app does not auto-update to newer versions of Chromium. This can become a security issue if it is left to become out of date. It's also recommended to not use the Electron Capture app with websites and remote VDO.Ninja peers that you do not trust.
 
-### Windows Version
+### Windows Version 🪟
 
 There are two versions for Windows. An installer for x64 systems. There's also a portable version, which is larger in size, but supports x64 and x86 (32-bit) systems. The portable version requires no install and is easier to use from the command-line or from a batch file.
 
@@ -220,7 +220,7 @@ New release here: https://github.com/steveseguin/electroncapture/releases/
 
 If you have problems, try a different version or contact me on Discord.
 
-### Mac Version 
+### Mac Version 🍎
 - Newest version can be found here:
 https://github.com/steveseguin/electroncapture/releases/
 
@@ -229,7 +229,7 @@ https://github.com/steveseguin/electroncapture/releases/download/1.1.3/obsn-1.1.
 
 If on version of Electron doesn't work for you all that well, try a different version. There may be some issues with rounded edges depending on you macOS version and the Electron version used.
 
-### Linux Version
+### Linux Version 🐧
 - Newest version can be found here, available primarily as AppImages, but variations are available:  https://github.com/steveseguin/electroncapture/releases/
 
 For most Linux users though, we're recommending Linux users build it themselves. Details below
@@ -252,7 +252,7 @@ npm run build:linux
 ```
 The file you need to run will be in the dist folder.
 
-## Building for the Raspberry Pi
+## Installing / building for the Raspberry Pi 🥧
 
 - Newest version can be found here, whichi includes an AppImage specific for the RPI, but more generic ARM-Linux options exist, too.
 https://github.com/steveseguin/electroncapture/releases/
