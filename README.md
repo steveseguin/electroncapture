@@ -230,7 +230,7 @@ https://github.com/steveseguin/electroncapture/releases/download/1.1.3/obsn-1.1.
 If on version of Electron doesn't work for you all that well, try a different version. There may be some issues with rounded edges depending on you macOS version and the Electron version used.
 
 ### Linux Version
-There are two pre-build versions of Electron Capture available currently. One built for PopOS and another for Raspbian. Those builds are here: https://github.com/steveseguin/electroncapture/releases/tag/2.5.0
+- Newest version can be found here, available primarily as AppImages, but variations are available:  https://github.com/steveseguin/electroncapture/releases/
 
 For most Linux users though, we're recommending Linux users build it themselves. Details below
 
@@ -253,6 +253,9 @@ npm run build:linux
 The file you need to run will be in the dist folder.
 
 ## Building for the Raspberry Pi
+
+- Newest version can be found here, whichi includes an AppImage specific for the RPI, but more generic ARM-Linux options exist, too.
+https://github.com/steveseguin/electroncapture/releases/
 
 If you want to compile on Raspberry Pi, it's possible, but keep in mind the GPU may not work without also patching Electron.js to support the GPU. Currently you'll need to run it without hardware-acceleration disabled, which is rather disappointing.  Contributions that can help fix this are welcomed.
 
