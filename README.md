@@ -357,6 +357,19 @@ npm install
 ```
 Seems to work with newer npm versions
 
+
+### Security considerations
+
+The Electron Capture doesn't auto-update. This is partially because a stable browser with expected and tested outcomes is important for live streaming. Browsers that auto-update are not reliable, and introduce unexpected issues, month to month.
+
+However, security vulnerabilities constantly appear in the browser world, making older unpatched versions a security hazard.
+
+While I try to release builds of the Electron Capture app that are within a version or two of the newest Chromium stable release, you still will need to manually update to them. And if I do not provide them, you can build them yourself, via updating the package.json file with the target version of the electron.js framework that you wish to use.
+
+Using Electron Capture should still be relatively safe if using it only on trusted domains, not opening unknown links with it, and not using it as a general browser for surfing the greater web with.
+
+Please understand the security implications of using the Electron Capture app, as although it's very powerful, using it improperly can get you hurt.
+
 ### Thank you
 
 "Electron capture is one process that unstable atoms can use to become more stable. " - https://education.jlab.org/glossary/electroncapture.html
