@@ -1,6 +1,6 @@
 {
   "name": "VDON.Electron.Capture.App",
-  "version": "2.18.8",
+  "version": "2.18.9",
   "description": "A simple tool to aid with frameless window video capture and VDO.Ninja publishing",
   "author": "Steve Seguin <steve@seguin.email>",
   "main": "main.js",
@@ -131,7 +131,7 @@
     "afterSign": "./afterSign.js"
   },
   "devDependencies": {
-    "electron": "^33.0.2",
+    "electron": "^32.2.3",
     "electron-builder": "^24.13.3",
     "electron-notarize": "git://github.com/electron/notarize.git",
     "rimraf": "^5.0.5",
