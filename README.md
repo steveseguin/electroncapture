@@ -147,7 +147,7 @@ If you right click the app when on a site, you can change the audio output devic
 
 On macOS, this is especially helpful since there is a lack of audio routing controls.
 
-Please note:  To use this feature, you will need to elevate the app's privilleges, which can expose the user to security issues on untrusted websites. 
+Please note:  To use this feature, you will need to elevate the app's privileges, which can expose the user to security issues on untrusted websites. 
 
 ### Pinning and click-pass thru
 
