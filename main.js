@@ -10,6 +10,10 @@ const contextMenu = require('electron-context-menu');
 const Yargs = require('yargs')
 const isDev = require('electron-is-dev');
 
+const { Readable } = require('stream');
+const { fetch: undiciFetch } = require('undici');
+const activeStreams = new Map();
+
 process.on('uncaughtException', function (error) {
 	console.error("uncaughtException");
     console.error(error);
@@ -151,72 +155,70 @@ if (Argv.help) {
   process.exit(0); // Exit the script after showing help.
 }
 
-if (!app.requestSingleInstanceLock()) {
-    console.log("Another instance is running - quitting this instance");
-    app.quit();
-    return;
+const gotTheLock = app.requestSingleInstanceLock()
+
+if (!gotTheLock) {
+  return
 }
 
 function parseDeepLink(deepLinkUrl) {
-  console.log('Parsing deep link:', deepLinkUrl);
-  try {
-	
-    
-    // Create a copy of default args
-    const newArgs = {...Argv};
-	
-	deepLinkUrl = deepLinkUrl.replace("electroncapture://", "https://");
-    let url = new URL(deepLinkUrl);
-	
-    console.log('Parsed URL:', {
-      pathname: url.pathname,
-      search: url.search,
-      hash: url.hash
-    });
-    
-	newArgs.url = url.href;
-    
-    // Parse window parameters from query string
-    const params = new URLSearchParams(url.search);
-    
-    // Map URL parameters to window arguments
-    if (params.has('w')) newArgs.width = parseInt(params.get('w'));
-    if (params.has('h')) newArgs.height = parseInt(params.get('h'));
-    if (params.has('x')) newArgs.x = parseInt(params.get('x'));
-    if (params.has('y')) newArgs.y = parseInt(params.get('y'));
-    if (params.has('pin')) newArgs.pin = params.get('pin') === 'true';
-    if (params.has('title')) newArgs.title = params.get('title');
-    if (params.has('full')) newArgs.fullscreen = params.get('full') === 'true';
-    if (params.has('min')) newArgs.minimized = params.get('min') === 'true';
+    console.log('Parsing deep link:', deepLinkUrl);
+    try {
+        // Create a copy of default args
+        const newArgs = {...Argv};
+        
+        deepLinkUrl = deepLinkUrl.replace("electroncapture://", "https://");
+        let url = new URL(deepLinkUrl);
+        
+        console.log('Parsed URL:', {
+            pathname: url.pathname,
+            search: url.search,
+            hash: url.hash
+        });
+        
+        newArgs.url = url.href;
+        
+        // Parse window parameters from query string
+        const params = new URLSearchParams(url.search);
+        
+        // Map URL parameters to window arguments
+        if (params.has('w')) newArgs.width = parseInt(params.get('w'));
+        if (params.has('h')) newArgs.height = parseInt(params.get('h'));
+        if (params.has('x')) newArgs.x = parseInt(params.get('x'));
+        if (params.has('y')) newArgs.y = parseInt(params.get('y'));
+        if (params.has('pin')) newArgs.pin = params.get('pin') === 'true';
+        if (params.has('title')) newArgs.title = params.get('title');
+        if (params.has('full')) newArgs.fullscreen = params.get('full') === 'true';
+        if (params.has('min')) newArgs.minimized = params.get('min') === 'true';
 
-    console.log('Parsed deep link args:', newArgs); // Add logging
-    return newArgs;
-  } catch (error) {
-    console.error('Error parsing deep link URL:', error);
-    return null;
-  }
+        console.log('Parsed deep link args:', newArgs);
+        return newArgs;
+    } catch (error) {
+        console.error('Error parsing deep link URL:', error);
+        return null;
+    }
 }
 
 function registerProtocolHandling() {
-  // Check if we're already the default protocol handler
-  if (process.defaultApp) {
-    if (process.argv.length >= 2) {
-      app.setAsDefaultProtocolClient('electroncapture', process.execPath, [path.resolve(process.argv[1])])
+    // Check if we're already the default protocol handler
+    if (process.defaultApp) {
+        if (process.argv.length >= 2) {
+            app.setAsDefaultProtocolClient('electroncapture', process.execPath, [path.resolve(process.argv[1])])
+        }
+    } else {
+        app.setAsDefaultProtocolClient('electroncapture');
     }
-  } else {
-    app.setAsDefaultProtocolClient('electroncapture');
-  }
 
-  // Handle the case where the app is not the default handler
-  if (!app.isDefaultProtocolClient('electroncapture')) {
-    // Try to register again with elevated permissions if needed
-    try {
-      app.setAsDefaultProtocolClient('electroncapture');
-    } catch (error) {
-      console.error('Failed to register protocol handler:', error);
+    // Handle the case where the app is not the default handler
+    if (!app.isDefaultProtocolClient('electroncapture')) {
+        try {
+            app.setAsDefaultProtocolClient('electroncapture');
+        } catch (error) {
+            console.error('Failed to register protocol handler:', error);
+        }
     }
-  }
 }
+
 // Handle deep linking on Windows
 if (process.platform === 'win32') {
   const deepLinkUrl = process.argv.find(arg => arg.startsWith('electroncapture://'));
@@ -347,6 +349,128 @@ function formatURL(inputURL){
   return inputURL;
 }
 
+ipcMain.handle('noCORSFetch', async (event, args) => {
+  const streamId = Date.now().toString();
+  
+  try {
+    const response = await undiciFetch(args.url, {
+      method: args.method || 'GET',
+      headers: {
+        ...args.headers
+      }
+    });
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: response.status,
+        statusText: response.statusText
+      };
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    const boundaryMatch = contentType.match(/boundary=([^;]+)/i);
+    const boundary = boundaryMatch ? boundaryMatch[1] : null;
+
+    const reader = response.body.getReader();
+    activeStreams.set(streamId, {
+      reader,
+      buffer: Buffer.alloc(0)
+    });
+
+    return {
+      ok: true,
+      status: response.status,
+      streamId,
+      contentType,
+      boundary: boundary ? `${boundary}` : null
+    };
+
+  } catch (error) {
+    console.error('Fetch error:', error);
+    return {
+      ok: false,
+      error: error.message
+    };
+  }
+});
+
+
+ipcMain.handle('readStreamChunk', async (event, streamId) => {
+  const stream = activeStreams.get(streamId);
+  if (!stream) return { done: true };
+
+  try {
+    const { done, value } = await stream.reader.read();
+
+    if (done) {
+      activeStreams.delete(streamId);
+      return { done: true };
+    }
+
+    // Return the raw chunk data
+    return { 
+      done: false, 
+      value: Array.from(value)
+    };
+
+  } catch (error) {
+    console.error('Stream read error:', error);
+    activeStreams.delete(streamId);
+    throw error;
+  }
+});
+
+ipcMain.handle('closeStream', async (event, streamId) => {
+  const stream = activeStreams.get(streamId);
+  if (stream?.reader) {
+    try {
+      await stream.reader.cancel();
+    } catch (e) {
+      console.error('Error closing stream:', e);
+    }
+    activeStreams.delete(streamId);
+  }
+  return true;
+});
+
+
+ipcMain.on('prompt', function(eventRet, arg) {  // this enables a PROMPT pop up , which is used to BLOCK the main thread until the user provides input. VDO.Ninja uses prompt for passwords, etc.
+	try {
+		arg.val = arg.val || '';
+		arg.title = arg.title.replace("\n","<br /><br />");
+		prompt({
+			title: "",
+			label: arg.title,
+			width: 700,
+			useHtmlLabel: true,
+			inputAttrs: {
+				type: 'string',
+				placeholder: arg.val
+			},
+			type: 'input',
+			resizable: true,
+	  alwaysOnTop: true
+		})
+		.then((r) => {
+			if(r === null) {
+				console.log('user cancelled');
+			} else {
+				console.log('result', r);
+				eventRet.returnValue = r;
+			}
+		})
+		.catch(console.error);
+	} catch(e){console.error(e);}
+});
+
+ipcMain.on('getSources', async function(eventRet, args) {
+	try{
+		const sources = await desktopCapturer.getSources({ types: args.types });
+		eventRet.returnValue = sources;
+	} catch(e){console.error(e);}
+});
+
 async function createWindow(args, reuse=false){
 	var webSecurity = true;
 	
@@ -430,37 +554,6 @@ async function createWindow(args, reuse=false){
 	}
 	
 
-	ipcMain.on('prompt', function(eventRet, arg) {  // this enables a PROMPT pop up , which is used to BLOCK the main thread until the user provides input. VDO.Ninja uses prompt for passwords, etc.
-		try {
-			arg.val = arg.val || '';
-			arg.title = arg.title.replace("\n","<br /><br />");
-			prompt({
-				title: "",
-				label: arg.title,
-				width: 700,
-				useHtmlLabel: true,
-				inputAttrs: {
-					type: 'string',
-					placeholder: arg.val
-				},
-				type: 'input',
-				resizable: true,
-		  alwaysOnTop: true
-			})
-			.then((r) => {
-				if(r === null) {
-					console.log('user cancelled');
-				} else {
-					console.log('result', r);
-					eventRet.returnValue = r;
-				}
-			})
-			.catch(console.error);
-		} catch(e){console.error(e);}
-	});
-	
-	
-
 	let factor = screen.getPrimaryDisplay().scaleFactor;
 	
 	var ttt = screen.getPrimaryDisplay().workAreaSize;
@@ -496,7 +589,7 @@ async function createWindow(args, reuse=false){
 			preload: path.join(__dirname, 'preload.js'),
 			pageVisibility: true,
 			partition: 'persist:abc',
-			contextIsolation: !NODE,
+			contextIsolation: true,
 			backgroundThrottling: false,
 			webSecurity: webSecurity,
 			nodeIntegrationInSubFrames: NODE,
@@ -786,16 +879,6 @@ async function createWindow(args, reuse=false){
 			}
 		} catch(e){console.error(e);}
 	});
-	
-	ipcMain.on('getSources', async function(eventRet, args) {
-		try{
-			if (mainWindow) {
-				const sources = await desktopCapturer.getSources({ types: args.types });
-				eventRet.returnValue = sources;
-			}
-		} catch(e){console.error(e);}
-	});
-	
 	
 	if (mainWindow){
 		const ret = globalShortcut.register('CommandOrControl+M', () => {
@@ -1878,7 +1961,6 @@ contextMenu({
 	]
 });
 
-// second-instance handler + deep linking
 app.on('second-instance', (event, commandLine, workingDirectory) => {
     console.log('Second instance launched with args:', commandLine);
     
@@ -1893,31 +1975,48 @@ app.on('second-instance', (event, commandLine, workingDirectory) => {
         }
     }
 
-    // If no deep link, process as normal command line launch
-    const newArgv = createYargs();
-    console.log('Creating new window with args:', newArgv);
-    createWindow(newArgv);
+    // Get the raw arguments without the executable path
+    const rawArgs = commandLine.slice(process.defaultApp ? 2 : 1);
+    console.log('Raw args:', rawArgs);
+
+    // Parse arguments using same Yargs setup
+    const parsedArgs = Yargs.parse(rawArgs);
+    
+     // Create window config merging defaults with new args
+    const windowConfig = {
+        ...Argv,  // Start with default arguments
+        ...parsedArgs, // Override with new arguments
+        // Explicitly handle numeric values
+        width: parsedArgs.w || parsedArgs.width || Argv.width,
+        height: parsedArgs.h || parsedArgs.height || Argv.height,
+        x: typeof parsedArgs.x !== 'undefined' ? parsedArgs.x : Argv.x,
+        y: typeof parsedArgs.y !== 'undefined' ? parsedArgs.y : Argv.y
+    };
+
+    console.log('Creating window with config:', windowConfig);
+    createWindow(windowConfig);
 });
+
 
 // macOS deep linking support
 app.on('open-url', (event, url) => {
-  event.preventDefault();
-  console.log('Received open-url event:', url);
-  if (url.startsWith('electroncapture://')) {
-    const args = parseDeepLink(url);
-    if (args) {
-      // Ensure app is ready before creating window
-      if (app.isReady()) {
-        console.log('Creating window with args:', args);
-        createWindow(args);
-      } else {
-        app.on('ready', () => {
-          console.log('App ready, creating window with args:', args);
-          createWindow(args);
-        });
-      }
+    event.preventDefault();
+    console.log('Received open-url event:', url);
+    if (url.startsWith('electroncapture://')) {
+        const args = parseDeepLink(url);
+        if (args) {
+            // Ensure app is ready before creating window
+            if (app.isReady()) {
+                console.log('Creating window from deep link with args:', args);
+                createWindow(args);
+            } else {
+                app.on('ready', () => {
+                    console.log('App ready, creating window from deep link with args:', args);
+                    createWindow(args);
+                });
+            }
+        }
     }
-  }
 });
 
 var DoNotClose = false;
@@ -1970,37 +2069,55 @@ function checkProtocolHandler() {
   }
 }
 
-app.whenReady().then(function(){
-	//app.allowRendererProcessReuse = false;
-	console.log("APP READY");
-	checkProtocolHandler();
-	
-	session.fromPartition("default").setPermissionRequestHandler((webContents, permission, callback) => {
-		try {
-			let allowedPermissions = ["audioCapture", "desktopCapture", "pageCapture", "tabCapture", "experimental"]; // Full list here: https://developer.chrome.com/extensions/declare_permissions#manifest
+// Remove the checkProtocolHandler function as it's redundant with registerProtocolHandling
 
-			if (allowedPermissions.includes(permission)) {
-				callback(true); // Approve permission request
-			} else {
-				console.error(
-					`The application tried to request permission for '${permission}'. This permission was not whitelisted and has been blocked.`
-				);
-				callback(false); // Deny
-			}
-		} catch(e){console.error(e);}
-	});
-	createWindow(Argv);
-	
-	registerProtocolHandling();
-	if (process.platform === 'win32') {
-		const squirrelStartup = require('electron-squirrel-startup');
-		if (squirrelStartup) {
-		  app.quit();
-		  return;
-		}
-	}
-	
-}).catch(console.error);;
+app.whenReady().then(function(){
+    console.log("APP READY");
+    
+    // Set up permission handling
+    session.fromPartition("default").setPermissionRequestHandler((webContents, permission, callback) => {
+        try {
+            let allowedPermissions = [
+                "audioCapture", 
+                "desktopCapture", 
+                "pageCapture", 
+                "tabCapture", 
+                "experimental"
+            ];
+            
+            if (allowedPermissions.includes(permission)) {
+                callback(true); // Approve permission request
+            } else {
+                console.error(
+                    `The application tried to request permission for '${permission}'. This permission was not whitelisted and has been blocked.`
+                );
+                callback(false); // Deny
+            }
+        } catch(e) {
+            console.error(e);
+            callback(false); // Deny on error
+        }
+    });
+
+    // Register protocol handler first
+    registerProtocolHandling();
+    
+    // Create initial window
+    createWindow(Argv);
+    
+    // Handle Windows-specific startup
+    if (process.platform === 'win32') {
+        try {
+            const squirrelStartup = require('electron-squirrel-startup');
+            if (squirrelStartup) {
+                app.quit();
+                return;
+            }
+        } catch(e) {
+            console.error('Error checking squirrel startup:', e);
+        }
+    }
+}).catch(console.error);
 
 
 // Add Windows installer events if you're using electron-squirrel-startup

@@ -45,7 +45,10 @@ try {
 	  'updatePPT' : function (PPTHotkey) { // window.electronApi.updateVersion(session.version);
 		 console.log("updatePPT recieved !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		 ipcRenderer.send('PPTHotkey', PPTHotkey);
-	  }
+	  },
+	  noCORSFetch: (args) => ipcRenderer.invoke('noCORSFetch', args),
+	  readStreamChunk: (streamId) => ipcRenderer.invoke('readStreamChunk', streamId),
+	  closeStream: (streamId) => ipcRenderer.invoke('closeStream', streamId)
 	});
 } catch(e){
 	
