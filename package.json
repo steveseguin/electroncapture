@@ -1,6 +1,6 @@
 {
   "name": "VDON.Electron.Capture.App",
-  "version": "2.18.9",
+  "version": "2.19.0",
   "description": "A simple tool to aid with frameless window video capture and VDO.Ninja publishing",
   "author": "Steve Seguin <steve@seguin.email>",
   "main": "main.js",
@@ -142,6 +142,7 @@
     "electron-is-dev": "^3.0.1",
     "electron-prompt": "^1.7.0",
     "electron-unhandled": "4.0.1",
+	"undici": "^6.20.0",
     "minimalist": "^1.0.0",
     "minimist": "github:fortiZde/minimist",
     "yargs": "^17.7.2",
