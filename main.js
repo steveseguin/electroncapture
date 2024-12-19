@@ -13,6 +13,7 @@ const isDev = require('electron-is-dev');
 const { Readable } = require('stream');
 const { fetch: undiciFetch } = require('undici');
 const activeStreams = new Map();
+const https = require('https');
 
 process.on('uncaughtException', function (error) {
 	console.error("uncaughtException");
@@ -343,7 +344,11 @@ function sleep(ms) {
   });
 }
 
-function formatURL(inputURL){
+const httpsAgent = new https.Agent({
+  rejectUnauthorized: false
+});
+
+function formatURL(inputURL) {
   if (!inputURL.startsWith("http://") && !inputURL.startsWith("https://") && !inputURL.startsWith("file://")) {
     return "https://" + inputURL;
   }
@@ -354,13 +359,25 @@ ipcMain.handle('noCORSFetch', async (event, args) => {
   const streamId = Date.now().toString();
   
   try {
-    const response = await undiciFetch(args.url, {
+    const isHttps = args.url.toLowerCase().startsWith('https://');
+    const fetchOptions = {
       method: args.method || 'GET',
       headers: {
         ...args.headers
       }
-    });
+    };
 
+    // Add dispatcher with SSL verification disabled for HTTPS URLs
+    if (isHttps) {
+      fetchOptions.dispatcher = new (require('undici').Agent)({
+        connect: {
+          rejectUnauthorized: false
+        }
+      });
+    }
+
+    const response = await undiciFetch(args.url, fetchOptions);
+    
     if (!response.ok) {
       return {
         ok: false,
@@ -372,8 +389,8 @@ ipcMain.handle('noCORSFetch', async (event, args) => {
     const contentType = response.headers.get('content-type') || '';
     const boundaryMatch = contentType.match(/boundary=([^;]+)/i);
     const boundary = boundaryMatch ? boundaryMatch[1] : null;
-
     const reader = response.body.getReader();
+    
     activeStreams.set(streamId, {
       reader,
       buffer: Buffer.alloc(0)
@@ -386,7 +403,6 @@ ipcMain.handle('noCORSFetch', async (event, args) => {
       contentType,
       boundary: boundary ? `${boundary}` : null
     };
-
   } catch (error) {
     console.error('Fetch error:', error);
     return {
@@ -396,25 +412,20 @@ ipcMain.handle('noCORSFetch', async (event, args) => {
   }
 });
 
-
+// Rest of the code remains unchanged
 ipcMain.handle('readStreamChunk', async (event, streamId) => {
   const stream = activeStreams.get(streamId);
   if (!stream) return { done: true };
-
   try {
     const { done, value } = await stream.reader.read();
-
     if (done) {
       activeStreams.delete(streamId);
       return { done: true };
     }
-
-    // Return the raw chunk data
     return { 
       done: false, 
       value: Array.from(value)
     };
-
   } catch (error) {
     console.error('Stream read error:', error);
     activeStreams.delete(streamId);
