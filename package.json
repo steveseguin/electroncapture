@@ -128,7 +128,8 @@
         "releaseType": "release"
       }
     ],
-    "afterSign": "./afterSign.js"
+	"afterSign": "./afterSign.js",
+	"afterAllArtifactBuild": "./afterPack.js"
   },
   "devDependencies": {
     "electron": "34.0.2",
