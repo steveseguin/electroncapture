@@ -601,7 +601,7 @@ async function createWindow(args, reuse=false){
 			preload: path.join(__dirname, 'preload.js'),
 			pageVisibility: true,
 			partition: 'persist:abc',
-			contextIsolation: true,
+			contextIsolation: !NODE,
 			backgroundThrottling: false,
 			webSecurity: webSecurity,
 			nodeIntegrationInSubFrames: NODE,
