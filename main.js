@@ -156,11 +156,11 @@ if (Argv.help) {
   process.exit(0); // Exit the script after showing help.
 }
 
-const gotTheLock = app.requestSingleInstanceLock()
-
-if (!gotTheLock) {
-  return
+if (!app.requestSingleInstanceLock(Argv)) {
+	console.log("requestSingleInstanceLock");
+	return;
 }
+
 
 function parseDeepLink(deepLinkUrl) {
     console.log('Parsing deep link:', deepLinkUrl);
@@ -1973,7 +1973,11 @@ contextMenu({
 	]
 });
 
-app.on('second-instance', (event, commandLine, workingDirectory) => {
+/* app.on('second-instance', (event, commandLine, workingDirectory, argv2) => {
+	createWindow(argv2, argv2.title);
+}); */
+
+app.on('second-instance', (event, commandLine, workingDirectory, argv2) => {
     console.log('Second instance launched with args:', commandLine);
     
     // Check for deep link first
@@ -1987,28 +1991,18 @@ app.on('second-instance', (event, commandLine, workingDirectory) => {
         }
     }
 
-    // Get the raw arguments without the executable path
-    const rawArgs = commandLine.slice(process.defaultApp ? 2 : 1);
-    console.log('Raw args:', rawArgs);
-
-    // Parse arguments using same Yargs setup
-    const parsedArgs = Yargs.parse(rawArgs);
-    
-     // Create window config merging defaults with new args
     const windowConfig = {
         ...Argv,  // Start with default arguments
-        ...parsedArgs, // Override with new arguments
-        // Explicitly handle numeric values
-        width: parsedArgs.w || parsedArgs.width || Argv.width,
-        height: parsedArgs.h || parsedArgs.height || Argv.height,
-        x: typeof parsedArgs.x !== 'undefined' ? parsedArgs.x : Argv.x,
-        y: typeof parsedArgs.y !== 'undefined' ? parsedArgs.y : Argv.y
+        ...argv2, // Override with new arguments
+        width: argv2.w || argv2.width || Argv.width,
+        height: argv2.h || argv2 || Argv.height,
+        x: typeof argv2.x !== 'undefined' ? argv2.x : Argv.x,
+        y: typeof argv2.y !== 'undefined' ? argv2.y : Argv.y
     };
 
     console.log('Creating window with config:', windowConfig);
-    createWindow(windowConfig);
+    createWindow(windowConfig, windowConfig.title);
 });
-
 
 // macOS deep linking support
 app.on('open-url', (event, url) => {
