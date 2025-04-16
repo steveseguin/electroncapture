@@ -625,8 +625,6 @@ async function createWindow(args, reuse=false){
 	
 	//var appData = process.env.APPDATA+"\\..\\Local" || (process.platform == 'darwin' ? process.env.HOME + '/Library/Preferences' : process.env.HOME + "/.local/share")
 
-	
-
 	mainWindow.args = args; // storing settings
 	mainWindow.vdonVersion = false;
 	mainWindow.PPTHotkey = false;
@@ -765,6 +763,10 @@ async function createWindow(args, reuse=false){
 		e.preventDefault();
 		mainWindow.hide(); // hide, and wait 2 second before really closing; this allows for saving of files.
 		mainWindow.webContents.send('postMessage', {'hangup':true});
+
+        // Save bounds to localStorage
+        mainWindow.webContents.executeJavaScript(`localStorage.setItem('windowPosition', '${JSON.stringify(mainWindow.getBounds())}');`);
+
 		setTimeout(function(mainWindow){
 			mainWindow.destroy();
 			mainWindow = null
@@ -772,6 +774,7 @@ async function createWindow(args, reuse=false){
 				
 		globalShortcut.unregister('CommandOrControl+M');
 		globalShortcut.unregisterAll();
+
 	});
 
 	mainWindow.on('closed', async function (e) {
@@ -1043,8 +1046,14 @@ async function createWindow(args, reuse=false){
 	try {
 		mainWindow.loadURL(URL);
 		
-		mainWindow.webContents.on('dom-ready', (event)=> {
+		mainWindow.webContents.on('dom-ready', async (event)=> {
 			console.log('dom-ready');
+            
+	        // Get window position, set it if it exists - or set it to current.
+            // Since we're using localStorage I think we have to wait for the DOM - doesn't work during window creation unless using electron-store or similar.
+            const windowPosition = JSON.parse(await mainWindow.webContents.executeJavaScript(`localStorage.getItem('windowPosition');`));
+            windowPosition ? mainWindow.setBounds(windowPosition) : mainWindow.webContents.executeJavaScript(`localStorage.setItem('windowPosition', ${JSON.stringify(mainWindow.getBounds())});`);
+
 			if (mainWindow.args.hidecursor){
 				mainWindow.webContents.insertCSS(`
 				  * {
