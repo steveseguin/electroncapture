@@ -1,18 +1,17 @@
 name: Enhance Commit Messages
-
 on:
   push:
     branches: [ main, master, beta, develop ]
   pull_request:
     types: [ opened, synchronize ]
-
 jobs:
   enhance-commits:
     runs-on: ubuntu-latest
+    # Skip workflow if commit is from GitHub Actions
+    if: ${{ github.actor != 'github-actions[bot]' && github.actor != 'actions-user' && !startsWith(github.event.head_commit.message, 'Build Electron App') }}
     permissions:
       contents: write
       pull-requests: write
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -21,15 +20,12 @@ jobs:
           # Use a personal access token instead of GITHUB_TOKEN 
           # to ensure pushes trigger workflows
           token: ${{ secrets.COMMIT_ENHANCER_PAT }}
-
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
-
       - name: Install dependencies
         run: npm install @google/generative-ai axios
-
       - name: Configure Git
         run: |
           git config --global user.name "GitHub Actions Commit Enhancer"
