@@ -1,6 +1,10 @@
 {
   "name": "VDON.Electron.Capture.App",
+<<<<<<< HEAD
   "version": "2.19.2",
+=======
+  "version": "2.19.4",
+>>>>>>> b50c198 (commit test by version change)
   "description": "A simple tool to aid with frameless window video capture and VDO.Ninja publishing",
   "author": "Steve Seguin <steve@seguin.email>",
   "main": "main.js",
