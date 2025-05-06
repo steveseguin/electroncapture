@@ -12,6 +12,7 @@ jobs:
       !contains(github.event.head_commit.message, 'Build Electron App') && 
       !contains(github.event.head_commit.message, 'Enhance Commit Messages') && 
       !contains(github.event_name, 'pages-build-deployment') && 
+      !contains(github.event.head_commit.message, 'Update enhance-commits.yml') && 
       !startsWith(github.event.head_commit.message, '```')
     permissions:
       contents: write
