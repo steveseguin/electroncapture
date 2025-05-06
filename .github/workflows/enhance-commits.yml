@@ -41,7 +41,7 @@ jobs:
             if [[ "$LAST_RUN" =~ ^[0-9]+$ ]]; then
               TIME_DIFF=$((CURRENT_TIME - LAST_RUN))
               
-              if [ $TIME_DIFF -lt 900 ]; then
+              if [ $TIME_DIFF -lt 300 ]; then
                 echo "Too soon since last run (${TIME_DIFF}s). Skipping."
                 echo "skip=true" >> $GITHUB_OUTPUT
                 exit 0
