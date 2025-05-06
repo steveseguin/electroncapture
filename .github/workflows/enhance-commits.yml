@@ -7,10 +7,11 @@ on:
 jobs:
   enhance-commits:
     runs-on: ubuntu-latest
-    # Skip workflow on automated commits
+    # Skip workflow on automated commits and deployments
     if: |
       !contains(github.event.head_commit.message, 'Build Electron App') && 
       !contains(github.event.head_commit.message, 'Enhance Commit Messages') && 
+      !contains(github.event_name, 'pages-build-deployment') && 
       !startsWith(github.event.head_commit.message, '```') && 
       !contains(github.event.head_commit.message, 'version bump')
     permissions:
