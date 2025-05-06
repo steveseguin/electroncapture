@@ -197,12 +197,15 @@ ipcMain.handle('start-window-stream-capture', async (event, windowId) => {
       return { success: false, error: "Audio capture method not available" };
     }
     
+    // Store reference to the sender
+    const sender = event.sender;
+    
     // Create a callback that sends data to the renderer
     const callback = (audioData) => {
       // Only send if the window still exists
-      if (!event.sender.isDestroyed()) {
+      if (!sender.isDestroyed()) {
         try {
-          event.sender.send('audio-stream-data', { 
+          sender.send('audio-stream-data', { 
             clientId: processId, 
             data: audioData 
           });
@@ -240,7 +243,7 @@ ipcMain.handle('start-window-stream-capture', async (event, windowId) => {
       if (result.channels) safeResult.channels = result.channels;
       
       // Store the client ID for cleanup
-      audioStreamClients.set(processId, event.sender.id);
+      audioStreamClients.set(processId, sender.id);
       
       console.log(`Successfully started audio capture for process ${processId}, sample rate: ${safeResult.sampleRate}, channels: ${safeResult.channels}`);
       
