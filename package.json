@@ -132,7 +132,7 @@
 	"afterAllArtifactBuild": "./afterPack.js"
   },
   "devDependencies": {
-    "electron": "34.0.2",
+    "electron": "36.1.0",
     "electron-builder": "^24.13.3",
     "electron-notarize": "git://github.com/electron/notarize.git",
     "rimraf": "^5.0.5",

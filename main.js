@@ -10,6 +10,432 @@ const contextMenu = require('electron-context-menu');
 const Yargs = require('yargs')
 const isDev = require('electron-is-dev');
 
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+// main.js
+
+let windowAudioCapture = null;
+// Map to store stream callbacks by client ID
+const audioStreamClients = new Map();
+let audioStreamClientCounter = 0;
+
+try {
+  console.log('Loading window-audio-capture module...');
+  windowAudioCapture = require('./native-modules/window-audio-capture');
+  console.log('Module loaded successfully');
+  
+  // Test if the module methods exist and log them
+  const methods = Object.keys(windowAudioCapture);
+  console.log('Module methods:', methods);
+  
+  // Check if we have the expected API structure
+  if (!windowAudioCapture.getWindowList && windowAudioCapture.captureInstance) {
+    console.log('Module has captureInstance structure');
+  }
+  
+  // Test the getWindowList function
+  try {
+    let windows;
+    if (windowAudioCapture.getWindowList) {
+      windows = windowAudioCapture.getWindowList();
+    } else if (windowAudioCapture.captureInstance && windowAudioCapture.captureInstance.getWindowList) {
+      windows = windowAudioCapture.captureInstance.getWindowList();
+    }
+    
+    console.log('Windows list type:', typeof windows);
+    console.log('Is array:', Array.isArray(windows));
+    console.log('Windows length:', windows ? (Array.isArray(windows) ? windows.length : 'not an array') : 'undefined');
+    console.log('First window:', windows && windows.length > 0 ? windows[0] : 'none');
+  } catch (testError) {
+    console.error('Error testing getWindowList:', testError);
+  }
+} catch (err) {
+  console.error('Error loading window-audio-capture module:', err);
+}
+
+ipcMain.handle('get-window-list', async () => {
+  try {
+    if (!windowAudioCapture) {
+      console.error('Window audio capture module is not loaded');
+      return [];
+    }
+    
+    // Get windows list - handle different module structures
+    let rawWindows;
+    if (windowAudioCapture.getWindowList) {
+      rawWindows = windowAudioCapture.getWindowList();
+    } else if (windowAudioCapture.captureInstance && windowAudioCapture.captureInstance.getWindowList) {
+      rawWindows = windowAudioCapture.captureInstance.getWindowList();
+    } else {
+      console.error('getWindowList method not found on module');
+      return [];
+    }
+    
+    console.log("Raw windows type:", typeof rawWindows);
+    
+    // Convert to array if needed
+    let windows = [];
+    if (Array.isArray(rawWindows)) {
+      windows = rawWindows;
+    } else if (rawWindows && typeof rawWindows === 'object') {
+      // Try to convert the object to an array
+      // This handles if it's returning an object with numeric keys
+      for (let key in rawWindows) {
+        if (rawWindows.hasOwnProperty(key) && !isNaN(parseInt(key))) {
+          windows.push(rawWindows[key]);
+        }
+      }
+      
+      if (windows.length === 0) {
+        // Alternative approach if the above doesn't work
+        windows = Object.values(rawWindows);
+      }
+    }
+    
+    console.log("Converted windows array length:", windows.length);
+
+    return windows;
+  } catch (error) {
+    console.error('Error processing window list:', error);
+    return [];
+  }
+});
+
+ipcMain.handle('get-audio-sessions', async () => {
+  try {
+    return await windowAudioCapture.getAudioSessions();
+  } catch (error) {
+    console.error('Error getting audio sessions:', error);
+    return [];
+  }
+});
+
+ipcMain.handle('start-session-capture', async (event, sessionIndex) => {
+  try {
+    // Get the sessions to find the process ID
+    const sessions = await windowAudioCapture.getAudioSessions();
+    const session = sessions.find(s => s.sessionId === sessionIndex);
+    
+    if (!session || !session.processId) {
+      console.error(`No valid session found for index ${sessionIndex}`);
+      return { success: false, error: "Invalid session index" };
+    }
+    
+    // Use the regular startCapture with the process ID
+    console.log(`Starting capture for process ID ${session.processId} from session ${sessionIndex}`);
+    
+    try {
+      const success = windowAudioCapture.startCapture(session.processId);
+      return { success: !!success }; // Ensure we return a boolean
+    } catch (captureError) {
+      console.error('Error in startCapture:', captureError);
+      return { 
+        success: false, 
+        error: typeof captureError === 'string' ? captureError : 
+              (captureError && captureError.message) ? captureError.message : "Unknown error starting capture" 
+      };
+    }
+  } catch (error) {
+    console.error('Error in startCaptureBySession:', error);
+    // Return a simple error object that can be cloned
+    return { 
+      success: false, 
+      error: typeof error === 'string' ? error : 
+            (error && error.message) ? error.message : "Unknown error occurred"
+    };
+  }
+});
+
+ipcMain.handle('start-window-capture', async (event, windowId) => {
+  try {
+    const success = windowAudioCapture.startCapture(windowId);
+    return { success };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-audio-data', async () => {
+  try {
+    const audioData = windowAudioCapture.getAudioData();
+    return { success: true, audioData };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('stop-capture', async () => {
+  try {
+    const success = windowAudioCapture.stopCapture();
+    return { success };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('start-window-stream-capture', async (event, windowId) => {
+  try {
+    console.log(`Start window stream capture request: ${windowId} ${typeof windowId}`);
+    
+    // Ensure windowId is a number
+    const processId = Number(windowId);
+    
+    if (isNaN(processId) || processId <= 0) {
+      console.error(`Invalid process ID: ${windowId}`);
+      return { success: false, error: "Invalid process ID" };
+    }
+    
+    console.log(`Starting audio capture for process ID: ${processId}`);
+    
+    // Access the startStreamCapture method based on module structure
+    const startStreamCapture = windowAudioCapture.startStreamCapture || 
+                              (windowAudioCapture.captureInstance && windowAudioCapture.captureInstance.startStreamCapture);
+    
+    if (!startStreamCapture) {
+      console.error("startStreamCapture method not found on module");
+      return { success: false, error: "Audio capture method not available" };
+    }
+    
+    // Create a callback that sends data to the renderer
+    const callback = (audioData) => {
+      // Only send if the window still exists
+      if (!event.sender.isDestroyed()) {
+        try {
+          event.sender.send('audio-stream-data', { 
+            clientId: processId, 
+            data: audioData 
+          });
+        } catch (err) {
+          console.error("Error sending audio data:", err);
+        }
+      }
+    };
+    
+    // Start the stream with proper error handling
+    try {
+      // Dynamically call the method based on its location
+      let result;
+      
+      if (windowAudioCapture.startStreamCapture) {
+        result = await windowAudioCapture.startStreamCapture(processId, callback);
+      } else if (windowAudioCapture.captureInstance && windowAudioCapture.captureInstance.startStreamCapture) {
+        result = await windowAudioCapture.captureInstance.startStreamCapture(processId, callback);
+      } else {
+        throw new Error("startStreamCapture method not available");
+      }
+      
+      if (!result) {
+        return { success: false, error: "Failed to start audio capture" };
+      }
+      
+      // Create a new result object with only the properties we need
+      const safeResult = {
+        success: true,
+        clientId: processId
+      };
+      
+      // Only copy primitive values that we know are serializable
+      if (result.sampleRate) safeResult.sampleRate = result.sampleRate;
+      if (result.channels) safeResult.channels = result.channels;
+      
+      // Store the client ID for cleanup
+      audioStreamClients.set(processId, event.sender.id);
+      
+      console.log(`Successfully started audio capture for process ${processId}, sample rate: ${safeResult.sampleRate}, channels: ${safeResult.channels}`);
+      
+      return safeResult;
+    } catch (captureError) {
+      console.error("Error starting stream capture:", captureError);
+      return { 
+        success: false, 
+        error: typeof captureError === 'string' ? captureError : 
+              (captureError && captureError.message) ? captureError.message : "Failed to start audio capture"
+      };
+    }
+  } catch (error) {
+    console.error("Error in start-window-stream-capture:", error);
+    return { 
+      success: false, 
+      error: typeof error === 'string' ? error : 
+            (error && error.message) ? error.message : "Unknown error occurred"
+    };
+  }
+});
+
+ipcMain.handle('stop-stream-capture', async (event, clientId) => {
+  try {
+    console.log(`Stopping stream capture for client ID: ${clientId}`);
+    
+    if (audioStreamClients.has(clientId)) {
+      audioStreamClients.delete(clientId);
+    }
+    
+    // Access the stopStreamCapture method based on module structure
+    const stopStreamCapture = windowAudioCapture.stopStreamCapture || 
+                             (windowAudioCapture.captureInstance && windowAudioCapture.captureInstance.stopStreamCapture) ||
+                             windowAudioCapture.stopCapture ||
+                             (windowAudioCapture.captureInstance && windowAudioCapture.captureInstance.stopCapture);
+    
+    // Only stop if no more clients are streaming
+    if (audioStreamClients.size === 0 && stopStreamCapture) {
+      try {
+        if (windowAudioCapture.stopStreamCapture) {
+          await windowAudioCapture.stopStreamCapture(clientId);
+        } else if (windowAudioCapture.captureInstance && windowAudioCapture.captureInstance.stopStreamCapture) {
+          await windowAudioCapture.captureInstance.stopStreamCapture(clientId);
+        } else if (windowAudioCapture.stopCapture) {
+          await windowAudioCapture.stopCapture();
+        } else if (windowAudioCapture.captureInstance && windowAudioCapture.captureInstance.stopCapture) {
+          await windowAudioCapture.captureInstance.stopCapture();
+        }
+        console.log(`Successfully stopped audio capture for client ${clientId}`);
+      } catch (stopError) {
+        console.error(`Error stopping capture: ${stopError}`);
+      }
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error("Error in stop-stream-capture:", error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('getSources', async (event, args) => {
+  try {
+    // Get all sources from desktopCapturer
+    const sources = await desktopCapturer.getSources({ 
+      types: args.types,
+      thumbnailSize: { width: 150, height: 150 }
+    });
+    
+    // Get audio sessions for correlation
+    let audioSessions = [];
+    try {
+      audioSessions = await windowAudioCapture.getAudioSessions();
+      console.log('Audio sessions found:', audioSessions.length);
+      console.log('Audio sessions:', audioSessions);
+    } catch (err) {
+      console.warn('Could not get audio sessions:', err);
+    }
+    
+    // Get window list for correlation
+    let windows = [];
+    try {
+      windows = await windowAudioCapture.getWindowList();
+      console.log('Windows found:', windows.length);
+    } catch (err) {
+      console.warn('Could not get window list:', err);
+    }
+    
+    // Build a map of process IDs to session IDs for quick lookup
+    const processToSession = {};
+    audioSessions.forEach(session => {
+      if (session.processId) {
+        processToSession[session.processId] = session.sessionId;
+      }
+    });
+    
+    // Process sources to make them serializable and add audio info
+    const processedSources = sources.map(source => {
+      // Find matching window by title
+      const sourceNameLower = source.name.toLowerCase();
+      const matchingWindow = Array.isArray(windows) ? 
+        windows.find(win => 
+          win.title.toLowerCase().includes(sourceNameLower) || 
+          sourceNameLower.includes(win.title.toLowerCase())
+        ) : null;
+      
+      // Check if this window's process has an audio session
+      let matchingSessionId = null;
+      let hasAudio = false;
+      
+      if (matchingWindow && matchingWindow.processId) {
+        // Try direct process ID match
+        if (processToSession[matchingWindow.processId]) {
+          matchingSessionId = processToSession[matchingWindow.processId];
+          hasAudio = true;
+        } else {
+          // Try to find by executable name
+          const exeName = matchingWindow.executableName?.toLowerCase();
+          if (exeName) {
+            const matchingSession = audioSessions.find(session => 
+              session.executableName?.toLowerCase() === exeName
+            );
+            if (matchingSession) {
+              matchingSessionId = matchingSession.sessionId;
+              hasAudio = true;
+            }
+          }
+        }
+      }
+      
+      // For known audio applications, mark as having audio even without session
+      const knownAudioApps = [
+        'chrome', 'firefox', 'edge', 'brave', 'opera', 'safari',
+        'spotify', 'itunes', 'music', 'youtube', 'vlc', 'netflix',
+        'discord', 'teams', 'slack', 'zoom', 'meet', 'skype',
+        'electron'
+      ];
+      
+      if (!hasAudio && matchingWindow && matchingWindow.executableName) {
+        const exeLower = matchingWindow.executableName.toLowerCase();
+        for (const app of knownAudioApps) {
+          if (exeLower.includes(app)) {
+            hasAudio = true;
+            break;
+          }
+        }
+      }
+      
+      // For testing - enable audio for all windows temporarily
+      // hasAudio = true;
+      
+      return {
+        id: source.id,
+        name: source.name,
+        display_id: source.display_id || '',
+        appIcon: source.appIcon ? source.appIcon.toDataURL() : '',
+        thumbnail: source.thumbnail.toDataURL(),
+        hasAudio: hasAudio,
+        audioSessionId: matchingSessionId,
+        windowId: matchingWindow ? matchingWindow.id : null,
+        processId: matchingWindow ? matchingWindow.processId : null,
+        executableName: matchingWindow ? matchingWindow.executableName : null
+      };
+    });
+    
+    return processedSources;
+  } catch(e) {
+    console.error('Error in getSources:', e);
+    throw e;
+  }
+});
+
+ipcMain.handle('check-admin-rights', async () => {
+  try {
+    // Check if process is running with admin rights
+    let isElevated = false;
+    const { execSync } = require('child_process');
+    
+    try {
+      // Simple check - try to write to Program Files which needs admin rights
+      const testFile = 'C:\\Program Files\\test_admin_rights.txt';
+      execSync(`echo test > "${testFile}"`, { timeout: 1000 });
+      execSync(`del "${testFile}"`, { timeout: 1000 });
+      isElevated = true;
+    } catch (e) {
+      isElevated = false;
+    }
+    
+    return isElevated;
+  } catch (error) {
+    console.error('Error checking admin rights:', error);
+    return false;
+  }
+});
+
 const { Readable } = require('stream');
 const { fetch: undiciFetch } = require('undici');
 const activeStreams = new Map();
@@ -44,6 +470,12 @@ function createYargs(){
     nargs: 1,
 	default: 720
   })
+  .option("monitor", {
+	  alias: "m",
+	  describe: "Monitor index to open on (0-based index)",
+	  type: "number",
+	  default: 0
+	})
   .option("u", {
     alias: "url",
     describe: "The URL of the window to load.",
@@ -355,6 +787,27 @@ function formatURL(inputURL) {
   return inputURL;
 }
 
+// Clean up when a renderer is destroyed
+app.on('web-contents-destroyed', (event, webContents) => {
+  const webContentsId = webContents.id;
+  
+  // Find and remove any audio stream clients for this renderer
+  for (const [clientId, senderId] of audioStreamClients.entries()) {
+    if (senderId === webContentsId) {
+      audioStreamClients.delete(clientId);
+    }
+  }
+  
+  // Stop capture if no more clients
+  if (audioStreamClients.size === 0 && windowAudioCapture) {
+    try {
+      windowAudioCapture.stopCapture();
+    } catch (err) {
+      console.error('Error stopping capture:', err);
+    }
+  }
+});
+
 ipcMain.handle('noCORSFetch', async (event, args) => {
   const streamId = Date.now().toString();
   
@@ -446,42 +899,96 @@ ipcMain.handle('closeStream', async (event, streamId) => {
   return true;
 });
 
-
-ipcMain.on('prompt', function(eventRet, arg) {  // this enables a PROMPT pop up , which is used to BLOCK the main thread until the user provides input. VDO.Ninja uses prompt for passwords, etc.
-	try {
-		arg.val = arg.val || '';
-		arg.title = arg.title.replace("\n","<br /><br />");
-		prompt({
-			title: "",
-			label: arg.title,
-			width: 700,
-			useHtmlLabel: true,
-			inputAttrs: {
-				type: 'string',
-				placeholder: arg.val
-			},
-			type: 'input',
-			resizable: true,
-	  alwaysOnTop: true
-		})
-		.then((r) => {
-			if(r === null) {
-				console.log('user cancelled');
-			} else {
-				console.log('result', r);
-				eventRet.returnValue = r;
-			}
-		})
-		.catch(console.error);
-	} catch(e){console.error(e);}
+ipcMain.handle('prompt', async (event, arg) => {
+  try {
+    arg.val = arg.val || '';
+    arg.title = arg.title.replace("\n","<br /><br />");
+    const result = await prompt({
+      title: "",
+      label: arg.title,
+      width: 700,
+      useHtmlLabel: true,
+      inputAttrs: {
+        type: 'string',
+        placeholder: arg.val
+      },
+      type: 'input',
+      resizable: true,
+      alwaysOnTop: true
+    });
+    
+    if(result === null) {
+      console.log('user cancelled');
+      return null;
+    } else {
+      console.log('result', result);
+      return result;
+    }
+  } catch(e) {
+    console.error(e);
+    throw e;
+  }
 });
 
-ipcMain.on('getSources', async function(eventRet, args) {
-	try{
-		const sources = await desktopCapturer.getSources({ types: args.types });
-		eventRet.returnValue = sources;
-	} catch(e){console.error(e);}
-});
+const windowStateManager = {
+  getPath: function() {
+    return path.join(app.getPath('userData'), 'window-state.json');
+  },
+  
+  save: function(window) {
+    try {
+      const windowState = {
+        bounds: window.getBounds(),
+        isMaximized: window.isMaximized(),
+        monitor: -1
+      };
+      
+      // Determine which monitor the window is on
+      const displays = screen.getAllDisplays();
+      const winBounds = window.getBounds();
+      
+      for (let i = 0; i < displays.length; i++) {
+        const display = displays[i];
+        const intersection = this.getIntersection(display.bounds, winBounds);
+        
+        if (intersection.width > 0 && intersection.height > 0) {
+          windowState.monitor = i;
+          break;
+        }
+      }
+      
+      fs.writeFileSync(this.getPath(), JSON.stringify(windowState));
+      return true;
+    } catch (e) {
+      console.error('Failed to save window state:', e);
+      return false;
+    }
+  },
+  
+  load: function() {
+    try {
+      const data = fs.readFileSync(this.getPath(), 'utf8');
+      return JSON.parse(data);
+    } catch (e) {
+      // File doesn't exist or invalid JSON
+      return null;
+    }
+  },
+  
+  getIntersection: function(rect1, rect2) {
+    const x1 = Math.max(rect1.x, rect2.x);
+    const y1 = Math.max(rect1.y, rect2.y);
+    const x2 = Math.min(rect1.x + rect1.width, rect2.x + rect2.width);
+    const y2 = Math.min(rect1.y + rect1.height, rect2.y + rect2.height);
+    
+    return {
+      x: x1,
+      y: y1,
+      width: Math.max(0, x2 - x1),
+      height: Math.max(0, y2 - y1)
+    };
+  }
+};
 
 async function createWindow(args, reuse=false){
 	var webSecurity = true;
@@ -713,15 +1220,61 @@ async function createWindow(args, reuse=false){
 	
 
 	try {
-		mainWindow.node = NODE;
-
-		if ((X!=-1) || (Y!=-1)) {
-			if (X==-1){X=0;}
-			if (Y==-1){Y=0;}
-			mainWindow.setPosition(Math.floor(X/factor), Math.floor(Y/factor))
+	  mainWindow.node = NODE;
+	  
+	  // Load saved window state
+	  const savedState = windowStateManager.load();
+	  
+	  // Only use saved position if x and y are not explicitly specified
+	  const useStoredPosition = X === -1 && Y === -1;
+	  
+	  if (args.monitor !== undefined) {
+		const displays = screen.getAllDisplays();
+		if (args.monitor >= 0 && args.monitor < displays.length) {
+		  const targetDisplay = displays[args.monitor];
+		  
+		  // If no position specified, center on the selected monitor
+		  if (X === -1 && Y === -1) {
+			const x = targetDisplay.bounds.x + (targetDisplay.bounds.width - targetWidth/factor)/2;
+			const y = targetDisplay.bounds.y + (targetDisplay.bounds.height - targetHeight/factor)/2;
+			mainWindow.setPosition(Math.floor(x), Math.floor(y));
+		  }
 		}
-	} catch(e){console.error(e);}
-	
+	  } else if (!useStoredPosition) {
+		// User explicitly set position via command line
+		if (X === -1) X = 0;
+		if (Y === -1) Y = 0;
+		mainWindow.setPosition(Math.floor(X/factor), Math.floor(Y/factor));
+	  } else if (savedState) {
+		// Use saved position if available and no explicit position specified
+		
+		// Check if the remembered monitor still exists
+		const displays = screen.getAllDisplays();
+		if (savedState.monitor >= 0 && savedState.monitor < displays.length) {
+		  // Position on the remembered monitor
+		  const targetDisplay = displays[savedState.monitor];
+		  const bounds = savedState.bounds;
+		  
+		  // Ensure window is visible on the target display
+		  const x = Math.max(targetDisplay.bounds.x, bounds.x);
+		  const y = Math.max(targetDisplay.bounds.y, bounds.y);
+		  
+		  mainWindow.setPosition(x, y);
+		  mainWindow.setSize(bounds.width, bounds.height);
+		  
+		  if (savedState.isMaximized) {
+			mainWindow.maximize();
+		  }
+		} else {
+		  // Default to centered on primary display if the monitor no longer exists
+		  const x = (ttt.width - targetWidth)/2;
+		  const y = (ttt.height - targetHeight)/2;
+		  mainWindow.setPosition(Math.floor(x), Math.floor(y));
+		}
+	  }
+	} catch(e) {
+	  console.error(e);
+	}
 	
 	mainWindow.on('blur', () => {
 		mainWindow.setBackgroundColor('#00000000'); // tmp fix for bug in e.js
@@ -760,21 +1313,20 @@ async function createWindow(args, reuse=false){
 	});
 
 	mainWindow.on('close', function(e) {
-		e.preventDefault();
-		mainWindow.hide(); // hide, and wait 2 second before really closing; this allows for saving of files.
-		mainWindow.webContents.send('postMessage', {'hangup':true});
-
-        // Save bounds to localStorage
-        mainWindow.webContents.executeJavaScript(`localStorage.setItem('windowPosition', '${JSON.stringify(mainWindow.getBounds())}');`);
-
-		setTimeout(function(mainWindow){
-			mainWindow.destroy();
-			mainWindow = null
-		},1500,mainWindow); // takes 500ms to save properly; with a 1s buffer for safety
-				
-		globalShortcut.unregister('CommandOrControl+M');
-		globalShortcut.unregisterAll();
-
+	  e.preventDefault();
+	  mainWindow.hide();
+	  mainWindow.webContents.send('postMessage', {'hangup':true});
+	  
+	  // Save window state
+	  windowStateManager.save(mainWindow);
+	  
+	  setTimeout(function(mainWindow){
+		mainWindow.destroy();
+		mainWindow = null
+	  },5000,mainWindow);
+			
+	  globalShortcut.unregister('CommandOrControl+M');
+	  globalShortcut.unregisterAll();
 	});
 
 	mainWindow.on('closed', async function (e) {
@@ -1983,7 +2535,7 @@ contextMenu({
 });
 
 /* app.on('second-instance', (event, commandLine, workingDirectory, argv2) => {
-	createWindow(argv2, argv2.title);
+	createWindow(argv2, argv2.title); // works, but not with deeplinks for example
 }); */
 
 app.on('second-instance', (event, commandLine, workingDirectory, argv2) => {
