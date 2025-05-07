@@ -944,42 +944,71 @@ const windowStateManager = {
     return path.join(app.getPath('userData'), 'window-state.json');
   },
   
-  save: function(window) {
-    try {
-      const windowState = {
-        bounds: window.getBounds(),
-        isMaximized: window.isMaximized(),
-        monitor: -1
-      };
-      
-      // Determine which monitor the window is on
-      const displays = screen.getAllDisplays();
-      const winBounds = window.getBounds();
-      
-      for (let i = 0; i < displays.length; i++) {
-        const display = displays[i];
-        const intersection = this.getIntersection(display.bounds, winBounds);
-        
-        if (intersection.width > 0 && intersection.height > 0) {
-          windowState.monitor = i;
-          break;
-        }
-      }
-      
-      fs.writeFileSync(this.getPath(), JSON.stringify(windowState));
-      return true;
-    } catch (e) {
-      console.error('Failed to save window state:', e);
-      return false;
-    }
-  },
-  
+	save: function(window) {
+	  try {
+		if (!window || window.isDestroyed()) {
+		  console.warn('Cannot save state for destroyed window');
+		  return false;
+		}
+
+		let boundsToSave;
+		const isMaximized = window.isMaximized();
+		const isFullScreen = window.isFullScreen();
+		const isMinimized = window.isMinimized(); // Check if minimized
+
+		if (isMinimized) {
+		  window.restore(); // Temporarily restore to get correct bounds
+		  boundsToSave = window.getBounds();
+		  // It's closing, so re-minimizing might not be strictly necessary,
+		  // but if you have other logic that expects it to be minimized:
+		  // window.minimize();
+		} else {
+		  boundsToSave = window.getBounds();
+		}
+
+		const windowState = {
+		  bounds: boundsToSave,
+		  isMaximized: isMaximized,
+		  isFullScreen: isFullScreen,
+		  monitor: -1 // Your existing monitor detection logic here
+		};
+
+		// --- Begin: Your existing monitor detection logic (lines 868-878 in original) ---
+		const displays = screen.getAllDisplays();
+		for (let i = 0; i < displays.length; i++) {
+		  const display = displays[i];
+		  const intersection = this.getIntersection(display.bounds, boundsToSave); // Use boundsToSave
+		  if (intersection.width > 0 && intersection.height > 0) {
+			windowState.monitor = i;
+			break;
+		  }
+		}
+		// --- End: Your existing monitor detection logic ---
+
+		const statePath = this.getPath();
+		// console.log('Saving window state to:', statePath, JSON.stringify(windowState)); // More detailed log
+		fs.writeFileSync(statePath, JSON.stringify(windowState, null, 2));
+		console.log('Window state saved:', windowState);
+		return true;
+
+	  } catch (e) {
+		console.error('Failed to save window state:', e);
+		return false;
+	  }
+	},
   load: function() {
     try {
+      if (!fs.existsSync(this.getPath())) {
+        console.log('No saved window state found');
+        return null;
+      }
+      
       const data = fs.readFileSync(this.getPath(), 'utf8');
-      return JSON.parse(data);
+      const state = JSON.parse(data);
+      console.log('Loaded window state:', state);
+      return state;
     } catch (e) {
-      // File doesn't exist or invalid JSON
+      console.error('Failed to load window state:', e);
       return null;
     }
   },
@@ -999,144 +1028,118 @@ const windowStateManager = {
   }
 };
 
-async function createWindow(args, reuse=false){
-	var webSecurity = true;
-	
-	// Check if args are valid
-	if (!args || typeof args !== 'object') {
-		console.error('Invalid args passed to createWindow:', args);
-		args = createYargs(); // Use default args if invalid
-	}
-	
-	var URL = args.url, NODE = args.node, WIDTH = args.width, HEIGHT = args.height, TITLE = args.title, PIN = args.pin, X = args.x, Y = args.y, FULLSCREEN = args.fullscreen, UNCLICKABLE = args.uc, MINIMIZED = args.min, CSS = args.css, BGCOLOR = args.chroma, JS = args.js;
+async function createWindow(args, reuse=false) {
+  var webSecurity = true;
+  
+  // Check if args are valid
+  if (!args || typeof args !== 'object') {
+    console.error('Invalid args passed to createWindow:', args);
+    args = createYargs(); // Use default args if invalid
+  }
+  
+  var URL = args.url, NODE = args.node, WIDTH = args.width, HEIGHT = args.height, TITLE = args.title, PIN = args.pin, X = args.x, Y = args.y, FULLSCREEN = args.fullscreen, UNCLICKABLE = args.uc, MINIMIZED = args.min, CSS = args.css, BGCOLOR = args.chroma, JS = args.js;
 
-	
-	console.log(args);
-	
-	var CSSCONTENT = "";
-	
-	if (BGCOLOR){
-		CSSCONTENT = "body {background-color:#"+BGCOLOR+"!important;}";
-	}
-	
-	if (CSS){
-		var p = path.join(__dirname, '.', CSS);
-		console.log("Trying: "+p);
-		
-		var res, rej;
-		var promise = new Promise((resolve, reject) => {
-			res = resolve;
-			rej = reject;
-		});
-		promise.resolve = res;
-		promise.reject = rej;
-		
-		fs.readFile(p, 'utf8', function (err, data) {
-		  if (err) {
-			  console.log("Trying: "+CSS);
-			  fs.readFile(CSS, 'utf8', function (err, data) {
-				  if (err) {
-					  console.log("Couldn't read specified CSS file");
-				  } else{
-					  CSSCONTENT += data;
-				  }
-				  promise.resolve();
-			  });
-		  } else {
-			  CSSCONTENT += data;
-			  promise.resolve();
-		  } 
-		});
-		await promise;
-		if (CSSCONTENT){
-			console.log("Loaded specified file.");
-		}
-	}
-	
-	var JSCONTENT = "";
+  // Load saved window state
+  const savedState = windowStateManager.load();
+  let factor = screen.getPrimaryDisplay().scaleFactor;
+  
+  console.log(args);
+  
+  var CSSCONTENT = "";
+  
+  if (BGCOLOR){
+    CSSCONTENT = "body {background-color:#"+BGCOLOR+"!important;}";
+  }
+  
+  if (CSS){
+    var p = path.join(__dirname, '.', CSS);
+    console.log("Trying: "+p);
+    
+    // Convert to use Promise explicitly instead of await
+    try {
+      let cssData = null;
+      try {
+        cssData = fs.readFileSync(p, 'utf8');
+      } catch(e) {
+        // Try alternate path
+        cssData = fs.readFileSync(CSS, 'utf8');
+      }
+      
+      if (cssData) {
+        CSSCONTENT += cssData;
+        console.log("Loaded specified CSS file.");
+      }
+    } catch(e) {
+      console.log("Couldn't read specified CSS file:", e);
+    }
+  }
+  
+  var JSCONTENT = "";
 
-	if (JS){
-	  var p = path.join(__dirname, '.', JS);
-	  console.log("Trying JS file: "+p);
-	  
-	  var res, rej;
-	  var promise = new Promise((resolve, reject) => {
-		res = resolve;
-		rej = reject;
-	  });
-	  promise.resolve = res;
-	  promise.reject = rej;
-	  
-	  fs.readFile(p, 'utf8', function (err, data) {
-		if (err) {
-		  console.log("Trying: "+JS);
-		  fs.readFile(JS, 'utf8', function (err, data) {
-			if (err) {
-			  console.log("Couldn't read specified JS file");
-			} else{
-			  JSCONTENT += data;
-			}
-			promise.resolve();
-		  });
-		} else {
-		  JSCONTENT += data;
-		  promise.resolve();
-		}
-	  });
-	  await promise;
-	  if (JSCONTENT){
-		console.log("Loaded specified JS file.");
-	  }
-	}
-	
-	
-	
-	try {
-		if (URL.startsWith("file:")){
-			webSecurity = false; // not ideal, but to open local files, this is needed.
-			// warn the user in some way that this window is tained.  perhaps detect if they navigate to a different website or load an iframe that it will be a security concern? 
-			// maybe filter all requests to file:// and ensure they are made from a file:// resource already.
-		} else if (!(URL.startsWith("http"))){
-			URL = "https://"+URL.toString();
-		}
-	} catch(e){
-		URL = "https://vdo.ninja/electron?version="+ver;
-	}
+  if (JS){
+    var p = path.join(__dirname, '.', JS);
+    console.log("Trying JS file: "+p);
+    
+    // Convert to use Promise explicitly instead of await
+    try {
+      let jsData = null;
+      try {
+        jsData = fs.readFileSync(p, 'utf8');
+      } catch(e) {
+        // Try alternate path
+        jsData = fs.readFileSync(JS, 'utf8');
+      }
+      
+      if (jsData) {
+        JSCONTENT += jsData;
+        console.log("Loaded specified JS file.");
+      }
+    } catch(e) {
+      console.log("Couldn't read specified JS file:", e);
+    }
+  }
+  
+  try {
+    if (URL.startsWith("file:")){
+      webSecurity = false;
+    } else if (!(URL.startsWith("http"))){
+      URL = "https://"+URL.toString();
+    }
+  } catch(e){
+    URL = "https://vdo.ninja/electron?version="+ver;
+  }
 
-	let currentTitle = "ElectronCapture";
-	
-	if (reuse){
-		currentTitle = reuse;
-	} else if (TITLE===null){
-		counter+=1;
-		currentTitle = "Electron "+(counter.toString());
-	} else if (counter==0){
-		counter+=1;
-		currentTitle = TITLE.toString();
-	} else {
-		counter+=1;
-		currentTitle = TITLE.toString() + " " +(counter.toString());
-	}
-	
-
-	let factor = screen.getPrimaryDisplay().scaleFactor;
-	
-	var ttt = screen.getPrimaryDisplay().workAreaSize;
-	
-	var targetWidth = WIDTH / factor;
-	var targetHeight = HEIGHT / factor;
-	
-	var tainted = false;
-	if (targetWidth > ttt.width){
-		targetHeight = parseInt(targetHeight * ttt.width / targetWidth);
-		targetWidth = ttt.width;
-		tainted=true;
-	}
-	if (targetHeight > ttt.height){
-		targetWidth = parseInt(targetWidth * ttt.height / targetHeight);
-		targetHeight = ttt.height;
-		tainted=true;
-	}
+  let currentTitle = "ElectronCapture";
+  
+  if (reuse){
+    currentTitle = reuse;
+  } else if (TITLE===null){
+    counter+=1;
+    currentTitle = "Electron "+(counter.toString());
+  } else if (counter==0){
+    counter+=1;
+    currentTitle = TITLE.toString();
+  } else {
+    counter+=1;
+    currentTitle = TITLE.toString() + " " +(counter.toString());
+  }
+  
+  var ttt = screen.getPrimaryDisplay().workAreaSize;
+  
+  var targetWidth = WIDTH / factor;
+  var targetHeight = HEIGHT / factor;
+  
+  var tainted = false;
+  if (targetWidth > ttt.width){
+    targetHeight = parseInt(targetHeight * ttt.width / targetWidth);
+    targetWidth = ttt.width;
+    tainted=true;
+  }
+  if (targetHeight > ttt.height){
+    targetWidth = parseInt(targetWidth * ttt.height / targetHeight);
+    targetHeight = ttt.height;
+    tainted=true;
+  }
 
 	// Create the browser window.
 	var mainWindow = new BrowserWindow({
@@ -1265,61 +1268,101 @@ async function createWindow(args, reuse=false){
 	});
 	
 
-	try {
-	  mainWindow.node = NODE;
-	  
-	  // Load saved window state
-	  const savedState = windowStateManager.load();
-	  
-	  // Only use saved position if x and y are not explicitly specified
-	  const useStoredPosition = X === -1 && Y === -1;
-	  
-	  if (args.monitor !== undefined) {
-		const displays = screen.getAllDisplays();
-		if (args.monitor >= 0 && args.monitor < displays.length) {
-		  const targetDisplay = displays[args.monitor];
-		  
-		  // If no position specified, center on the selected monitor
-		  if (X === -1 && Y === -1) {
-			const x = targetDisplay.bounds.x + (targetDisplay.bounds.width - targetWidth/factor)/2;
-			const y = targetDisplay.bounds.y + (targetDisplay.bounds.height - targetHeight/factor)/2;
-			mainWindow.setPosition(Math.floor(x), Math.floor(y));
-		  }
-		}
-	  } else if (!useStoredPosition) {
-		// User explicitly set position via command line
-		if (X === -1) X = 0;
-		if (Y === -1) Y = 0;
-		mainWindow.setPosition(Math.floor(X/factor), Math.floor(Y/factor));
-	  } else if (savedState) {
-		// Use saved position if available and no explicit position specified
-		
-		// Check if the remembered monitor still exists
-		const displays = screen.getAllDisplays();
-		if (savedState.monitor >= 0 && savedState.monitor < displays.length) {
-		  // Position on the remembered monitor
-		  const targetDisplay = displays[savedState.monitor];
-		  const bounds = savedState.bounds;
-		  
-		  // Ensure window is visible on the target display
-		  const x = Math.max(targetDisplay.bounds.x, bounds.x);
-		  const y = Math.max(targetDisplay.bounds.y, bounds.y);
-		  
-		  mainWindow.setPosition(x, y);
-		  mainWindow.setSize(bounds.width, bounds.height);
-		  
-		  if (savedState.isMaximized) {
-			mainWindow.maximize();
-		  }
+	 try {
+		mainWindow.node = NODE; // NODE is from args
+
+		const cliX = args.x;           // X from command-line arguments
+		const cliY = args.y;           // Y from command-line arguments
+		// targetWidth and targetHeight are already calculated in your code before BrowserWindow constructor
+		// using args.width, args.height, and factor.
+		// Example: var targetWidth = WIDTH / factor; (where WIDTH is args.width)
+
+		let positionSource = "Unknown"; // For logging
+
+		if (cliX !== -1 && cliY !== -1) {
+			// Priority 1: Explicit X, Y from command line.
+			positionSource = `Command Line X/Y: x=${cliX}, y=${cliY}`;
+			// Assuming cliX and cliY from yargs are logical pixels similar to width/height
+			// Your original code applies factor: mainWindow.setPosition(Math.floor(X/factor), Math.floor(Y/factor));
+			// The window size (targetWidth, targetHeight) was already set by the BrowserWindow constructor.
+			mainWindow.setPosition(Math.floor(cliX / factor), Math.floor(cliY / factor));
+
+		} else if (savedState && savedState.bounds) {
+			// Priority 2: No explicit X,Y from command line (-1), AND savedState exists.
+			positionSource = `Saved State: bounds=${JSON.stringify(savedState.bounds)}, monitor=${savedState.monitor}`;
+			const { x, y, width, height } = savedState.bounds;
+
+			// Validate if these bounds are on a connected display.
+			const displays = screen.getAllDisplays();
+			let onValidMonitor = false;
+			const savedMonitorIndex = savedState.monitor;
+
+			// Check if the saved monitor index is valid and if the window is on it.
+			if (savedMonitorIndex !== undefined && savedMonitorIndex >= 0 && savedMonitorIndex < displays.length) {
+				const targetDisplay = displays[savedMonitorIndex];
+				// A simple check: is the top-left corner within the work area of the saved monitor?
+				// For a more robust check, you might want to see if a significant portion of the window intersects.
+				if (x >= targetDisplay.workArea.x && x < targetDisplay.workArea.x + targetDisplay.workArea.width &&
+					y >= targetDisplay.workArea.y && y < targetDisplay.workArea.y + targetDisplay.workArea.height) {
+					onValidMonitor = true;
+				}
+			}
+
+			// If not on the specifically saved monitor (e.g., monitor disconnected),
+			// check if the coordinates fall on *any* currently connected monitor.
+			if (!onValidMonitor) {
+				for (let i = 0; i < displays.length; i++) {
+					const display = displays[i];
+					if (x >= display.workArea.x && x < display.workArea.x + display.workArea.width &&
+						y >= display.workArea.y && y < display.workArea.y + display.workArea.height) {
+						onValidMonitor = true;
+						console.warn(`Window was saved on monitor ${savedMonitorIndex}, but it now appears to be on monitor ${i}. Restoring there.`);
+						break;
+					}
+				}
+			}
+
+			if (onValidMonitor) {
+				// setBounds uses physical pixels. savedState.bounds are stored as physical pixels.
+				mainWindow.setBounds({ x, y, width, height });
+				if (savedState.isMaximized) {
+					mainWindow.maximize();
+				} else if (savedState.isFullScreen) {
+					mainWindow.setFullScreen(true);
+				}
+			} else {
+				// Saved position is off-screen. Fallback to centering the default size.
+				positionSource += " (Off-screen Fallback)";
+				console.warn("Saved window position appears off-screen. Falling back to default placement.");
+				// Window size is already default (targetWidth, targetHeight) from constructor. Center it.
+				mainWindow.center(); // Electron's utility to center the window on the current screen.
+			}
 		} else {
-		  // Default to centered on primary display if the monitor no longer exists
-		  const x = (ttt.width - targetWidth)/2;
-		  const y = (ttt.height - targetHeight)/2;
-		  mainWindow.setPosition(Math.floor(x), Math.floor(y));
+			// Priority 3: No explicit X,Y, AND no (or invalid) savedState.
+			// Position based on args.monitor (default 0) or center on primary.
+			// Window size is already default (targetWidth, targetHeight) from constructor.
+			positionSource = `Default Positioning (Monitor ${args.monitor} or Primary)`;
+			console.log("No explicit X/Y and no valid saved state. Using default positioning logic.");
+
+			const displays = screen.getAllDisplays();
+			let displayToCenterOn = screen.getPrimaryDisplay(); // Default to primary
+
+			if (args.monitor !== undefined && args.monitor >= 0 && args.monitor < displays.length) {
+				displayToCenterOn = displays[args.monitor];
+			}
+
+			// Calculate center position on the chosen display's work area
+			const centerX = displayToCenterOn.workArea.x + (displayToCenterOn.workArea.width - targetWidth) / 2;
+			const centerY = displayToCenterOn.workArea.y + (displayToCenterOn.workArea.height - targetHeight) / 2;
+			mainWindow.setPosition(Math.floor(centerX), Math.floor(centerY));
 		}
-	  }
-	} catch(e) {
-	  console.error(e);
+		console.log(`Window positioning determined by: ${positionSource}`);
+
+	} catch (e) {
+		console.error('Error applying window state during createWindow positioning:', e);
+		// Fallback in case of any error during positioning
+		console.error('Fallback: Centering window with default size due to an error.');
+		mainWindow.center(); // Uses the size set in BrowserWindow constructor
 	}
 	
 	mainWindow.on('blur', () => {
@@ -1359,27 +1402,45 @@ async function createWindow(args, reuse=false){
 	});
 
 	mainWindow.on('close', function(e) {
-	  e.preventDefault();
-	  mainWindow.hide();
-	  mainWindow.webContents.send('postMessage', {'hangup':true});
-	  
-	  // Save window state
-	  windowStateManager.save(mainWindow);
-	  
-	  setTimeout(function(mainWindow){
-		mainWindow.destroy();
-		mainWindow = null
-	  },5000,mainWindow);
-			
-	  globalShortcut.unregister('CommandOrControl+M');
-	  globalShortcut.unregisterAll();
-	});
+	  console.log(`Window ID ${mainWindow.id} 'close' event triggered.`);
+	  e.preventDefault(); // Prevent the window from closing immediately
 
-	mainWindow.on('closed', async function (e) {
-		//e.preventDefault();
-		globalShortcut.unregister('CommandOrControl+M');
-		globalShortcut.unregisterAll();
-		mainWindow = null
+	  // 1. Save window state (uses the improved save function from step 1)
+	  console.log(`Window ID ${mainWindow.id}: Saving state...`);
+	  windowStateManager.save(mainWindow);
+
+	  // 2. Hide the window
+	  console.log(`Window ID ${mainWindow.id}: Hiding window...`);
+	  mainWindow.hide();
+
+	  // 3. Send 'hangup' message
+	  console.log(`Window ID ${mainWindow.id}: Sending 'hangup' message...`);
+	  if (mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+		mainWindow.webContents.send('postMessage', {'hangup':true});
+	  }
+
+	  // 4. Wait 5 seconds, then destroy the window
+	  console.log(`Window ID ${mainWindow.id}: Starting 5-second timer for destruction...`);
+	  const windowToDestroy = mainWindow; // Capture reference for the timeout
+
+	  setTimeout(() => {
+		if (windowToDestroy && !windowToDestroy.isDestroyed()) {
+		  console.log(`Window ID ${windowToDestroy.id}: 5-second timer elapsed. Destroying window.`);
+		  windowToDestroy.destroy();
+		} else {
+		  console.log(`Window ID ${windowToDestroy ? windowToDestroy.id : 'unknown'}: Window was already destroyed or became null before 5s timer finished.`);
+		}
+	  }, 5000);
+
+	  // Regarding globalShortcut.unregister:
+	  // Unregistering 'CommandOrControl+M' might be okay if it's specific to this window.
+	  // However, globalShortcut.unregisterAll() here is problematic if other windows/app functions rely on global shortcuts.
+	  // It's better to manage unregisterAll() at the app quit level.
+	  // Example: if (globalShortcut.isRegistered('CommandOrControl+M')) { globalShortcut.unregister('CommandOrControl+M'); }
+	});
+	
+	mainWindow.on('closed', function () { // Around line 1112
+		console.log(`Window ID ${mainWindow ? mainWindow.id : 'unknown'} 'closed' event.`);
 	});
 
 	mainWindow.on("page-title-updated", function(event) {
@@ -1471,10 +1532,20 @@ async function createWindow(args, reuse=false){
 		
 		if (JSCONTENT && mainWindow && mainWindow.webContents){
 		  try {
-			mainWindow.webContents.executeJavaScript(JSCONTENT);
+			// Wrap the JS content in an IIFE to avoid global scope pollution
+			const safeJS = `
+			  (function() {
+				try {
+				  ${JSCONTENT}
+				} catch(e) {
+				  console.error('Error in injected JavaScript:', e);
+				}
+			  })();
+			`;
+			mainWindow.webContents.executeJavaScript(safeJS);
 			console.log("Injecting specified JavaScript contained in the file");
 		  } catch(e){
-			console.log(e);
+			console.log('Error preparing JS injection:', e);
 		  }
 		}
 		
@@ -1630,28 +1701,22 @@ async function createWindow(args, reuse=false){
 		}
     });
 	
-	/* session.defaultSession.webRequest.onBeforeRequest({urls: ['file://*']}, (details, callback) => { // added for added security, but doesn't seem to be working.
-	  if (details.referrer.startsWith("http://")){
-		 callback({response:{cancel:true}});
-	  } else if (details.referrer.startsWith("https://")){ // do not let a third party load a local resource.
-		  callback({response:{cancel:true}});
-	  } else {
-		  callback({response:{cancel:false}});
-	  }
-	}); */
-	
-	try {
-		var HTML = '<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" /><style>body {padding:0;height:100%;width:100%;margin:0;}</style></head><body ><div style="-webkit-app-region: drag;height:25px;width:100%"></div></body></html>';
-		await mainWindow.loadURL("data:text/html;charset=utf-8," + encodeURI(HTML));
-	} catch(e){
-		console.error(e);
-	}
-	
-	
+  try {
+    var HTML = '<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" /><style>body {padding:0;height:100%;width:100%;margin:0;}</style></head><body><div style="-webkit-app-region: drag;height:25px;width:100%"></div></body></html>';
+    mainWindow.loadURL("data:text/html;charset=utf-8," + encodeURI(HTML));
+  } catch(e){
+    console.error(e);
+  }
+  
+  // Load the actual URL
+  try {
+    mainWindow.loadURL(URL);
+  } catch (e){
+    console.error(e);
+  }
 	
 	
 	try {
-		mainWindow.loadURL(URL);
 		
 		mainWindow.webContents.on('dom-ready', async (event)=> {
 			console.log('dom-ready');
@@ -2285,7 +2350,9 @@ contextMenu({
 				}
 			  } else {
 				console.log('result', r);
-				browserWindow.webContents.executeJavaScript(`localStorage.setItem('insertJS', '${r}');`);
+				browserWindow.webContents.executeJavaScript(`
+				  localStorage.setItem('insertJS', ${JSON.stringify(r)});
+				`);
 				if (onTop) {
 				  browserWindow.setAlwaysOnTop(true);
 				}
@@ -2677,37 +2744,53 @@ app.on('open-url', (event, url) => {
 
 var DoNotClose = false;
 app.on('window-all-closed', () => {
-	if (DoNotClose){
-		//console.log("DO NOT CLOSE!");
-		return;
-	}
-	//console.log("DO NOT CLOSE... erk?");
-	globalShortcut.unregisterAll();
-	app.quit();
-})
+  if (DoNotClose){ // Your existing DoNotClose logic
+    //console.log("DO NOT CLOSE!");
+    return;
+  }
+  console.log("'window-all-closed': All windows are closed. Unregistering all shortcuts and quitting.");
+  globalShortcut.unregisterAll();
+  app.quit();
+});
 
 var closing = 0;
+
 app.on('before-quit', (event) => {
-	if (!BrowserWindow.getAllWindows().length){ // no windows open, so just close
-		return;
-	}
-	
-	if (closing!=2){
-		closing = 1;
-		event.preventDefault()
-	} else if (closing==2){
-		return;
-	}
-	
-	BrowserWindow.getAllWindows().forEach((bw)=>{
-		bw.hide();
-		bw.webContents.send('postMessage', {'hangup':true});
-	});
-	setTimeout(function(){
-	  closing = 2;
-	  app.quit();
-	},1600);
-})
+  console.log("Application 'before-quit' event triggered.");
+  if (!BrowserWindow.getAllWindows().length) {
+    console.log("'before-quit': No windows open, quitting normally.");
+    return; // No need to preventDefault or delay if no windows.
+  }
+
+  // The 'closing' variable logic is from your original code.
+  if (global.closing !== 2) { // Assuming 'closing' is a global or appropriately scoped variable
+    global.closing = 1;
+    console.log("'before-quit': Preventing immediate quit to process windows.");
+    event.preventDefault(); // Prevent immediate quit
+
+    BrowserWindow.getAllWindows().forEach((bw) => {
+      if (bw && !bw.isDestroyed()) {
+        console.log(`'before-quit': Processing window ID ${bw.id}.`);
+        windowStateManager.save(bw); // Use the robust save function
+        bw.hide();
+        if (bw.webContents && !bw.webContents.isDestroyed()) {
+          bw.webContents.send('postMessage', {'hangup':true});
+        }
+        // Note: The window's own 5-second destroy timer (from its 'close' event)
+        // might be initiated if bw.close() was called, but here we are directly
+        // hiding and sending hangup. The app's 1.6s quit timer will likely take precedence.
+      }
+    });
+
+    setTimeout(() => {
+      console.log("'before-quit': 1.6-second app shutdown timer elapsed. Forcing quit.");
+      global.closing = 2;
+      app.quit();
+    }, 1600); // Your original 1.6-second timeout
+  } else {
+    console.log("'before-quit': Already in closing process (closing === 2).");
+  }
+});
 
 const folder = path.join(app.getPath('appData'), `${app.name}`);
 if (!fs.existsSync(folder)) {
@@ -2758,8 +2841,7 @@ app.whenReady().then(function(){
     // Register protocol handler first
     registerProtocolHandling();
     
-    // Create initial window
-    createWindow(Argv);
+	createWindow(Argv);
     
     // Handle Windows-specific startup
     if (process.platform === 'win32') {
@@ -2840,16 +2922,11 @@ app.on('ready', () => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 
-
-
 app.on('activate', function () {
-  // On macOS it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
   if (BrowserWindow.getAllWindows().length === 0) {
-	  createWindow(Argv);
+    createWindow(Argv); // createWindow will load and apply saved state
   }
-})
-
+});
 
 electron.powerMonitor.on('on-battery', () => {
 	var notification = new electron.Notification(
