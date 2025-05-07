@@ -542,6 +542,12 @@ function createYargs(){
     type: "boolean",
     default: false
   })
+  .option("js", {
+	  alias: "js",
+	  describe: "Have local JavaScript script be auto-loaded into every page",
+	  type: "string",
+	  default: null
+	})
   .option("savefolder", {
     alias: "sf",
     describe: "Where to save a file on disk",
@@ -1002,7 +1008,8 @@ async function createWindow(args, reuse=false){
 		args = createYargs(); // Use default args if invalid
 	}
 	
-	var URL = args.url, NODE = args.node, WIDTH = args.width, HEIGHT = args.height, TITLE = args.title, PIN = args.pin, X = args.x, Y = args.y, FULLSCREEN = args.fullscreen, UNCLICKABLE = args.uc, MINIMIZED = args.min, CSS = args.css, BGCOLOR = args.chroma;
+	var URL = args.url, NODE = args.node, WIDTH = args.width, HEIGHT = args.height, TITLE = args.title, PIN = args.pin, X = args.x, Y = args.y, FULLSCREEN = args.fullscreen, UNCLICKABLE = args.uc, MINIMIZED = args.min, CSS = args.css, BGCOLOR = args.chroma, JS = args.js;
+
 	
 	console.log(args);
 	
@@ -1044,6 +1051,42 @@ async function createWindow(args, reuse=false){
 		if (CSSCONTENT){
 			console.log("Loaded specified file.");
 		}
+	}
+	
+	var JSCONTENT = "";
+
+	if (JS){
+	  var p = path.join(__dirname, '.', JS);
+	  console.log("Trying JS file: "+p);
+	  
+	  var res, rej;
+	  var promise = new Promise((resolve, reject) => {
+		res = resolve;
+		rej = reject;
+	  });
+	  promise.resolve = res;
+	  promise.reject = rej;
+	  
+	  fs.readFile(p, 'utf8', function (err, data) {
+		if (err) {
+		  console.log("Trying: "+JS);
+		  fs.readFile(JS, 'utf8', function (err, data) {
+			if (err) {
+			  console.log("Couldn't read specified JS file");
+			} else{
+			  JSCONTENT += data;
+			}
+			promise.resolve();
+		  });
+		} else {
+		  JSCONTENT += data;
+		  promise.resolve();
+		}
+	  });
+	  await promise;
+	  if (JSCONTENT){
+		console.log("Loaded specified JS file.");
+	  }
 	}
 	
 	
@@ -1426,6 +1469,15 @@ async function createWindow(args, reuse=false){
 			},5000, mainWindow);
 		}
 		
+		if (JSCONTENT && mainWindow && mainWindow.webContents){
+		  try {
+			mainWindow.webContents.executeJavaScript(JSCONTENT);
+			console.log("Injecting specified JavaScript contained in the file");
+		  } catch(e){
+			console.log(e);
+		  }
+		}
+		
 		if (CSSCONTENT && mainWindow && mainWindow.webContents){
 			try {
 				mainWindow.webContents.insertCSS(CSSCONTENT, {cssOrigin: 'user'});
@@ -1603,11 +1655,6 @@ async function createWindow(args, reuse=false){
 		
 		mainWindow.webContents.on('dom-ready', async (event)=> {
 			console.log('dom-ready');
-            
-	        // Get window position, set it if it exists - or set it to current.
-            // Since we're using localStorage I think we have to wait for the DOM - doesn't work during window creation unless using electron-store or similar.
-            const windowPosition = JSON.parse(await mainWindow.webContents.executeJavaScript(`localStorage.getItem('windowPosition');`));
-            windowPosition ? mainWindow.setBounds(windowPosition) : mainWindow.webContents.executeJavaScript(`localStorage.setItem('windowPosition', ${JSON.stringify(mainWindow.getBounds())});`);
 
 			if (mainWindow.args.hidecursor){
 				mainWindow.webContents.insertCSS(`
@@ -2209,6 +2256,45 @@ contextMenu({
 		  .catch(console.error);
 		}
 	  },
+		{
+		  label: '📝 Insert JavaScript',
+		  visible: true,
+		  click: async () => {
+			var onTop = browserWindow.isAlwaysOnTop();
+			if (onTop) {
+			  browserWindow.setAlwaysOnTop(false);
+			}
+			const savedValue = await browserWindow.webContents.executeJavaScript(`localStorage.getItem('insertJS');`);
+			
+			prompt({
+			  title: 'Insert Custom JavaScript',
+			  label: 'JavaScript:',
+			  value: savedValue || "console.log('Custom JavaScript loaded');",
+			  inputAttrs: {
+				type: 'text'
+			  },
+			  resizable: true,
+			  type: 'input',
+			  alwaysOnTop: true
+			})
+			.then((r) => {
+			  if(r === null) {
+				console.log('user cancelled');
+				if (onTop) {
+				  browserWindow.setAlwaysOnTop(true);
+				}
+			  } else {
+				console.log('result', r);
+				browserWindow.webContents.executeJavaScript(`localStorage.setItem('insertJS', '${r}');`);
+				if (onTop) {
+				  browserWindow.setAlwaysOnTop(true);
+				}
+				browserWindow.webContents.executeJavaScript(r);
+			  }
+			})
+			.catch(console.error);
+		  }
+		},
 		{
 			label: '✏ Edit Window Title',
 			// Only show it when right-clicking text
