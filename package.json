@@ -143,7 +143,7 @@
     "electron-is-dev": "^3.0.1",
     "electron-prompt": "^1.7.0",
     "electron-unhandled": "4.0.1",
-	"undici": "^6.21.1",
+	"undici": "^6.21.2",
     "minimalist": "^1.0.0",
     "minimist": "github:fortiZde/minimist",
     "yargs": "^17.7.2",
