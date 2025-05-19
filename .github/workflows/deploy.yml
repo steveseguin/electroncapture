@@ -1,12 +1,15 @@
 name: Deploy Master and Patch to GitHub Pages
+
 on:
   push:
     branches:
       - master
-      - steveseguin-patch-1
+      - steveseguin-patch-1 # Make sure this matches your patch branch name
   workflow_dispatch:
+
 permissions:
-  contents: write
+  contents: write # Required to push to the gh-pages branch
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -14,26 +17,35 @@ jobs:
       - name: Checkout master branch content
         uses: actions/checkout@v4
         with:
-          ref: master
-          path: public
-          
-      - name: Configure Git
-        run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE/public"
-          
-      - name: Checkout patch branch content into patch subfolder
+          ref: master # Or your main branch if different
+          path: master_src # Checkout to a temporary source directory
+
+      - name: Checkout patch branch content
         uses: actions/checkout@v4
         with:
-          ref: steveseguin-patch-1
-          path: public/patch
-          
-      - name: Configure Git for patch directory
+          ref: steveseguin-patch-1 # Your patch branch name
+          path: patch_src # Checkout to another temporary source directory
+
+      - name: Prepare public directory for deployment
         run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE/public/patch"
+          echo "Preparing public directory..."
+          mkdir -p public/patch # Ensure target structure exists
+
+          echo "Copying master branch content (excluding .git and .github) to public/ ..."
+          rsync -av --delete --exclude=".git" --exclude=".github" master_src/ public/
+
+          echo "Copying patch branch content (excluding .git and .github) to public/patch/ ..."
+          rsync -av --delete --exclude=".git" --exclude=".github" patch_src/ public/patch/
           
+          echo "Contents of prepared public directory:"
+          ls -Rla public # For debugging, can be removed later
+
       - name: Deploy to gh-pages branch
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          branch: gh-pages
-          folder: public
-          clean: true
+          branch: gh-pages # The branch the action should deploy to
+          folder: public # The folder to deploy, now clean of .git subdirectories
+          clean: true # Automatically remove deleted files from the deploy branch
+          # The action will use its default Git user (GitHub Actions bot) for the commit.
+          # If you were seeing 'steveseguin' before, it was likely inferred from GITHUB_ACTOR.
+          # This default is usually fine.
