@@ -14,10 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Create deployment structure
-        run: |
-          # Create base directory for deployment
-          mkdir -p deployment
-          mkdir -p deployment/patch
+        run: mkdir -p gh-pages-content/patch
           
       - name: Checkout master branch
         uses: actions/checkout@v4
@@ -34,21 +31,30 @@ jobs:
       - name: Prepare content
         run: |
           # Copy master content to deployment root
-          cp -r master-content/* deployment/ || true
-          cp -r master-content/.* deployment/ 2>/dev/null || true
+          cp -r master-content/* gh-pages-content/ || true
+          cp -r master-content/.* gh-pages-content/ 2>/dev/null || true
           
           # Copy patch content to patch directory
-          cp -r patch-content/* deployment/patch/ || true
-          cp -r patch-content/.* deployment/patch/ 2>/dev/null || true
+          cp -r patch-content/* gh-pages-content/patch/ || true
+          cp -r patch-content/.* gh-pages-content/patch/ 2>/dev/null || true
           
           # Debug: list content
           echo "Deployment content:"
-          ls -la deployment
+          ls -la gh-pages-content
           echo "Patch content:"
-          ls -la deployment/patch
+          ls -la gh-pages-content/patch
 
-      - name: Deploy to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@v4
-        with:
-          folder: deployment
-          branch: gh-pages
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+        
+      - name: Push to gh-pages branch
+        run: |
+          cd gh-pages-content
+          git init
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add .
+          git commit -m "Deploy to GitHub Pages"
+          git branch -M gh-pages
+          git remote add origin https://${{ github.actor }}:${{ github.token }}@github.com/${{ github.repository }}.git
+          git push -f origin gh-pages
