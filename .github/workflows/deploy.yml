@@ -11,30 +11,32 @@ permissions:
 
 jobs:
   build-and-deploy:
-    concurrency: ci-${{ github.ref }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout master branch
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          ref: master
-          path: deploy-content
-
-      - name: Create patch directory
-        run: mkdir -p deploy-content/patch
-
-      - name: Checkout patch branch
-        uses: actions/checkout@v4
-        with:
-          ref: steveseguin-patch-1
-          path: patch-content
-
-      - name: Copy patch content
-        run: cp -r patch-content/* deploy-content/patch/
+        
+      - name: Set up directory structure
+        run: |
+          # Create the deployment directory structure
+          mkdir -p deploy/patch
+          
+          # Get the master branch content
+          git fetch origin master:master
+          git archive master | tar -x -C deploy
+          
+          # Get the patch branch content
+          git fetch origin steveseguin-patch-1:steveseguin-patch-1
+          git archive steveseguin-patch-1 | tar -x -C deploy/patch
+          
+          # List the files to verify
+          echo "Content structure:"
+          ls -la deploy
+          echo "Patch content:"
+          ls -la deploy/patch
 
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: deploy-content
+          folder: deploy
           branch: gh-pages
-          clean: true
