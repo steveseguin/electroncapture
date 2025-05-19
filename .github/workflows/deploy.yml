@@ -15,19 +15,19 @@ jobs:
     steps:
       - name: Create deployment structure
         run: mkdir -p gh-pages-content/patch
-          
+
       - name: Checkout master branch
         uses: actions/checkout@v4
         with:
           ref: master
           path: master-content
-          
+
       - name: Checkout patch branch
         uses: actions/checkout@v4
         with:
           ref: steveseguin-patch-1
           path: patch-content
-          
+
       - name: Prepare content
         run: |
           # Copy master content to deployment root (excluding .git)
@@ -39,15 +39,14 @@ jobs:
           # Create .nojekyll file to prevent Jekyll processing
           touch gh-pages-content/.nojekyll
           
-          # Debug: list content
-          echo "Deployment content:"
-          ls -la gh-pages-content
-          echo "Patch content:"
-          ls -la gh-pages-content/patch
+          # Debug: list content recursively
+          echo "Deployment content (recursive):"
+          ls -laR gh-pages-content
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v3
-        
+      # /* Remove this step */
+      # - name: Setup Pages
+      #   uses: actions/configure-pages@v3
+
       - name: Push to gh-pages branch
         run: |
           cd gh-pages-content
@@ -56,6 +55,6 @@ jobs:
           git config user.email "actions@github.com"
           git add .
           git commit -m "Deploy to GitHub Pages"
-          git branch -M gh-pages
+          git branch -M gh-pages # Ensure the branch is named gh-pages
           git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
           git push -f origin gh-pages
