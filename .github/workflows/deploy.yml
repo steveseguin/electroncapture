@@ -1,0 +1,38 @@
+name: Deploy Main and Beta to GitHub Pages
+
+on:
+  push:
+    branches:
+      - master
+      - steveseguin-patch-1
+  workflow_dispatch: # Allows manual triggering
+
+permissions:
+  contents: write # Needed to push to gh-pages branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout master branch content
+        uses: actions/checkout@v4
+        with:
+          ref: master # Or your default branch if not 'master'
+          path: public
+
+      - name: Checkout steveseguin-patch-1 branch content into steveseguin-patch-1 subfolder
+        uses: actions/checkout@v4
+        with:
+          ref: steveseguin-patch-1
+          path: public/steveseguin-patch-1
+          # Add clean: false if steveseguin-patch-1 branch might not always exist and you don't want checkout to fail
+          # Or handle non-existent steveseguin-patch-1 branch more gracefully if needed,
+          # for now this assumes 'steveseguin-patch-1' branch exists when workflow is triggered by a push to 'steveseguin-patch-1'.
+          # If triggered by 'master', it will attempt to checkout the current 'steveseguin-patch-1'.
+
+      - name: Deploy to gh-pages branch
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages # The branch the action should deploy to.
+          folder: public # The folder the action should deploy (contains master + steveseguin-patch-1).
+          clean: true # Automatically remove deleted files from the deploy branch.
