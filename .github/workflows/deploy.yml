@@ -13,30 +13,42 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        
-      - name: Set up directory structure
+      - name: Create deployment structure
         run: |
-          # Create the deployment directory structure
-          mkdir -p deploy/patch
+          # Create base directory for deployment
+          mkdir -p deployment
+          mkdir -p deployment/patch
           
-          # Get the master branch content
-          git fetch origin master:master
-          git archive master | tar -x -C deploy
+      - name: Checkout master branch
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          path: master-content
           
-          # Get the patch branch content
-          git fetch origin steveseguin-patch-1:steveseguin-patch-1
-          git archive steveseguin-patch-1 | tar -x -C deploy/patch
+      - name: Checkout patch branch
+        uses: actions/checkout@v4
+        with:
+          ref: steveseguin-patch-1
+          path: patch-content
           
-          # List the files to verify
-          echo "Content structure:"
-          ls -la deploy
+      - name: Prepare content
+        run: |
+          # Copy master content to deployment root
+          cp -r master-content/* deployment/ || true
+          cp -r master-content/.* deployment/ 2>/dev/null || true
+          
+          # Copy patch content to patch directory
+          cp -r patch-content/* deployment/patch/ || true
+          cp -r patch-content/.* deployment/patch/ 2>/dev/null || true
+          
+          # Debug: list content
+          echo "Deployment content:"
+          ls -la deployment
           echo "Patch content:"
-          ls -la deploy/patch
+          ls -la deployment/patch
 
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: deploy
+          folder: deployment
           branch: gh-pages
