@@ -30,13 +30,11 @@ jobs:
           
       - name: Prepare content
         run: |
-          # Copy master content to deployment root
-          cp -r master-content/* gh-pages-content/ || true
-          cp -r master-content/.* gh-pages-content/ 2>/dev/null || true
+          # Copy master content to deployment root (excluding .git)
+          rsync -av --exclude='.git/' master-content/ gh-pages-content/
           
-          # Copy patch content to patch directory
-          cp -r patch-content/* gh-pages-content/patch/ || true
-          cp -r patch-content/.* gh-pages-content/patch/ 2>/dev/null || true
+          # Copy patch content to patch directory (excluding .git)
+          rsync -av --exclude='.git/' patch-content/ gh-pages-content/patch/
           
           # Debug: list content
           echo "Deployment content:"
@@ -56,5 +54,5 @@ jobs:
           git add .
           git commit -m "Deploy to GitHub Pages"
           git branch -M gh-pages
-          git remote add origin https://${{ github.actor }}:${{ github.token }}@github.com/${{ github.repository }}.git
+          git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
           git push -f origin gh-pages
