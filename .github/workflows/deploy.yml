@@ -36,6 +36,9 @@ jobs:
           # Copy patch content to patch directory (excluding .git)
           rsync -av --exclude='.git/' patch-content/ gh-pages-content/patch/
           
+          # Create .nojekyll file to prevent Jekyll processing
+          touch gh-pages-content/.nojekyll
+          
           # Debug: list content
           echo "Deployment content:"
           ls -la gh-pages-content
