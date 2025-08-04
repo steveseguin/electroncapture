@@ -1,0 +1,93 @@
+name: Enhance Commit Messages
+on:
+  push:
+    branches: [ main, master, beta, develop ]
+  pull_request:
+    types: [ opened, synchronize ]
+jobs:
+  enhance-commits:
+    runs-on: ubuntu-latest
+    if: |
+      !contains(github.event.head_commit.message, 'Build Electron App') && 
+      !contains(github.event.head_commit.message, 'Enhance Commit Messages') && 
+      !contains(github.event_name, 'pages-build-deployment') && 
+      !contains(github.event.head_commit.message, 'Update enhance-commits.yml') && 
+      !startsWith(github.event.head_commit.message, '```') &&
+      !contains(github.event.head_commit.message, 'Merge pull request') &&
+      !contains(github.event.head_commit.message, 'Merge branch') &&
+      !contains(github.event.head_commit.message, 'Version bump') &&
+      !contains(github.event.head_commit.message, 'Release v')
+    permissions:
+      contents: write
+      pull-requests: write
+    concurrency:
+      group: enhance-commits-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 5
+          token: ${{ secrets.COMMIT_ENHANCER_PAT }}
+      
+      - name: Check last run time
+        id: check_time
+        run: |
+          CURRENT_TIME=$(date +%s)
+          LAST_RUN_FILE=".last_enhance_run"
+          
+          if [ -f "$LAST_RUN_FILE" ] && [ -s "$LAST_RUN_FILE" ]; then
+            LAST_RUN=$(cat "$LAST_RUN_FILE")
+            if [[ "$LAST_RUN" =~ ^[0-9]+$ ]]; then
+              TIME_DIFF=$((CURRENT_TIME - LAST_RUN))
+              
+              if [ $TIME_DIFF -lt 300 ]; then
+                echo "Too soon since last run (${TIME_DIFF}s). Skipping."
+                echo "skip=true" >> $GITHUB_OUTPUT
+                exit 0
+              fi
+            else
+              echo "Invalid timestamp in file. Continuing."
+            fi
+          fi
+          
+          echo $CURRENT_TIME > $LAST_RUN_FILE
+          echo "skip=false" >> $GITHUB_OUTPUT
+      
+      - name: Setup Node.js
+        if: steps.check_time.outputs.skip != 'true'
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        if: steps.check_time.outputs.skip != 'true'
+        run: npm install @google/generative-ai axios
+      
+      - name: Configure Git
+        if: steps.check_time.outputs.skip != 'true'
+        run: |
+          git config --global user.name "GitHub Actions Commit Enhancer"
+          git config --global user.email "actions@github.com"
+          
+      - name: Enhance commit messages
+        if: steps.check_time.outputs.skip != 'true'
+        id: enhance
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.COMMIT_ENHANCER_PAT }}
+        run: |
+          node .github/scripts/enhance-commits.js || {
+            echo "::error::Failed to enhance commit messages"
+            exit 1
+          }
+      
+      - name: Update timestamp and commit
+        if: steps.check_time.outputs.skip != 'true'
+        run: |
+          git add .last_enhance_run
+          git commit -m "Update enhance-commits timestamp [skip ci]" || true
+          git push origin ${GITHUB_REF_NAME} || {
+            echo "::warning::Failed to push timestamp update"
+          }
