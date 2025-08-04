@@ -10,6 +10,7 @@ console.log('Testing Electron Capture fuses configuration...\n');
 // Find the built app
 const possiblePaths = [
   '/Applications/elecap.app',  // macOS installed
+  './dist/mac-universal/elecap.app',  // macOS universal built
   './dist/mac/elecap.app',     // macOS built
   './dist/elecap.exe',          // Windows portable
   './dist/linux-unpacked/elecap' // Linux
@@ -65,7 +66,8 @@ try {
   let exploitCmd;
   
   if (process.platform === 'darwin') {
-    exploitCmd = `ELECTRON_RUN_AS_NODE=true "${appPath}/Contents/MacOS/elecap" -e "${testCode}"`;
+    const binaryPath = appPath.endsWith('.app') ? `${appPath}/Contents/MacOS/elecap` : appPath;
+    exploitCmd = `ELECTRON_RUN_AS_NODE=true "${binaryPath}" -e "${testCode}"`;
   } else if (process.platform === 'win32') {
     exploitCmd = `set ELECTRON_RUN_AS_NODE=true && "${appPath}" -e "${testCode}"`;
   } else {
