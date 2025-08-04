@@ -27,38 +27,63 @@ Lastly, since playback is agnostic, you can window-capture the same video multip
 
 | Parameter          | Alias     | Description                                     | Example values                     | Notes                                           |
 |-------------------|-----------|-------------------------------------------------|-----------------------------------|------------------------------------------------|
-|  --width       |      -w     | The width of the window in pixels.             | 1280                              | Value in px                                     |
-| --height      |     -h       | The height of the window in pixels.            | 720                               | Value in px                                     |
-|  --x       |      -x     | The x-position of the window in pixels.             | 100                              | Value in px                                     |
-| --y      |     -y       | The y-position of the window in pixels.           | 100                               | Value in px                                     |
-|  --url         |     -u      | The URL of the window to load.                 | "https://vdo.ninja/electron"     |                                                |
-| --title       |     -t       | The default Title for the app Window.          | "My App"                          | Handy for use with OBS window capture          |
-|  --pin         |      -p     | Enables always on top.                          |                  |            |
-|  --hwa         |      -a     | Enables Hardware Acceleration.                  |                       |       |
-|  --node        |     -n      | Enables node-integration.                      |                       |        |
-| --minimized  |     --min      | Starts the window minimized.                  |                      |      |
-|  --fullscreen   |    -f      | Enables full-screen mode for the first window on its load. |             |      |
-| --unclickable |    --uc      | The page will pass through any mouse clicks or other mouse events. |                |       |
-| --savefolder  |    --sf       | Where to save a file on disk.                   | "/path/to/folder"                 |                                                |
-| --mediafoundation, |   --mf    | Enables media foundation video capture.          |                       |       |
-| --disablemediafoundation  |--dmf | Disables media foundation video capture; helps capture some webcams. |    |       |
-| --chroma  |     --color        | Set background CSS to target hex color.        | "FFF" or "0000"                   |                                                |
+| --width           | -w        | The width of the window in pixels.             | 1280                              | Value in px                                     |
+| --height          | -h        | The height of the window in pixels.            | 720                               | Value in px                                     |
+| --x               | -x        | The x-position of the window in pixels.         | 100                              | Value in px                                     |
+| --y               | -y        | The y-position of the window in pixels.         | 100                               | Value in px                                     |
+| --url             | -u        | The URL of the window to load.                  | "https://vdo.ninja/electron"     |                                                |
+| --title           | -t        | The default Title for the app Window.           | "My App"                          | Handy for use with OBS window capture          |
+| --pin             | -p        | Enables always on top.                          |                                   |                                                |
+| --hwa             | -a        | Enables Hardware Acceleration.                  |                                   |                                                |
+| --node            | -n        | Enables node-integration.                       |                                   | Required for screen capture, global hotkeys, etc. |
+| --minimized       | --min     | Starts the window minimized.                   |                                   |                                                |
+| --fullscreen      | -f        | Enables full-screen mode for the first window on its load. |                       |                                                |
+| --unclickable     | --uc      | The page will pass through any mouse clicks or other mouse events. |               |                                                |
+| --savefolder      | --sf      | Where to save a file on disk.                   | "/path/to/folder"                 |                                                |
+| --mediafoundation | --mf      | Enables media foundation video capture.         |                                   |                                                |
+| --disablemediafoundation | --dmf | Disables media foundation video capture; helps capture some webcams. |          |                                                |
+| --chroma          | --color   | Set background CSS to target hex color.         | "FFF" or "0000"                   |                                                |
+| --js              | -js       | Have local JavaScript script be auto-loaded into every page | "script.js"          | Path to JavaScript file to inject              |
+| --css             | -css      | Have local CSS script be auto-loaded into every page | "style.css"                 | Path to CSS file to inject                     |
+| --hidecursor      | -hc       | Hide the mouse pointer / cursor                 |                                   |                                                |
+| --monitor         | -m        | Monitor index to open on (0-based index)        | 0                                 | Select which monitor to display on             |
 
-* note: Use the --help command to get the most recent available commands and options.  While I try to keep the documentation update to date, I'm not always the best at it.
-
+**Notes:**
+* Use the `--help` command to get the most recent available commands and options.
 * The default frameless resolution of the capture window is 1280x720. The app automatically accounts for high-DPI displays, so it is always 1:1 pixel-accurate with the specified resolution on even Apple Retina displays.
+* For screen-sharing and advanced features such as global hotkeys, you need to enable node integration with the `--node` parameter.
+
+### Command Line Examples
 
 The optional Command Line arguments can be seen as examples below, along with their default values.
+
+#### Windows example (recommended format)
 ```
 elecap.exe --width=1280 --height=720 --url="https://vdo.ninja/electron" --title="my Window name" --x=1 --y=1 --node=1
 ```
-As shown above, using an equal sign (`=`) and double quotes to encapsulate strings is recommended for Windows command line / batch file users. 
+As shown above, using an equal sign (`=`) and double quotes to encapsulate strings is recommended for Windows command line / batch file users.
 
-On Linux or mac though, you might be able to get away with the following though:
+#### Linux/macOS example
 ```
 ./elecap -w 1280 -h 720 -u 'https://vdo.ninja/electron' -t 'my Window name' --x 10 --y 10 -n 1
 ```
 
+#### Custom CSS/JavaScript example
+```
+elecap.exe --width=1280 --height=720 --url="https://vdo.ninja/electron" --js="custom.js" --css="style.css"
+```
+
+#### Escape ampersand characters in Windows without quotes
+```
+elecap -t=feed2 --url https://vdo.ninja/?view=ePz9hnx^&scene^&codec=h264^&room=SOMETHINGTEST123
+```
+The above usage requires escaping ampersand (`&`) characters with a caret (`^`) character.
+
+#### Simpler format with complex URLs
+```
+elecap.exe --node true --title feed2 --url "https://vdo.ninja/?view=ePz9hnx&scene&codec=h264&room=SOMETHINGTEST123"
+```
+Note that the elecap.exe is the 'portable' version of Electron Capture; you can choose the installer or the single-file portable version. The portable one is easier to use via command line, with the installer version better without command line usage.
 As well, if running from Windows command prompt, without encapsulating quotes, any ampersand "&" characters will need to be escaped with a "^" character, as seen below:
 ```
 elecap -t=feed2 --url https://vdo.ninja/?view=ePz9hnx^&scene^&codec=h264^&room=SOMETHINGTEST123
