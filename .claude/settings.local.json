@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep:*)",
+      "Bash(npm run:*)",
+      "Bash(sed:*)"
+    ],
+    "deny": []
+  },
+  "enableAllProjectMcpServers": false
+}
