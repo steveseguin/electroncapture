@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>440Hz Tone Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .container {
+            text-align: center;
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        button {
+            font-size: 24px;
+            padding: 15px 30px;
+            margin: 10px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-top: 20px;
+            font-size: 18px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>440Hz Tone Generator</h1>
+        <button id="playButton">Play 440Hz Tone (3 seconds)</button>
+        <div class="status" id="status">Ready</div>
+    </div>
+
+    <script>
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        let oscillator = null;
+        let gainNode = null;
+        
+        function playTone(frequency, duration) {
+            // Create oscillator
+            oscillator = audioContext.createOscillator();
+            gainNode = audioContext.createGain();
+            
+            // Configure oscillator
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+            
+            // Configure gain (volume)
+            gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+            
+            // Connect nodes
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            // Start oscillator
+            oscillator.start(audioContext.currentTime);
+            
+            // Schedule stop
+            oscillator.stop(audioContext.currentTime + duration);
+            
+            return new Promise((resolve) => {
+                oscillator.onended = () => {
+                    resolve();
+                };
+            });
+        }
+        
+        const playButton = document.getElementById('playButton');
+        const statusDiv = document.getElementById('status');
+        
+        playButton.addEventListener('click', async () => {
+            playButton.disabled = true;
+            statusDiv.textContent = 'Playing 440Hz tone...';
+            
+            try {
+                await playTone(440, 3);
+                statusDiv.textContent = 'Finished playing';
+            } catch (error) {
+                statusDiv.textContent = 'Error: ' + error.message;
+            }
+            
+            playButton.disabled = false;
+        });
+        
+        // Auto-play on load after a delay (for testing)
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                statusDiv.textContent = 'Auto-playing in 2 seconds...';
+                setTimeout(() => {
+                    playButton.click();
+                }, 2000);
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
