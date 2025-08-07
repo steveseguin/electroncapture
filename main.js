@@ -10,434 +10,14 @@ const contextMenu = require('electron-context-menu');
 const Yargs = require('yargs')
 const isDev = require('electron-is-dev');
 
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-});
-// main.js
 
-let windowAudioCapture = null;
-// Map to store stream callbacks by client ID
-const audioStreamClients = new Map();
-let audioStreamClientCounter = 0;
-
-try {
-  console.log('Loading window-audio-capture module...');
-  windowAudioCapture = require('./native-modules/window-audio-capture');
-  console.log('Module loaded successfully');
-  
-  // Test if the module methods exist and log them
-  const methods = Object.keys(windowAudioCapture);
-  console.log('Module methods:', methods);
-  
-  // Check if we have the expected API structure
-  if (!windowAudioCapture.getWindowList && windowAudioCapture.captureInstance) {
-    console.log('Module has captureInstance structure');
-  }
-  
-  // Test the getWindowList function
-  try {
-    let windows;
-    if (windowAudioCapture.getWindowList) {
-      windows = windowAudioCapture.getWindowList();
-    } else if (windowAudioCapture.captureInstance && windowAudioCapture.captureInstance.getWindowList) {
-      windows = windowAudioCapture.captureInstance.getWindowList();
-    }
-    
-    console.log('Windows list type:', typeof windows);
-    console.log('Is array:', Array.isArray(windows));
-    console.log('Windows length:', windows ? (Array.isArray(windows) ? windows.length : 'not an array') : 'undefined');
-    console.log('First window:', windows && windows.length > 0 ? windows[0] : 'none');
-  } catch (testError) {
-    console.error('Error testing getWindowList:', testError);
-  }
-} catch (err) {
-  console.error('Error loading window-audio-capture module:', err);
-}
-
-ipcMain.handle('get-window-list', async () => {
-  try {
-    if (!windowAudioCapture) {
-      console.error('Window audio capture module is not loaded');
-      return [];
-    }
-    
-    // Get windows list - handle different module structures
-    let rawWindows;
-    if (windowAudioCapture.getWindowList) {
-      rawWindows = windowAudioCapture.getWindowList();
-    } else if (windowAudioCapture.captureInstance && windowAudioCapture.captureInstance.getWindowList) {
-      rawWindows = windowAudioCapture.captureInstance.getWindowList();
-    } else {
-      console.error('getWindowList method not found on module');
-      return [];
-    }
-    
-    console.log("Raw windows type:", typeof rawWindows);
-    
-    // Convert to array if needed
-    let windows = [];
-    if (Array.isArray(rawWindows)) {
-      windows = rawWindows;
-    } else if (rawWindows && typeof rawWindows === 'object') {
-      // Try to convert the object to an array
-      // This handles if it's returning an object with numeric keys
-      for (let key in rawWindows) {
-        if (rawWindows.hasOwnProperty(key) && !isNaN(parseInt(key))) {
-          windows.push(rawWindows[key]);
-        }
-      }
-      
-      if (windows.length === 0) {
-        // Alternative approach if the above doesn't work
-        windows = Object.values(rawWindows);
-      }
-    }
-    
-    console.log("Converted windows array length:", windows.length);
-
-    return windows;
-  } catch (error) {
-    console.error('Error processing window list:', error);
-    return [];
-  }
+ipcMain.on('getSources', async function(eventRet, args) {
+	try{
+		const sources = await desktopCapturer.getSources({ types: args.types });
+		eventRet.returnValue = sources;
+	} catch(e){console.error(e);}
 });
 
-ipcMain.handle('get-audio-sessions', async () => {
-  try {
-    return await windowAudioCapture.getAudioSessions();
-  } catch (error) {
-    console.error('Error getting audio sessions:', error);
-    return [];
-  }
-});
-
-ipcMain.handle('start-session-capture', async (event, sessionIndex) => {
-  try {
-    // Get the sessions to find the process ID
-    const sessions = await windowAudioCapture.getAudioSessions();
-    const session = sessions.find(s => s.sessionId === sessionIndex);
-    
-    if (!session || !session.processId) {
-      console.error(`No valid session found for index ${sessionIndex}`);
-      return { success: false, error: "Invalid session index" };
-    }
-    
-    // Use the regular startCapture with the process ID
-    console.log(`Starting capture for process ID ${session.processId} from session ${sessionIndex}`);
-    
-    try {
-      const success = windowAudioCapture.startCapture(session.processId);
-      return { success: !!success }; // Ensure we return a boolean
-    } catch (captureError) {
-      console.error('Error in startCapture:', captureError);
-      return { 
-        success: false, 
-        error: typeof captureError === 'string' ? captureError : 
-              (captureError && captureError.message) ? captureError.message : "Unknown error starting capture" 
-      };
-    }
-  } catch (error) {
-    console.error('Error in startCaptureBySession:', error);
-    // Return a simple error object that can be cloned
-    return { 
-      success: false, 
-      error: typeof error === 'string' ? error : 
-            (error && error.message) ? error.message : "Unknown error occurred"
-    };
-  }
-});
-
-ipcMain.handle('start-window-capture', async (event, windowId) => {
-  try {
-    const success = windowAudioCapture.startCapture(windowId);
-    return { success };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle('get-audio-data', async () => {
-  try {
-    const audioData = windowAudioCapture.getAudioData();
-    return { success: true, audioData };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle('stop-capture', async () => {
-  try {
-    const success = windowAudioCapture.stopCapture();
-    return { success };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle('start-window-stream-capture', async (event, windowId) => {
-  try {
-    console.log(`Start window stream capture request: ${windowId} ${typeof windowId}`);
-    
-    // Ensure windowId is a number
-    const processId = Number(windowId);
-    
-    if (isNaN(processId) || processId <= 0) {
-      console.error(`Invalid process ID: ${windowId}`);
-      return { success: false, error: "Invalid process ID" };
-    }
-    
-    console.log(`Starting audio capture for process ID: ${processId}`);
-    
-    // Access the startStreamCapture method based on module structure
-    const startStreamCapture = windowAudioCapture.startStreamCapture || 
-                              (windowAudioCapture.captureInstance && windowAudioCapture.captureInstance.startStreamCapture);
-    
-    if (!startStreamCapture) {
-      console.error("startStreamCapture method not found on module");
-      return { success: false, error: "Audio capture method not available" };
-    }
-    
-    // Store reference to the sender
-    const sender = event.sender;
-    
-    // Create a callback that sends data to the renderer
-    const callback = (audioData) => {
-      // Only send if the window still exists
-      if (!sender.isDestroyed()) {
-        try {
-          sender.send('audio-stream-data', { 
-            clientId: processId, 
-            data: audioData 
-          });
-        } catch (err) {
-          console.error("Error sending audio data:", err);
-        }
-      }
-    };
-    
-    // Start the stream with proper error handling
-    try {
-      // Dynamically call the method based on its location
-      let result;
-      
-      if (windowAudioCapture.startStreamCapture) {
-        result = await windowAudioCapture.startStreamCapture(processId, callback);
-      } else if (windowAudioCapture.captureInstance && windowAudioCapture.captureInstance.startStreamCapture) {
-        result = await windowAudioCapture.captureInstance.startStreamCapture(processId, callback);
-      } else {
-        throw new Error("startStreamCapture method not available");
-      }
-      
-      if (!result) {
-        return { success: false, error: "Failed to start audio capture" };
-      }
-      
-      // Create a new result object with only the properties we need
-      const safeResult = {
-        success: true,
-        clientId: processId
-      };
-      
-      // Only copy primitive values that we know are serializable
-      if (result.sampleRate) safeResult.sampleRate = result.sampleRate;
-      if (result.channels) safeResult.channels = result.channels;
-      
-      // Store the client ID for cleanup
-      audioStreamClients.set(processId, sender.id);
-      
-      console.log(`Successfully started audio capture for process ${processId}, sample rate: ${safeResult.sampleRate}, channels: ${safeResult.channels}`);
-      
-      return safeResult;
-    } catch (captureError) {
-      console.error("Error starting stream capture:", captureError);
-      return { 
-        success: false, 
-        error: typeof captureError === 'string' ? captureError : 
-              (captureError && captureError.message) ? captureError.message : "Failed to start audio capture"
-      };
-    }
-  } catch (error) {
-    console.error("Error in start-window-stream-capture:", error);
-    return { 
-      success: false, 
-      error: typeof error === 'string' ? error : 
-            (error && error.message) ? error.message : "Unknown error occurred"
-    };
-  }
-});
-
-ipcMain.handle('stop-stream-capture', async (event, clientId) => {
-  try {
-    console.log(`Stopping stream capture for client ID: ${clientId}`);
-    
-    if (audioStreamClients.has(clientId)) {
-      audioStreamClients.delete(clientId);
-    }
-    
-    // Access the stopStreamCapture method based on module structure
-    const stopStreamCapture = windowAudioCapture.stopStreamCapture || 
-                             (windowAudioCapture.captureInstance && windowAudioCapture.captureInstance.stopStreamCapture) ||
-                             windowAudioCapture.stopCapture ||
-                             (windowAudioCapture.captureInstance && windowAudioCapture.captureInstance.stopCapture);
-    
-    // Only stop if no more clients are streaming
-    if (audioStreamClients.size === 0 && stopStreamCapture) {
-      try {
-        if (windowAudioCapture.stopStreamCapture) {
-          await windowAudioCapture.stopStreamCapture(clientId);
-        } else if (windowAudioCapture.captureInstance && windowAudioCapture.captureInstance.stopStreamCapture) {
-          await windowAudioCapture.captureInstance.stopStreamCapture(clientId);
-        } else if (windowAudioCapture.stopCapture) {
-          await windowAudioCapture.stopCapture();
-        } else if (windowAudioCapture.captureInstance && windowAudioCapture.captureInstance.stopCapture) {
-          await windowAudioCapture.captureInstance.stopCapture();
-        }
-        console.log(`Successfully stopped audio capture for client ${clientId}`);
-      } catch (stopError) {
-        console.error(`Error stopping capture: ${stopError}`);
-      }
-    }
-    
-    return { success: true };
-  } catch (error) {
-    console.error("Error in stop-stream-capture:", error);
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle('getSources', async (event, args) => {
-  try {
-    // Get all sources from desktopCapturer
-    const sources = await desktopCapturer.getSources({ 
-      types: args.types,
-      thumbnailSize: { width: 150, height: 150 }
-    });
-    
-    // Get audio sessions for correlation
-    let audioSessions = [];
-    try {
-      audioSessions = await windowAudioCapture.getAudioSessions();
-      console.log('Audio sessions found:', audioSessions.length);
-      console.log('Audio sessions:', audioSessions);
-    } catch (err) {
-      console.warn('Could not get audio sessions:', err);
-    }
-    
-    // Get window list for correlation
-    let windows = [];
-    try {
-      windows = await windowAudioCapture.getWindowList();
-      console.log('Windows found:', windows.length);
-    } catch (err) {
-      console.warn('Could not get window list:', err);
-    }
-    
-    // Build a map of process IDs to session IDs for quick lookup
-    const processToSession = {};
-    audioSessions.forEach(session => {
-      if (session.processId) {
-        processToSession[session.processId] = session.sessionId;
-      }
-    });
-    
-    // Process sources to make them serializable and add audio info
-    const processedSources = sources.map(source => {
-      // Find matching window by title
-      const sourceNameLower = source.name.toLowerCase();
-      const matchingWindow = Array.isArray(windows) ? 
-        windows.find(win => 
-          win.title.toLowerCase().includes(sourceNameLower) || 
-          sourceNameLower.includes(win.title.toLowerCase())
-        ) : null;
-      
-      // Check if this window's process has an audio session
-      let matchingSessionId = null;
-      let hasAudio = false;
-      
-      if (matchingWindow && matchingWindow.processId) {
-        // Try direct process ID match
-        if (processToSession[matchingWindow.processId]) {
-          matchingSessionId = processToSession[matchingWindow.processId];
-          hasAudio = true;
-        } else {
-          // Try to find by executable name
-          const exeName = matchingWindow.executableName?.toLowerCase();
-          if (exeName) {
-            const matchingSession = audioSessions.find(session => 
-              session.executableName?.toLowerCase() === exeName
-            );
-            if (matchingSession) {
-              matchingSessionId = matchingSession.sessionId;
-              hasAudio = true;
-            }
-          }
-        }
-      }
-      
-      // For known audio applications, mark as having audio even without session
-      const knownAudioApps = [
-        'chrome', 'firefox', 'edge', 'brave', 'opera', 'safari',
-        'spotify', 'itunes', 'music', 'youtube', 'vlc', 'netflix',
-        'discord', 'teams', 'slack', 'zoom', 'meet', 'skype',
-        'electron'
-      ];
-      
-      if (!hasAudio && matchingWindow && matchingWindow.executableName) {
-        const exeLower = matchingWindow.executableName.toLowerCase();
-        for (const app of knownAudioApps) {
-          if (exeLower.includes(app)) {
-            hasAudio = true;
-            break;
-          }
-        }
-      }
-      
-      // For testing - enable audio for all windows temporarily
-      // hasAudio = true;
-      
-      return {
-        id: source.id,
-        name: source.name,
-        display_id: source.display_id || '',
-        appIcon: source.appIcon ? source.appIcon.toDataURL() : '',
-        thumbnail: source.thumbnail.toDataURL(),
-        hasAudio: hasAudio,
-        audioSessionId: matchingSessionId,
-        windowId: matchingWindow ? matchingWindow.id : null,
-        processId: matchingWindow ? matchingWindow.processId : null,
-        executableName: matchingWindow ? matchingWindow.executableName : null
-      };
-    });
-    
-    return processedSources;
-  } catch(e) {
-    console.error('Error in getSources:', e);
-    throw e;
-  }
-});
-
-ipcMain.handle('check-admin-rights', async () => {
-  try {
-    // Check if process is running with admin rights
-    let isElevated = false;
-    const { execSync } = require('child_process');
-    
-    try {
-      // Simple check - try to write to Program Files which needs admin rights
-      const testFile = 'C:\\Program Files\\test_admin_rights.txt';
-      execSync(`echo test > "${testFile}"`, { timeout: 1000 });
-      execSync(`del "${testFile}"`, { timeout: 1000 });
-      isElevated = true;
-    } catch (e) {
-      isElevated = false;
-    }
-    
-    return isElevated;
-  } catch (error) {
-    console.error('Error checking admin rights:', error);
-    return false;
-  }
-});
 
 const { Readable } = require('stream');
 const { fetch: undiciFetch } = require('undici');
@@ -796,26 +376,6 @@ function formatURL(inputURL) {
   return inputURL;
 }
 
-// Clean up when a renderer is destroyed
-app.on('web-contents-destroyed', (event, webContents) => {
-  const webContentsId = webContents.id;
-  
-  // Find and remove any audio stream clients for this renderer
-  for (const [clientId, senderId] of audioStreamClients.entries()) {
-    if (senderId === webContentsId) {
-      audioStreamClients.delete(clientId);
-    }
-  }
-  
-  // Stop capture if no more clients
-  if (audioStreamClients.size === 0 && windowAudioCapture) {
-    try {
-      windowAudioCapture.stopCapture();
-    } catch (err) {
-      console.error('Error stopping capture:', err);
-    }
-  }
-});
 
 ipcMain.handle('noCORSFetch', async (event, args) => {
   const streamId = Date.now().toString();
@@ -939,94 +499,6 @@ ipcMain.handle('prompt', async (event, arg) => {
   }
 });
 
-const windowStateManager = {
-  getPath: function() {
-    return path.join(app.getPath('userData'), 'window-state.json');
-  },
-  
-	save: function(window) {
-	  try {
-		if (!window || window.isDestroyed()) {
-		  console.warn('Cannot save state for destroyed window');
-		  return false;
-		}
-
-		let boundsToSave;
-		const isMaximized = window.isMaximized();
-		const isFullScreen = window.isFullScreen();
-		const isMinimized = window.isMinimized(); // Check if minimized
-
-		if (isMinimized) {
-		  window.restore(); // Temporarily restore to get correct bounds
-		  boundsToSave = window.getBounds();
-		  // It's closing, so re-minimizing might not be strictly necessary,
-		  // but if you have other logic that expects it to be minimized:
-		  // window.minimize();
-		} else {
-		  boundsToSave = window.getBounds();
-		}
-
-		const windowState = {
-		  bounds: boundsToSave,
-		  isMaximized: isMaximized,
-		  isFullScreen: isFullScreen,
-		  monitor: -1 // Your existing monitor detection logic here
-		};
-
-		// --- Begin: Your existing monitor detection logic (lines 868-878 in original) ---
-		const displays = screen.getAllDisplays();
-		for (let i = 0; i < displays.length; i++) {
-		  const display = displays[i];
-		  const intersection = this.getIntersection(display.bounds, boundsToSave); // Use boundsToSave
-		  if (intersection.width > 0 && intersection.height > 0) {
-			windowState.monitor = i;
-			break;
-		  }
-		}
-		// --- End: Your existing monitor detection logic ---
-
-		const statePath = this.getPath();
-		// console.log('Saving window state to:', statePath, JSON.stringify(windowState)); // More detailed log
-		fs.writeFileSync(statePath, JSON.stringify(windowState, null, 2));
-		console.log('Window state saved:', windowState);
-		return true;
-
-	  } catch (e) {
-		console.error('Failed to save window state:', e);
-		return false;
-	  }
-	},
-  load: function() {
-    try {
-      if (!fs.existsSync(this.getPath())) {
-        console.log('No saved window state found');
-        return null;
-      }
-      
-      const data = fs.readFileSync(this.getPath(), 'utf8');
-      const state = JSON.parse(data);
-      console.log('Loaded window state:', state);
-      return state;
-    } catch (e) {
-      console.error('Failed to load window state:', e);
-      return null;
-    }
-  },
-  
-  getIntersection: function(rect1, rect2) {
-    const x1 = Math.max(rect1.x, rect2.x);
-    const y1 = Math.max(rect1.y, rect2.y);
-    const x2 = Math.min(rect1.x + rect1.width, rect2.x + rect2.width);
-    const y2 = Math.min(rect1.y + rect1.height, rect2.y + rect2.height);
-    
-    return {
-      x: x1,
-      y: y1,
-      width: Math.max(0, x2 - x1),
-      height: Math.max(0, y2 - y1)
-    };
-  }
-};
 
 async function createWindow(args, reuse=false) {
   var webSecurity = true;
@@ -1039,8 +511,6 @@ async function createWindow(args, reuse=false) {
   
   var URL = args.url, NODE = args.node, WIDTH = args.width, HEIGHT = args.height, TITLE = args.title, PIN = args.pin, X = args.x, Y = args.y, FULLSCREEN = args.fullscreen, UNCLICKABLE = args.uc, MINIMIZED = args.min, CSS = args.css, BGCOLOR = args.chroma, JS = args.js;
 
-  // Load saved window state
-  const savedState = windowStateManager.load();
   let factor = screen.getPrimaryDisplay().scaleFactor;
   
   console.log(args);
@@ -1268,102 +738,15 @@ async function createWindow(args, reuse=false) {
 	});
 	
 
-	 try {
-		mainWindow.node = NODE; // NODE is from args
+	try {
+		mainWindow.node = NODE;
 
-		const cliX = args.x;           // X from command-line arguments
-		const cliY = args.y;           // Y from command-line arguments
-		// targetWidth and targetHeight are already calculated in your code before BrowserWindow constructor
-		// using args.width, args.height, and factor.
-		// Example: var targetWidth = WIDTH / factor; (where WIDTH is args.width)
-
-		let positionSource = "Unknown"; // For logging
-
-		if (cliX !== -1 && cliY !== -1) {
-			// Priority 1: Explicit X, Y from command line.
-			positionSource = `Command Line X/Y: x=${cliX}, y=${cliY}`;
-			// Assuming cliX and cliY from yargs are logical pixels similar to width/height
-			// Your original code applies factor: mainWindow.setPosition(Math.floor(X/factor), Math.floor(Y/factor));
-			// The window size (targetWidth, targetHeight) was already set by the BrowserWindow constructor.
-			mainWindow.setPosition(Math.floor(cliX / factor), Math.floor(cliY / factor));
-
-		} else if (savedState && savedState.bounds) {
-			// Priority 2: No explicit X,Y from command line (-1), AND savedState exists.
-			positionSource = `Saved State: bounds=${JSON.stringify(savedState.bounds)}, monitor=${savedState.monitor}`;
-			const { x, y, width, height } = savedState.bounds;
-
-			// Validate if these bounds are on a connected display.
-			const displays = screen.getAllDisplays();
-			let onValidMonitor = false;
-			const savedMonitorIndex = savedState.monitor;
-
-			// Check if the saved monitor index is valid and if the window is on it.
-			if (savedMonitorIndex !== undefined && savedMonitorIndex >= 0 && savedMonitorIndex < displays.length) {
-				const targetDisplay = displays[savedMonitorIndex];
-				// A simple check: is the top-left corner within the work area of the saved monitor?
-				// For a more robust check, you might want to see if a significant portion of the window intersects.
-				if (x >= targetDisplay.workArea.x && x < targetDisplay.workArea.x + targetDisplay.workArea.width &&
-					y >= targetDisplay.workArea.y && y < targetDisplay.workArea.y + targetDisplay.workArea.height) {
-					onValidMonitor = true;
-				}
-			}
-
-			// If not on the specifically saved monitor (e.g., monitor disconnected),
-			// check if the coordinates fall on *any* currently connected monitor.
-			if (!onValidMonitor) {
-				for (let i = 0; i < displays.length; i++) {
-					const display = displays[i];
-					if (x >= display.workArea.x && x < display.workArea.x + display.workArea.width &&
-						y >= display.workArea.y && y < display.workArea.y + display.workArea.height) {
-						onValidMonitor = true;
-						console.warn(`Window was saved on monitor ${savedMonitorIndex}, but it now appears to be on monitor ${i}. Restoring there.`);
-						break;
-					}
-				}
-			}
-
-			if (onValidMonitor) {
-				// setBounds uses physical pixels. savedState.bounds are stored as physical pixels.
-				mainWindow.setBounds({ x, y, width, height });
-				if (savedState.isMaximized) {
-					mainWindow.maximize();
-				} else if (savedState.isFullScreen) {
-					mainWindow.setFullScreen(true);
-				}
-			} else {
-				// Saved position is off-screen. Fallback to centering the default size.
-				positionSource += " (Off-screen Fallback)";
-				console.warn("Saved window position appears off-screen. Falling back to default placement.");
-				// Window size is already default (targetWidth, targetHeight) from constructor. Center it.
-				mainWindow.center(); // Electron's utility to center the window on the current screen.
-			}
-		} else {
-			// Priority 3: No explicit X,Y, AND no (or invalid) savedState.
-			// Position based on args.monitor (default 0) or center on primary.
-			// Window size is already default (targetWidth, targetHeight) from constructor.
-			positionSource = `Default Positioning (Monitor ${args.monitor} or Primary)`;
-			console.log("No explicit X/Y and no valid saved state. Using default positioning logic.");
-
-			const displays = screen.getAllDisplays();
-			let displayToCenterOn = screen.getPrimaryDisplay(); // Default to primary
-
-			if (args.monitor !== undefined && args.monitor >= 0 && args.monitor < displays.length) {
-				displayToCenterOn = displays[args.monitor];
-			}
-
-			// Calculate center position on the chosen display's work area
-			const centerX = displayToCenterOn.workArea.x + (displayToCenterOn.workArea.width - targetWidth) / 2;
-			const centerY = displayToCenterOn.workArea.y + (displayToCenterOn.workArea.height - targetHeight) / 2;
-			mainWindow.setPosition(Math.floor(centerX), Math.floor(centerY));
+		if ((X!=-1) || (Y!=-1)) {
+			if (X==-1){X=0;}
+			if (Y==-1){Y=0;}
+			mainWindow.setPosition(Math.floor(X/factor), Math.floor(Y/factor))
 		}
-		console.log(`Window positioning determined by: ${positionSource}`);
-
-	} catch (e) {
-		console.error('Error applying window state during createWindow positioning:', e);
-		// Fallback in case of any error during positioning
-		console.error('Fallback: Centering window with default size due to an error.');
-		mainWindow.center(); // Uses the size set in BrowserWindow constructor
-	}
+	} catch(e){console.error(e);}
 	
 	mainWindow.on('blur', () => {
 		mainWindow.setBackgroundColor('#00000000'); // tmp fix for bug in e.js
@@ -1402,41 +785,22 @@ async function createWindow(args, reuse=false) {
 	});
 
 	mainWindow.on('close', function(e) {
-	  console.log(`Window ID ${mainWindow.id} 'close' event triggered.`);
-	  e.preventDefault(); // Prevent the window from closing immediately
-
-	  // 1. Save window state (uses the improved save function from step 1)
-	  console.log(`Window ID ${mainWindow.id}: Saving state...`);
-	  windowStateManager.save(mainWindow);
-
-	  // 2. Hide the window
-	  console.log(`Window ID ${mainWindow.id}: Hiding window...`);
-	  mainWindow.hide();
-
-	  // 3. Send 'hangup' message
-	  console.log(`Window ID ${mainWindow.id}: Sending 'hangup' message...`);
-	  if (mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
-		mainWindow.webContents.send('postMessage', {'hangup':true});
-	  }
-
-	  // 4. Wait 5 seconds, then destroy the window
-	  console.log(`Window ID ${mainWindow.id}: Starting 5-second timer for destruction...`);
-	  const windowToDestroy = mainWindow; // Capture reference for the timeout
-
-	  setTimeout(() => {
-		if (windowToDestroy && !windowToDestroy.isDestroyed()) {
-		  console.log(`Window ID ${windowToDestroy.id}: 5-second timer elapsed. Destroying window.`);
-		  windowToDestroy.destroy();
-		} else {
-		  console.log(`Window ID ${windowToDestroy ? windowToDestroy.id : 'unknown'}: Window was already destroyed or became null before 5s timer finished.`);
+		e.preventDefault();
+		mainWindow.hide(); // hide, and wait 2 second before really closing; this allows for saving of files.
+		if (!global.closing){ // doesn't wait if we have issued a global app-wide closedown. speeds things up.
+			setTimeout(()=>{
+				if (!global.closing){
+					mainWindow.webContents.send('postMessage', {'hangup':true}); // allows us to disable the director; useful for speed and preventing camera blinking/flickering after the window closes.
+					setTimeout(()=>{  // we wait for the camera to be disabled before closing; this is to aviod blinking and for file saving.
+						if (!global.closing){
+							try{
+								mainWindow.destroy(); 
+							} catch(e){}
+						}
+					}, 2000);
+				}
+			}, 0);
 		}
-	  }, 5000);
-
-	  // Regarding globalShortcut.unregister:
-	  // Unregistering 'CommandOrControl+M' might be okay if it's specific to this window.
-	  // However, globalShortcut.unregisterAll() here is problematic if other windows/app functions rely on global shortcuts.
-	  // It's better to manage unregisterAll() at the app quit level.
-	  // Example: if (globalShortcut.isRegistered('CommandOrControl+M')) { globalShortcut.unregister('CommandOrControl+M'); }
 	});
 	
 	mainWindow.on('closed', function () { // Around line 1112
@@ -2771,7 +2135,6 @@ app.on('before-quit', (event) => {
     BrowserWindow.getAllWindows().forEach((bw) => {
       if (bw && !bw.isDestroyed()) {
         console.log(`'before-quit': Processing window ID ${bw.id}.`);
-        windowStateManager.save(bw); // Use the robust save function
         bw.hide();
         if (bw.webContents && !bw.webContents.isDestroyed()) {
           bw.webContents.send('postMessage', {'hangup':true});
