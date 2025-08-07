@@ -33,60 +33,7 @@ try {
     },
     noCORSFetch: (args) => ipcRenderer.invoke('noCORSFetch', args),
     readStreamChunk: (streamId) => ipcRenderer.invoke('readStreamChunk', streamId),
-    closeStream: (streamId) => ipcRenderer.invoke('closeStream', streamId),
-    
-    getAudioSessions: () => ipcRenderer.invoke('get-audio-sessions'),
-    startSessionCapture: (sessionIndex) => ipcRenderer.invoke('start-session-capture', sessionIndex),
-    
-    getSources: (args) => ipcRenderer.invoke('getSources', args),
-    prompt: (args) => ipcRenderer.invoke('prompt', args),
-    
-    getWindowList: () => ipcRenderer.invoke('get-window-list'),
-    startCapture: (windowId) => ipcRenderer.invoke('start-window-capture', windowId),
-    stopCapture: () => ipcRenderer.invoke('stop-capture'),
-    getAudioData: () => ipcRenderer.invoke('get-audio-data'),
-    checkAdminRights: () => ipcRenderer.invoke('check-admin-rights'),
-    
-    startStreamCapture: (windowId) => {
-      console.log('Requesting stream capture for windowId:', windowId);
-      
-      // Ensure windowId is a number before sending to main process
-      let processedId = windowId;
-      if (typeof windowId === 'string' && !isNaN(parseInt(windowId, 10))) {
-        processedId = parseInt(windowId, 10);
-      }
-      
-      // Log additional debug info
-      console.log(`Processed windowId: ${processedId} (${typeof processedId})`);
-      
-      return ipcRenderer.invoke('start-window-stream-capture', processedId);
-    },
-    
-    stopStreamCapture: (clientId) => ipcRenderer.invoke('stop-stream-capture', clientId),
-    
-    // Add an event listener for audio stream data with more error handling
-    onAudioStreamData: (callback) => {
-      if (typeof callback !== 'function') {
-        throw new Error('Callback must be a function');
-      }
-      
-      // Remove any existing listeners to avoid duplicates
-      ipcRenderer.removeAllListeners('audio-stream-data');
-      
-      // Add the new listener with error handling
-      ipcRenderer.on('audio-stream-data', (event, data) => {
-        try {
-          callback(data);
-        } catch (err) {
-          console.error('Error in audio stream data callback:', err);
-        }
-      });
-      
-      // Return a function to remove the listener
-      return () => {
-        ipcRenderer.removeAllListeners('audio-stream-data');
-      };
-    }
+    closeStream: (streamId) => ipcRenderer.invoke('closeStream', streamId)
   });
 } catch(e) {
   console.error('Error in preload.js:', e);
