@@ -1,0 +1,95 @@
+✓ Running as administrator
+
+=== Audio Capture Test (Media Player) ===
+
+
+1. Playing test tone WAV file...
+Attempting to play WAV file...
+VLC not found, using Windows Media Player...
+
+2. Checking audio sessions...
+Audio sessions found: 11
+Found 11 audio sessions
+
+Active sessions:
+  0: Process 12816 - Active: false
+  1: Process 21152 - Active: true
+  2: Process 12816 - Active: false
+  3: Process 25100 - Active: false
+  4: Process 39664 - Active: false
+  5: Process 24428 - Active: false
+  6: Process 43716 - Active: false
+  7: Process 19936 - Active: false
+  8: Process 8000 - Active: false
+  9: Process 764 - Active: false
+  10: Process 764 - Active: true
+
+3. Finding media player window...
+Raw windows type: object
+Windows found: 31
+Target process ID: 764
+Target window ID: 7807766
+
+4. Starting audio capture...
+Start window stream capture request: 7807766 number
+Audio sessions found: 11
+Audio session process IDs: [12816,21152,12816,25100,39664,24428,43716,19936,8000,764,764]
+Attempting process-specific loopback for PID: 764
+Target process: wmplayer.exe (PID: 764)
+Current process running with admin rights: Yes
+Windows version: 10.0 Build 26100
+Is compatible Windows version: Yes
+ERROR: Failed to start process-specific audio activation: 0x8000000e
+ERROR: Unknown error starting audio activation
+Direct stream capture failed: Failed to create process-specific loopback capture
+Attempting to find a matching audio session for fallback capture
+Found 2 active audio sessions for fallback
+Fallback capture failed: Failed to get process ID for window
+Error starting stream capture: Error: Failed to create process-specific loopback capture
+    at AppAudioCapture.startStreamCapture (C:\Users\steve\Code\electroncapture\native-modules\window-audio-capture\index.js:118:39)
+    at async runTest (C:\Users\steve\Code\electroncapture\test\audio-capture\test-with-vlc.js:124:29)
+
+Streaming failed: Streaming capture failed
+Starting capture for window: wmplayer.exe (PID: 764)
+Attempting process-specific loopback for PID: 764
+Target process: wmplayer.exe (PID: 764)
+Current process running with admin rights: Yes
+Windows version: 10.0 Build 26100
+Is compatible Windows version: Yes
+ERROR: Failed to start process-specific audio activation: 0x8000000e
+ERROR: Unknown error starting audio activation
+Process-specific capture failed, trying session-based capture...
+Attempting session-based capture for PID: 764
+Found audio session for process 764
+Successfully created session-based capture for PID: 764
+NOTE: This captures all system audio but monitors session state
+✓ Polling capture started
+
+Capturing for 5 seconds...
+Starting audio capture for process ID: 764
+Initial session state: 0
+Starting capture with format:
+  Format Tag: 65534
+  Channels: 2
+  Sample Rate: 44100
+  Bits Per Sample: 32
+  SubFormat GUID: {3-0-10}
+  SubFormat is IEEE Float
+....................Audio stats - Peak: 0.987292, Avg: 0.305042, Clipped: 0/178164 (0%), Silent frames: 0
+....................Audio stats - Peak: 0.986135, Avg: 0.127102, Clipped: 0/177282 (0%), Silent frames: 0
+.........
+
+5. Stopping capture...
+Audio capture thread exiting
+
+Total samples captured: 433944
+
+=== Results ===
+RMS Level: 0.2753
+Detected Frequency: 5502.4 Hz
+Expected: 440 Hz
+Error: 5062.4 Hz
+
+Captured audio saved to: C:\Users\steve\Code\electroncapture\test\audio-capture\captured-media.wav
+
+⚠️  TEST PARTIAL: Audio captured but frequency off

@@ -1,0 +1,3 @@
+@echo off
+echo Playing 440Hz test tone...
+start /wait wmplayer.exe "%~dp0test-tone-440hz.wav"

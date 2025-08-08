@@ -1,0 +1,12 @@
+{
+  "name": "audio-capture-test",
+  "version": "1.0.0",
+  "description": "Test suite for window audio capture",
+  "main": "test-capture.js",
+  "scripts": {
+    "test": "node test-capture-fft.js"
+  },
+  "dependencies": {
+    "fft-js": "^0.0.12"
+  }
+}
