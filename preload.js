@@ -1,7 +1,189 @@
-// preload.js
+﻿// preload.js
 const { ipcRenderer, contextBridge } = require('electron');
+const path = require('path');
+
+let WindowAudioStream = null;
+try {
+  WindowAudioStream = require(path.join(__dirname, 'window-audio-stream.js'));
+  if (WindowAudioStream && typeof WindowAudioStream !== 'function' && WindowAudioStream.default) {
+    WindowAudioStream = WindowAudioStream.default;
+  }
+} catch (error) {
+  console.error('Failed to load WindowAudioStream module:', error);
+}
+
+const WINDOW_AUDIO_EVENT_CHANNEL = 'windowAudioStreamData';
+const APP_AUDIO_PARAM_NAMES = ['appaudio', 'appAudio', 'appAudioTarget'];
+
+let appAudioTarget = null;
+let windowAudioStreamInstance = null;
+let displayMediaHookInstalled = false;
+
+function sanitizeAppAudioTarget(value) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value) || value <= 0) {
+      return null;
+    }
+    return String(Math.floor(value));
+  }
+  if (typeof value === 'bigint') {
+    if (value <= 0n) {
+      return null;
+    }
+    return value.toString();
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed.length) {
+      return null;
+    }
+    const lower = trimmed.toLowerCase();
+    if (['0', 'none', 'false', 'off', 'null'].includes(lower)) {
+      return null;
+    }
+    return trimmed;
+  }
+  return null;
+}
+
+function extractAppAudioTargetFromUrl() {
+  try {
+    const currentUrl = new URL(window.location.href);
+    for (const key of APP_AUDIO_PARAM_NAMES) {
+      const value = currentUrl.searchParams.get(key);
+      if (value) {
+        return value;
+      }
+    }
+  } catch (error) {
+    console.warn('Unable to parse app audio target from URL:', error);
+  }
+  return null;
+}
+
+function ensureWindowAudioStreamInstance() {
+  if (!WindowAudioStream) {
+    return null;
+  }
+  if (!windowAudioStreamInstance) {
+    windowAudioStreamInstance = new WindowAudioStream();
+  }
+  return windowAudioStreamInstance;
+}
+
+function updateAppAudioTarget(value) {
+  const sanitized = sanitizeAppAudioTarget(value);
+  if (sanitized === appAudioTarget) {
+    return appAudioTarget;
+  }
+
+  appAudioTarget = sanitized;
+
+  if (windowAudioStreamInstance && windowAudioStreamInstance.isCapturing()) {
+    windowAudioStreamInstance.stop().catch((error) => {
+      console.warn('Failed to stop window audio stream after retargeting:', error);
+    });
+  }
+
+  return appAudioTarget;
+}
+
+async function attachApplicationAudio(stream) {
+  if (!appAudioTarget) {
+    return;
+  }
+
+  const instance = ensureWindowAudioStreamInstance();
+  if (!instance) {
+    console.warn('WindowAudioStream unavailable; skipping application audio attachment.');
+    return;
+  }
+
+  try {
+    const audioStream = await instance.start(appAudioTarget);
+    if (!audioStream) {
+      console.warn('WindowAudioStream returned no audio stream for target:', appAudioTarget);
+      return;
+    }
+
+    const clonedTracks = [];
+    audioStream.getAudioTracks().forEach((track) => {
+      const clone = track.clone();
+      clonedTracks.push(clone);
+      stream.addTrack(clone);
+    });
+
+    const cleanup = async () => {
+      clonedTracks.forEach((track) => {
+        try {
+          track.stop();
+        } catch (error) {
+          console.warn('Error stopping cloned audio track:', error);
+        }
+      });
+      if (instance.isCapturing()) {
+        try {
+          await instance.stop();
+        } catch (error) {
+          console.warn('Failed to stop WindowAudioStream during cleanup:', error);
+        }
+      }
+    };
+
+    const onceCleanup = () => {
+      cleanup().catch((error) => console.error('Error cleaning up application audio tracks:', error));
+    };
+
+    if (typeof stream.addEventListener === 'function') {
+      stream.addEventListener('inactive', onceCleanup, { once: true });
+    }
+    stream.getVideoTracks().forEach((track) => track.addEventListener('ended', onceCleanup, { once: true }));
+    clonedTracks.forEach((track) => track.addEventListener('ended', onceCleanup, { once: true }));
+  } catch (error) {
+    console.error('Failed to attach application audio to display stream:', error);
+  }
+}
+
+function installDisplayMediaHook() {
+  if (displayMediaHookInstalled) {
+    return;
+  }
+  if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== 'function') {
+    return;
+  }
+
+  const originalGetDisplayMedia = navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices);
+
+  navigator.mediaDevices.getDisplayMedia = async (...args) => {
+    const stream = await originalGetDisplayMedia(...args);
+    if (appAudioTarget) {
+      await attachApplicationAudio(stream);
+    }
+    return stream;
+  };
+
+  displayMediaHookInstalled = true;
+}
+
+appAudioTarget = sanitizeAppAudioTarget(extractAppAudioTargetFromUrl());
+if (appAudioTarget) {
+  console.log('WindowAudioStream: App audio target configured as', appAudioTarget);
+}
+installDisplayMediaHook();
+
+window.addEventListener('beforeunload', () => {
+  if (windowAudioStreamInstance && windowAudioStreamInstance.isCapturing()) {
+    windowAudioStreamInstance.stop().catch((error) => {
+      console.warn('Error stopping WindowAudioStream on unload:', error);
+    });
+  }
+});
 
 window.addEventListener('DOMContentLoaded', () => {
+  installDisplayMediaHook();
   const replaceText = (selector, text) => {
     const element = document.getElementById(selector);
     if (element) element.innerText = text;
@@ -11,33 +193,93 @@ window.addEventListener('DOMContentLoaded', () => {
   }
   try {
     if (session && session.version) {
-      ipcRenderer.send('vdonVersion', {ver: session.version});
+      ipcRenderer.send('vdonVersion', { ver: session.version });
     }
-  } catch(e) {}
+  } catch (e) {}
 });
 
 let doSomethingInWebApp = null;
 
-try {
-  contextBridge.exposeInMainWorld("electronApi", {
+function createElectronApi() {
+  return {
     'exposeDoSomethingInWebApp': function(callback) {
       doSomethingInWebApp = callback;
     },
     'updateVersion': function(version) {
       console.log("33:" + version);
-      ipcRenderer.send('vdonVersion', {ver: version});
+      ipcRenderer.send('vdonVersion', { ver: version });
     },
     'updatePPT': function(PPTHotkey) {
       console.log("updatePPT received!!!");
       ipcRenderer.send('PPTHotkey', PPTHotkey);
     },
-    noCORSFetch: (args) => ipcRenderer.invoke('noCORSFetch', args),
-    readStreamChunk: (streamId) => ipcRenderer.invoke('readStreamChunk', streamId),
-    closeStream: (streamId) => ipcRenderer.invoke('closeStream', streamId)
-  });
-} catch(e) {
-  console.error('Error in preload.js:', e);
+    'noCORSFetch': (args) => ipcRenderer.invoke('noCORSFetch', args),
+    'readStreamChunk': (streamId) => ipcRenderer.invoke('readStreamChunk', streamId),
+    'closeStream': (streamId) => ipcRenderer.invoke('closeStream', streamId),
+    'startStreamCapture': (target) => ipcRenderer.invoke('windowAudio:startStreamCapture', target),
+    'stopStreamCapture': (target) => ipcRenderer.invoke('windowAudio:stopStreamCapture', target),
+    'getWindowAudioTargets': () => ipcRenderer.invoke('windowAudio:getTargets'),
+    'getWindowAudioSessions': () => ipcRenderer.invoke('windowAudio:getSessions'),
+    'onAudioStreamData': (callback) => {
+      if (typeof callback !== 'function') {
+        return () => {};
+      }
+      const handler = (_event, payload) => {
+        try {
+          callback(payload);
+        } catch (err) {
+          console.error('Error in onAudioStreamData handler:', err);
+        }
+      };
+      ipcRenderer.on(WINDOW_AUDIO_EVENT_CHANNEL, handler);
+      return () => ipcRenderer.removeListener(WINDOW_AUDIO_EVENT_CHANNEL, handler);
+    },
+    'setAppAudioTarget': (target) => {
+      const updated = updateAppAudioTarget(target);
+      installDisplayMediaHook();
+      return { success: true, target: updated };
+    },
+    'getAppAudioTarget': () => appAudioTarget,
+    'isWindowAudioCaptureAvailable': () => Boolean(WindowAudioStream)
+  };
 }
+
+const electronApi = createElectronApi();
+
+(function registerElectronApi() {
+  const canUseContextBridge = Boolean(process && process.contextIsolated && contextBridge && typeof contextBridge.exposeInMainWorld === 'function');
+  let exposedViaContextBridge = false;
+
+  if (canUseContextBridge) {
+    try {
+      contextBridge.exposeInMainWorld('electronApi', electronApi);
+      if (WindowAudioStream) {
+        contextBridge.exposeInMainWorld('WindowAudioStream', WindowAudioStream);
+      }
+      exposedViaContextBridge = true;
+    } catch (error) {
+      console.error('Failed to expose APIs via contextBridge:', error);
+    }
+  }
+
+  if (!exposedViaContextBridge) {
+    try {
+      window.electronApi = electronApi;
+      if (WindowAudioStream) {
+        window.WindowAudioStream = WindowAudioStream;
+      }
+    } catch (error) {
+      console.error('Failed to attach APIs to window:', error);
+    }
+  } else if (WindowAudioStream) {
+    // Provide a mirror on window as well for compatibility when contextIsolation is enabled.
+    try {
+      window.WindowAudioStream = WindowAudioStream;
+    } catch (error) {
+      // Ignore - window may not be writable in some sandboxed contexts.
+    }
+  }
+})();
 
 window.addEventListener('message', ({ data }) => {
 	console.log("preload.js-Message-Incoming: "+data);
@@ -347,3 +589,8 @@ function requestOutputAudioStream() {
 		});
 	});
 }
+
+
+
+
+
