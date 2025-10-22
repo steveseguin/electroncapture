@@ -1,4 +1,4 @@
-// Modules to control application life and create native browser window
+﻿// Modules to control application life and create native browser window
 const electron = require('electron')
 const process = require('process')
 const prompt = require('electron-prompt');
@@ -24,6 +24,10 @@ const { fetch: undiciFetch } = require('undici');
 const activeStreams = new Map();
 const https = require('https');
 
+let windowAudioCapture = null;
+const WINDOW_AUDIO_EVENT_CHANNEL = 'windowAudioStreamData';
+let activeWindowAudioSession = null;
+
 process.on('uncaughtException', function (error) {
 	console.error("uncaughtException");
     console.error(error);
@@ -31,7 +35,42 @@ process.on('uncaughtException', function (error) {
 
 unhandled();
 
+try {
+  console.log('Loading window-audio-capture module...');
+  windowAudioCapture = require('./native-modules/window-audio-capture');
+  console.log('Module loaded successfully');
+  
+  // Test if the module methods exist and log them
+  const methods = Object.keys(windowAudioCapture);
+  console.log('Module methods:', methods);
+  
+  // Check if we have the expected API structure
+  if (!windowAudioCapture.getWindowList && windowAudioCapture.captureInstance) {
+    console.log('Module has captureInstance structure');
+  }
+  
+  // Test the getWindowList function
+  try {
+    let windows;
+    if (windowAudioCapture.getWindowList) {
+      windows = windowAudioCapture.getWindowList();
+    } else if (windowAudioCapture.captureInstance && windowAudioCapture.captureInstance.getWindowList) {
+      windows = windowAudioCapture.captureInstance.getWindowList();
+    }
+    
+    console.log('Windows list type:', typeof windows);
+    console.log('Is array:', Array.isArray(windows));
+    console.log('Windows length:', windows ? (Array.isArray(windows) ? windows.length : 'not an array') : 'undefined');
+    console.log('First window:', windows && windows.length > 0 ? windows[0] : 'none');
+  } catch (testError) {
+    console.error('Error testing getWindowList:', testError);
+  }
+} catch (err) {
+  console.error('Error loading window-audio-capture module:', err);
+}
+
 var ver = app.getVersion();
+const DEFAULT_URL = `https://vdo.ninja/electron?version=${ver}`;
 
 function createYargs(){
   var argv = Yargs.usage('Usage: $0 -w=num -h=num -u="string" -p')
@@ -62,7 +101,7 @@ function createYargs(){
   .option("u", {
     alias: "url",
     describe: "The URL of the window to load.",
-	default: "https://vdo.ninja/electron?version="+ver,
+	default: DEFAULT_URL,
     type: "string"
 
   })
@@ -164,13 +203,292 @@ function createYargs(){
     type: "boolean",
 	default: null
   })
+  .option("usewgc", {
+    alias: "wgc",
+    describe: "Allow Windows Graphics Capture backend. Disable for better compatibility when running elevated.",
+    type: "boolean",
+    default: false
+  })
   .describe("help", "Show help.") // Override --help usage message.
   .wrap(process.stdout.columns); 
   
   return argv.argv;
 }
 
-var Argv = createYargs();
+function sanitizeCliToken(value) {
+  if (typeof value !== 'string') {
+    return value;
+  }
+  const trimmed = value.trim();
+  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed;
+}
+
+function collectPotentialCliArgs() {
+  const aggregated = [];
+
+  const directArgs = Array.isArray(process.argv) ? process.argv.slice(2) : [];
+  for (const entry of directArgs) {
+    const sanitized = sanitizeCliToken(entry);
+    if (typeof sanitized === 'string' && sanitized.length) {
+      aggregated.push(sanitized);
+    }
+  }
+
+  const envRaw = process.env.npm_config_argv;
+  if (envRaw) {
+    try {
+      const parsed = JSON.parse(envRaw);
+      const candidateLists = [];
+      if (Array.isArray(parsed.original)) {
+        candidateLists.push(parsed.original);
+      }
+      if (Array.isArray(parsed.cooked)) {
+        candidateLists.push(parsed.cooked);
+      }
+
+      const appendTokens = (sequence) => {
+        if (!Array.isArray(sequence)) {
+          return;
+        }
+        let startIndex = sequence.indexOf('--');
+        if (startIndex === -1) {
+          startIndex = 0;
+        } else {
+          startIndex += 1;
+        }
+        for (let i = startIndex; i < sequence.length; i++) {
+          const sanitized = sanitizeCliToken(sequence[i]);
+          if (typeof sanitized === 'string' && sanitized.length && !aggregated.includes(sanitized)) {
+            aggregated.push(sanitized);
+          }
+        }
+      };
+
+      candidateLists.forEach(appendTokens);
+    } catch (error) {
+      console.warn('Unable to parse npm_config_argv for CLI hydration:', error);
+    }
+  }
+
+  return aggregated;
+}
+
+function hydrateArgsFromRawProcessArgs(args) {
+  if (!args || typeof args !== 'object') {
+    return args;
+  }
+
+  const rawArgs = collectPotentialCliArgs();
+  if (!rawArgs.length) {
+    return args;
+  }
+
+  try {
+    console.log('hydrateArgsFromRawProcessArgs.rawArgs', rawArgs);
+  } catch (e) {}
+
+  const findIndex = (predicate) => rawArgs.findIndex(predicate);
+
+  const urlKeys = new Set(['--url', '-u']);
+  let urlIndex = findIndex((entry) => urlKeys.has(entry));
+  let resolvedUrl = null;
+
+  if (urlIndex !== -1) {
+    const nextValue = rawArgs[urlIndex + 1];
+    if (typeof nextValue === 'string' && !nextValue.startsWith('-')) {
+      resolvedUrl = nextValue;
+    }
+  } else {
+    urlIndex = findIndex((entry) => typeof entry === 'string' && entry.toLowerCase().startsWith('--url='));
+    if (urlIndex !== -1) {
+      resolvedUrl = rawArgs[urlIndex].slice(6);
+    }
+  }
+
+  if (!resolvedUrl) {
+    const httpIndex = findIndex((entry) => typeof entry === 'string' && /^https?:\/\//i.test(entry));
+    if (httpIndex !== -1) {
+      const collected = [rawArgs[httpIndex]];
+      for (let i = httpIndex + 1; i < rawArgs.length; i++) {
+        const value = rawArgs[i];
+        if (typeof value !== 'string' || value.startsWith('-')) {
+          break;
+        }
+        collected.push(value);
+      }
+      resolvedUrl = collected.join(' ');
+    }
+  }
+
+  if (resolvedUrl && typeof resolvedUrl === 'string') {
+    const sanitizedUrl = sanitizeCliToken(resolvedUrl);
+    if (sanitizedUrl.length) {
+      args.url = sanitizedUrl;
+      args.u = sanitizedUrl;
+      if (Array.isArray(args._)) {
+        if (!args._.includes(sanitizedUrl)) {
+          args._.unshift(sanitizedUrl);
+        }
+      } else {
+        args._ = [sanitizedUrl];
+      }
+    }
+  }
+
+  const coerceBoolean = (value) => {
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    if (typeof value === 'number') {
+      if (Number.isFinite(value)) {
+        if (value === 0) {
+          return false;
+        }
+        if (value === 1) {
+          return true;
+        }
+      }
+    }
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (!trimmed.length) {
+        return undefined;
+      }
+      if (/^(false|0|no|off|disable|disabled)$/i.test(trimmed)) {
+        return false;
+      }
+      if (/^(true|1|yes|on|enable|enabled)$/i.test(trimmed)) {
+        return true;
+      }
+    }
+    return undefined;
+  };
+
+  let nodeExplicit = false;
+
+  const applyNodeValue = (value) => {
+    if (typeof value === 'boolean') {
+      args.node = value;
+      args.n = value;
+      nodeExplicit = true;
+    }
+  };
+
+  const tryApplyBoolean = (candidate) => {
+    const coerced = coerceBoolean(candidate);
+    if (typeof coerced === 'boolean') {
+      applyNodeValue(coerced);
+      return true;
+    }
+    return false;
+  };
+
+  const normalizeToken = (token) => (typeof token === 'string' ? token.trim() : '');
+
+  if (typeof args.node === 'boolean') {
+    args.n = args.node;
+  } else if (typeof args.n === 'boolean') {
+    args.node = args.n;
+  }
+
+  for (let i = 0; i < rawArgs.length; i++) {
+    const token = normalizeToken(rawArgs[i]);
+    if (!token) {
+      continue;
+    }
+
+    const lower = token.toLowerCase();
+
+    if (lower === '--no-node' || lower === '--disable-node') {
+      applyNodeValue(false);
+      continue;
+    }
+
+    if (token === '--node' || token === '-n') {
+      const nextValue = rawArgs[i + 1];
+      if (!tryApplyBoolean(nextValue)) {
+        applyNodeValue(true);
+      } else {
+        i += 1;
+      }
+      continue;
+    }
+
+    if (lower.startsWith('--node=')) {
+      const value = token.slice('--node='.length);
+      if (!tryApplyBoolean(value)) {
+        applyNodeValue(true);
+      }
+      continue;
+    }
+
+    if (lower.startsWith('-n=')) {
+      const value = token.slice(3);
+      if (!tryApplyBoolean(value)) {
+        applyNodeValue(true);
+      }
+      continue;
+    }
+  }
+
+  if (!nodeExplicit && typeof args.url === 'string') {
+    try {
+      const parsedUrl = new URL(args.url);
+      const nodeParamKeys = ['node', 'nodeintegration', 'nodeIntegration', 'enableNode'];
+      for (const key of nodeParamKeys) {
+        if (!parsedUrl.searchParams.has(key)) {
+          continue;
+        }
+        const rawValue = parsedUrl.searchParams.get(key);
+        if (rawValue === null || rawValue === '') {
+          applyNodeValue(true);
+        } else if (!tryApplyBoolean(rawValue)) {
+          const lowered = rawValue.trim().toLowerCase();
+          if (lowered && /^(disable|disabled|off|no)$/i.test(lowered)) {
+            applyNodeValue(false);
+          } else if (lowered && /^(auto)$/i.test(lowered)) {
+            // leave for heuristic step
+          } else {
+            applyNodeValue(true);
+          }
+        }
+        break;
+      }
+    } catch (_error) {
+      // ignore malformed URLs
+    }
+  }
+
+  if (!nodeExplicit) {
+    let preferNodeIntegration = false;
+    if (typeof args.url === 'string') {
+      const loweredUrl = args.url.toLowerCase();
+      if (loweredUrl.includes('screenshare') || loweredUrl.includes('appaudio')) {
+        preferNodeIntegration = true;
+      }
+    }
+    if (preferNodeIntegration) {
+      applyNodeValue(true);
+    }
+  }
+
+  if (typeof args.node !== 'boolean') {
+    args.node = false;
+  }
+  if (typeof args.n !== 'boolean') {
+    args.n = args.node;
+  }
+
+  args.__nodeExplicit = nodeExplicit;
+
+  return args;
+}
+
+var Argv = hydrateArgsFromRawProcessArgs(createYargs());
+;
 
 if (Argv.help) {
   Argv.showHelp();
@@ -279,17 +597,38 @@ if (!(Argv.hwa)){
 	console.log("HWA DISABLED");
 }
 
+const enableFeatureSet = new Set();
+const disableFeatureSet = new Set();
+
 if (!(Argv.mf)){
-	app.commandLine.appendSwitch('enable-features', 'MediaFoundationVideoCapture');
+	enableFeatureSet.add('MediaFoundationVideoCapture');
 	//app.commandLine.appendSwitch('force-directshow')
 	//console.log("Media Foundations video cap ENABLED");
 	// --force-directshow
 }
 if (!(Argv.dmf)){
-	app.commandLine.appendSwitch('disable-features', 'MediaFoundationVideoCapture');
+	disableFeatureSet.add('MediaFoundationVideoCapture');
 	//app.commandLine.appendSwitch('force-directshow')
 	//console.log("Media Foundations video cap ENABLED");
 	// --force-directshow
+}
+
+if (process.platform === 'win32') {
+	const preferWgc = Argv.usewgc === true || Argv.wgc === true;
+	if (!preferWgc) {
+		disableFeatureSet.add('WinUseBrowserMediaSource');
+	}
+}
+
+if (enableFeatureSet.size > 0) {
+	app.commandLine.appendSwitch('enable-features', Array.from(enableFeatureSet).join(','));
+}
+
+if (disableFeatureSet.size > 0) {
+	app.commandLine.appendSwitch('disable-features', Array.from(disableFeatureSet).join(','));
+	if (disableFeatureSet.has('WinUseBrowserMediaSource')) {
+		console.log('Windows Graphics Capture disabled (override with --wgc to re-enable).');
+	}
 }
 
 app.commandLine.appendSwitch('enable-features', 'WebAssemblySimd'); // Might not be needed in the future with Chromium; not supported on older Chromium. For faster greenscreen effects.
@@ -468,6 +807,217 @@ ipcMain.handle('closeStream', async (event, streamId) => {
   return true;
 });
 
+function normalizeAudioCaptureTarget(rawTarget) {
+	if (rawTarget === null || rawTarget === undefined) {
+		return null;
+	}
+	if (typeof rawTarget === 'number') {
+		if (!Number.isFinite(rawTarget) || rawTarget <= 0) {
+			return null;
+		}
+		return {
+			requestTarget: rawTarget,
+			clientId: String(rawTarget)
+		};
+	}
+	if (typeof rawTarget === 'string') {
+		const trimmed = rawTarget.trim();
+		if (!trimmed.length) {
+			return null;
+		}
+		if (/^\d+$/.test(trimmed)) {
+			const numericValue = Number(trimmed);
+			if (!Number.isFinite(numericValue) || numericValue <= 0) {
+				return null;
+			}
+			return {
+				requestTarget: numericValue,
+				clientId: trimmed
+			};
+		}
+		return {
+			requestTarget: trimmed,
+			clientId: trimmed
+		};
+	}
+	return null;
+}
+
+async function stopActiveWindowAudioCapture(reason = 'unknown', expectedWebContentsId = null) {
+	if (!windowAudioCapture || typeof windowAudioCapture.stopStreamCapture !== 'function') {
+		activeWindowAudioSession = null;
+		return { success: false, error: 'window-audio-capture module unavailable' };
+	}
+	if (!activeWindowAudioSession) {
+		return { success: true };
+	}
+	if (expectedWebContentsId !== null && activeWindowAudioSession.webContentsId !== expectedWebContentsId) {
+		return { success: true };
+	}
+
+	const { webContents, destroyListener } = activeWindowAudioSession;
+
+	if (webContents && !webContents.isDestroyed() && typeof destroyListener === 'function') {
+		webContents.removeListener('destroyed', destroyListener);
+	}
+
+	activeWindowAudioSession = null;
+
+	try {
+		await windowAudioCapture.stopStreamCapture();
+		return { success: true };
+	} catch (error) {
+		console.warn('Error stopping window audio capture (' + reason + '):', error);
+		return { success: false, error: error.message || 'Failed to stop window audio capture' };
+	}
+}
+
+function forwardWindowAudioData(webContents, clientId, baseSampleRate, baseChannels, payload) {
+	if (!payload || !webContents || webContents.isDestroyed()) {
+		return;
+	}
+
+	const data = payload && payload.data ? payload.data : payload;
+	if (!data) {
+		return;
+	}
+
+	let samples = data.samples;
+
+	if (!(samples instanceof Float32Array)) {
+		if (Array.isArray(samples) || (samples && typeof samples.length === 'number')) {
+			try {
+				samples = Float32Array.from(samples);
+			} catch (err) {
+				console.warn('Failed to convert audio samples to Float32Array:', err);
+				samples = new Float32Array(0);
+			}
+		} else {
+			samples = new Float32Array(0);
+		}
+	}
+
+	const message = {
+		clientId,
+		data: {
+			samples,
+			sampleRate: data.sampleRate || baseSampleRate || 48000,
+			channels: data.channels || baseChannels || 2
+		}
+	};
+
+	try {
+		webContents.send(WINDOW_AUDIO_EVENT_CHANNEL, message);
+	} catch (error) {
+		console.warn('Failed to forward window audio data to renderer:', error);
+	}
+}
+
+ipcMain.handle('windowAudio:getTargets', async () => {
+	if (!windowAudioCapture) {
+		return { success: false, error: 'window-audio-capture module unavailable' };
+	}
+	try {
+		const windows = typeof windowAudioCapture.getWindowList === 'function' ? await windowAudioCapture.getWindowList() : [];
+		const sessions = typeof windowAudioCapture.getAudioSessions === 'function' ? await windowAudioCapture.getAudioSessions() : [];
+		return { success: true, windows, sessions };
+	} catch (error) {
+		console.error('Error retrieving window audio targets:', error);
+		return { success: false, error: error.message || 'Failed to retrieve audio targets' };
+	}
+});
+
+ipcMain.handle('windowAudio:getSessions', async () => {
+	if (!windowAudioCapture || typeof windowAudioCapture.getAudioSessions !== 'function') {
+		return { success: false, error: 'window-audio-capture module unavailable' };
+	}
+	try {
+		const sessions = await windowAudioCapture.getAudioSessions();
+		return { success: true, sessions };
+	} catch (error) {
+		console.error('Error retrieving window audio sessions:', error);
+		return { success: false, error: error.message || 'Failed to retrieve audio sessions' };
+	}
+});
+
+ipcMain.handle('windowAudio:startStreamCapture', async (event, rawTarget) => {
+	if (!windowAudioCapture || typeof windowAudioCapture.startStreamCapture !== 'function') {
+		return { success: false, error: 'window-audio-capture module unavailable' };
+	}
+
+	const normalized = normalizeAudioCaptureTarget(rawTarget);
+	if (!normalized) {
+		return { success: false, error: 'Invalid window audio capture target' };
+	}
+
+	const webContents = event.sender;
+
+	await stopActiveWindowAudioCapture('pre-start cleanup');
+
+	const baseSampleRateFallback = 48000;
+	const baseChannelFallback = 2;
+
+	const forwarder = (payload) => {
+		if (!activeWindowAudioSession || activeWindowAudioSession.webContentsId !== webContents.id) {
+			return;
+		}
+		const sampleRate = activeWindowAudioSession.sampleRate || baseSampleRateFallback;
+		const channels = activeWindowAudioSession.channels || baseChannelFallback;
+		forwardWindowAudioData(webContents, normalized.clientId, sampleRate, channels, payload);
+	};
+
+	let startResult;
+	try {
+		startResult = await windowAudioCapture.startStreamCapture(normalized.requestTarget, forwarder);
+	} catch (error) {
+		console.error('Error starting window audio capture:', error);
+		return { success: false, error: error.message || 'Failed to start window audio capture' };
+	}
+
+	if (!startResult || startResult.success === false) {
+		return { success: false, error: startResult && startResult.error ? startResult.error : 'Failed to start window audio capture' };
+	}
+
+	const destroyListener = () => {
+		stopActiveWindowAudioCapture('renderer destroyed', webContents.id).catch(err => {
+			console.warn('Error stopping window audio capture after renderer destroyed:', err);
+		});
+	};
+
+	if (!webContents.isDestroyed()) {
+		webContents.once('destroyed', destroyListener);
+	}
+
+	activeWindowAudioSession = {
+		webContents,
+		webContentsId: webContents.id,
+		clientId: normalized.clientId,
+		destroyListener,
+		sampleRate: startResult.sampleRate || baseSampleRateFallback,
+		channels: startResult.channels || baseChannelFallback
+	};
+
+	return {
+		success: true,
+		sampleRate: activeWindowAudioSession.sampleRate,
+		channels: activeWindowAudioSession.channels,
+		usingProcessSpecificLoopback: !!(startResult && startResult.usingProcessSpecificLoopback)
+	};
+});
+
+ipcMain.handle('windowAudio:stopStreamCapture', async (event) => {
+	if (!windowAudioCapture || typeof windowAudioCapture.stopStreamCapture !== 'function') {
+		return { success: false, error: 'window-audio-capture module unavailable' };
+	}
+
+	const result = await stopActiveWindowAudioCapture('renderer request', event && event.sender ? event.sender.id : null);
+	if (!result.success && result.error) {
+		return result;
+	}
+
+	return { success: true };
+});
+
 ipcMain.handle('prompt', async (event, arg) => {
   try {
     arg.val = arg.val || '';
@@ -510,6 +1060,87 @@ async function createWindow(args, reuse=false) {
   }
   
   var URL = args.url, NODE = args.node, WIDTH = args.width, HEIGHT = args.height, TITLE = args.title, PIN = args.pin, X = args.x, Y = args.y, FULLSCREEN = args.fullscreen, UNCLICKABLE = args.uc, MINIMIZED = args.min, CSS = args.css, BGCOLOR = args.chroma, JS = args.js;
+
+
+  let nodeExplicitFlag = args.__nodeExplicit === true;
+
+  const assignNodeIntegration = (value, markExplicit = true) => {
+    if (typeof value !== 'boolean') {
+      return;
+    }
+    NODE = value;
+    args.node = value;
+    args.n = value;
+    if (markExplicit) {
+      nodeExplicitFlag = true;
+    }
+  };
+
+  if (typeof NODE !== 'boolean') {
+    assignNodeIntegration(false, false);
+  }
+
+  if (typeof URL === 'string') {
+    URL = formatURL(URL.trim());
+  } else if (URL != null) {
+    try {
+      URL = formatURL(String(URL));
+    } catch (conversionError) {
+      console.warn('Unable to normalize URL value from args:', conversionError);
+    }
+  }
+
+  args.url = URL;
+
+
+  if (!nodeExplicitFlag && typeof URL === 'string') {
+    let preferenceResolved = false;
+    try {
+      const parsedUrl = new URL(URL);
+      const nodeParamKeys = ['node', 'nodeintegration', 'nodeIntegration', 'enableNode'];
+      for (const key of nodeParamKeys) {
+        if (!parsedUrl.searchParams.has(key)) {
+          continue;
+        }
+        const rawValue = parsedUrl.searchParams.get(key);
+        if (rawValue === null || rawValue === '') {
+          assignNodeIntegration(true);
+          preferenceResolved = true;
+        } else {
+          const normalized = rawValue.trim().toLowerCase();
+          if (/^(disable|disabled|off|no|false|0)$/i.test(normalized)) {
+            assignNodeIntegration(false);
+            preferenceResolved = true;
+          } else if (/^(enable|enabled|on|yes|true|1)$/i.test(normalized)) {
+            assignNodeIntegration(true);
+            preferenceResolved = true;
+          } else if (/^(auto)$/i.test(normalized)) {
+            // leave for heuristic fallback
+          } else {
+            assignNodeIntegration(true);
+            preferenceResolved = true;
+          }
+        }
+        break;
+      }
+    } catch (error) {
+      // ignore malformed URLs
+    }
+
+    if (!preferenceResolved) {
+      const loweredUrl = URL.toLowerCase();
+      if (loweredUrl.includes('screenshare') || loweredUrl.includes('appaudio')) {
+        assignNodeIntegration(true);
+        preferenceResolved = true;
+      }
+    }
+
+    if (preferenceResolved) {
+      nodeExplicitFlag = true;
+    }
+  }
+
+  args.__nodeExplicit = nodeExplicitFlag;
 
   let factor = screen.getPrimaryDisplay().scaleFactor;
   
@@ -1107,7 +1738,7 @@ async function createWindow(args, reuse=false) {
 contextMenu({
 	prepend: (defaultActions, params, browserWindow) => [
 		{
-			label: '🏠 Go to Homepage',
+			label: 'ðŸ  Go to Homepage',
 			// Only show it when right-clicking text
 			visible: true,
 			click: () => {
@@ -1124,7 +1755,7 @@ contextMenu({
 			}
 		},
 		{
-			label: '🔙 Go Back',
+			label: 'ðŸ”™ Go Back',
 			// Only show it when right-clicking text
 			visible: browserWindow.webContents.canGoBack(),
 			click: () => {
@@ -1137,7 +1768,7 @@ contextMenu({
 			}
 		},
 		{
-			label: '♻ Reload (Ctrl+Shift+Alt+R)',
+			label: 'â™» Reload (Ctrl+Shift+Alt+R)',
 			// Only show it when right-clicking text
 			visible: true,
 			click: () => {
@@ -1155,7 +1786,7 @@ contextMenu({
 			}
 		},
 		{
-			label: '✖ Open New Window',
+			label: 'âœ– Open New Window',
 			// Only show it when right-clicking text
 			visible: true,
 			click: () => {
@@ -1166,7 +1797,7 @@ contextMenu({
 			}
 		},
 		{
-			label: '⚠ Elevate Privilege',
+			label: 'âš  Elevate Privilege',
 			// Only show it when right-clicking text
 
 			visible: !browserWindow.node,
@@ -1193,13 +1824,13 @@ contextMenu({
 		},
 		/////////////
 		{
-			label: '🎶 Change media device',
+			label: 'ðŸŽ¶ Change media device',
 			// Only show it when right-clicking text
 			visible: true,
 			type: 'submenu',
 			submenu: [
 				{
-					label: "🔈 Change audio destination for THIS element only",
+					label: "ðŸ”ˆ Change audio destination for THIS element only",
 					// Only show it when right-clicking text
 
 					visible: params.mediaType == "video" || params.mediaType == "audio" || false,
@@ -1242,7 +1873,7 @@ contextMenu({
 					}
 				},
 				{
-					label: '🔈 Change audio destination',
+					label: 'ðŸ”ˆ Change audio destination',
 					// Only show it when right-clicking text
 
 					visible: true, //browserWindow.node,
@@ -1286,7 +1917,7 @@ contextMenu({
 					}
 				},
 				{
-					label: '🎤 Change audio input [Requires Elevated Privileges]',
+					label: 'ðŸŽ¤ Change audio input [Requires Elevated Privileges]',
 					visible: !browserWindow.vdonVersion && !browserWindow.node,//!browserWindow.node,
 					click: () => {
 						let options  = {
@@ -1310,7 +1941,7 @@ contextMenu({
 					}
 				},
 				{
-					label: '🎤 Change audio input',
+					label: 'ðŸŽ¤ Change audio input',
 					// Only show it when right-clicking text
 
 					visible: browserWindow.vdonVersion, //browserWindow.node,
@@ -1359,7 +1990,7 @@ contextMenu({
 					}
 				},
 				{
-					label: '🎥 Change video input [Requires Elevated Privileges]',
+					label: 'ðŸŽ¥ Change video input [Requires Elevated Privileges]',
 					visible: !browserWindow.vdonVersion && !browserWindow.node,//!browserWindow.node,
 					click: () => {
 						let options  = {
@@ -1383,7 +2014,7 @@ contextMenu({
 					}
 				},
 				{
-					label: '🎥 Change video input',
+					label: 'ðŸŽ¥ Change video input',
 					// Only show it when right-clicking text
 
 					visible: browserWindow.vdonVersion, //browserWindow.node,
@@ -1431,7 +2062,7 @@ contextMenu({
 			]
 		},
 		{
-			label: '🧰 Enable Chrome Extension',
+			label: 'ðŸ§° Enable Chrome Extension',
 			// Only show it when right-clicking text
 
 			visible: extensions.length,
@@ -1461,7 +2092,7 @@ contextMenu({
 			}
 		},
 		{
-			label: '🔇 Mute the window',
+			label: 'ðŸ”‡ Mute the window',
 			type: 'checkbox',
 			visible: true,
 			checked: browserWindow.webContents.isAudioMuted(),
@@ -1475,7 +2106,7 @@ contextMenu({
 			}
 		},
 		{
-			label: '🔴 Record Video (toggle)',
+			label: 'ðŸ”´ Record Video (toggle)',
 			// Only show it when right-clicking text
 			visible: (browserWindow.vdonVersion && params.mediaType == "video") || false,
 			click: () => {
@@ -1485,7 +2116,7 @@ contextMenu({
 			}
 		},
 		{
-			label: '✏ Edit URL', 
+			label: 'âœ Edit URL', 
 			// Only show it when right-clicking text
 			visible: true,
 			click: () => {
@@ -1550,12 +2181,12 @@ contextMenu({
 			}
 		},
 		{
-			label: '🪟 IFrame Options',
+			label: 'ðŸªŸ IFrame Options',
 			// Only show it when right-clicking text
 			visible: params.frameURL,
 			type: 'submenu',
 			submenu: [{
-				label: '✏ Edit IFrame URL',
+				label: 'âœ Edit IFrame URL',
 				// Only show it when right-clicking text
 				visible: true,
 				click: () => {
@@ -1610,7 +2241,7 @@ contextMenu({
 					.catch(console.error);
 				}
 			},{
-				label: '♻ Reload IFrame',
+				label: 'â™» Reload IFrame',
 				// Only show it when right-clicking text
 				visible: true,
 				click: () => {
@@ -1621,7 +2252,7 @@ contextMenu({
 					});
 				}
 			},{
-				label: '🔙 Go Back in IFrame',
+				label: 'ðŸ”™ Go Back in IFrame',
 				// Only show it when right-clicking text
 				visible: true,
 				click: () => {
@@ -1645,7 +2276,7 @@ contextMenu({
 			}]
 		},
 	  {
-		label: '📑 Insert CSS',
+		label: 'ðŸ“‘ Insert CSS',
 		// Only show it when right-clicking text
 		visible: true,
 		click: async () => {
@@ -1686,7 +2317,7 @@ contextMenu({
 		}
 	  },
 		{
-		  label: '📝 Insert JavaScript',
+		  label: 'ðŸ“ Insert JavaScript',
 		  visible: true,
 		  click: async () => {
 			var onTop = browserWindow.isAlwaysOnTop();
@@ -1727,7 +2358,7 @@ contextMenu({
 		  }
 		},
 		{
-			label: '✏ Edit Window Title',
+			label: 'âœ Edit Window Title',
 			// Only show it when right-clicking text
 			visible: true,
 			click: () => {
@@ -1765,7 +2396,7 @@ contextMenu({
 			}
 		},
 		{
-			label: '↔ Resize window',
+			label: 'â†” Resize window',
 			// Only show it when right-clicking text
 			visible: true,
 			type: 'submenu',
@@ -1894,7 +2525,7 @@ contextMenu({
 			]
 		},
 		{
-			label: '🚿 Clean Video Output',
+			label: 'ðŸš¿ Clean Video Output',
 			type: 'checkbox',
 			visible: (!browserWindow.webContents.getURL().includes('vdo.ninja') && !browserWindow.webContents.getURL().includes('invite.cam')),
 			checked: false,
@@ -1950,7 +2581,7 @@ contextMenu({
 			}
 		},
 		{
-			label: '🖱️ Hide cursor',
+			label: 'ðŸ–±ï¸ Hide cursor',
 			type: 'checkbox',
 			visible: true,
 			checked: browserWindow.args.hidecursor || false,
@@ -1981,7 +2612,7 @@ contextMenu({
 			}
 		},
 		{
-			label: '📌 Always on top',
+			label: 'ðŸ“Œ Always on top',
 			type: 'checkbox',
 			visible: true,
 			checked: browserWindow.isAlwaysOnTop(),
@@ -2003,7 +2634,7 @@ contextMenu({
 			}
 		},
 		{
-			label: '🚫🖱 ️Make UnClickable until in-focus or CTRL+SHIFT+ALT+X',
+			label: 'ðŸš«ðŸ–± ï¸Make UnClickable until in-focus or CTRL+SHIFT+ALT+X',
 			visible: true, // Only show it when pinned
 			click: () => {
 				if (browserWindow){
@@ -2037,14 +2668,14 @@ contextMenu({
 			}
 		},
 		{
-			label: '🔍 Inspect Element',
+			label: 'ðŸ” Inspect Element',
 			visible: true,
 			click: () => {
 				browserWindow.inspectElement(params.x, params.y)
 			}
 		},
 		{
-			label: '❌ Close',
+			label: 'âŒ Close',
 			// Only show it when right-clicking text
 			visible: true,
 			click: () => {
@@ -2300,3 +2931,16 @@ electron.powerMonitor.on('on-battery', () => {
 		});
 	notification.show();
 })
+
+
+
+
+
+
+
+
+
+
+
+
+
