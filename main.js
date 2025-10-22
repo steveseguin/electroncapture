@@ -1738,7 +1738,7 @@ async function createWindow(args, reuse=false) {
 contextMenu({
 	prepend: (defaultActions, params, browserWindow) => [
 		{
-			label: 'ðŸ  Go to Homepage',
+			label: '🏠 Go to Homepage',
 			// Only show it when right-clicking text
 			visible: true,
 			click: () => {
@@ -1755,7 +1755,7 @@ contextMenu({
 			}
 		},
 		{
-			label: 'ðŸ”™ Go Back',
+			label: '🔙 Go Back',
 			// Only show it when right-clicking text
 			visible: browserWindow.webContents.canGoBack(),
 			click: () => {
@@ -1768,7 +1768,7 @@ contextMenu({
 			}
 		},
 		{
-			label: 'â™» Reload (Ctrl+Shift+Alt+R)',
+			label: '♻ Reload (Ctrl+Shift+Alt+R)',
 			// Only show it when right-clicking text
 			visible: true,
 			click: () => {
@@ -1786,7 +1786,7 @@ contextMenu({
 			}
 		},
 		{
-			label: 'âœ– Open New Window',
+			label: '✖️ Open New Window',
 			// Only show it when right-clicking text
 			visible: true,
 			click: () => {
@@ -1797,7 +1797,7 @@ contextMenu({
 			}
 		},
 		{
-			label: 'âš  Elevate Privilege',
+			label: '⚠️ Elevate Privilege',
 			// Only show it when right-clicking text
 
 			visible: !browserWindow.node,
@@ -1824,13 +1824,13 @@ contextMenu({
 		},
 		/////////////
 		{
-			label: 'ðŸŽ¶ Change media device',
+			label: '🎶 Change media device',
 			// Only show it when right-clicking text
 			visible: true,
 			type: 'submenu',
 			submenu: [
 				{
-					label: "ðŸ”ˆ Change audio destination for THIS element only",
+					label: "🔈 Change audio destination for THIS element only",
 					// Only show it when right-clicking text
 
 					visible: params.mediaType == "video" || params.mediaType == "audio" || false,
@@ -1873,7 +1873,7 @@ contextMenu({
 					}
 				},
 				{
-					label: 'ðŸ”ˆ Change audio destination',
+					label: '🔈 Change audio destination',
 					// Only show it when right-clicking text
 
 					visible: true, //browserWindow.node,
@@ -1917,7 +1917,7 @@ contextMenu({
 					}
 				},
 				{
-					label: 'ðŸŽ¤ Change audio input [Requires Elevated Privileges]',
+					label: '🎤 Change audio input [Requires Elevated Privileges]',
 					visible: !browserWindow.vdonVersion && !browserWindow.node,//!browserWindow.node,
 					click: () => {
 						let options  = {
@@ -1941,7 +1941,7 @@ contextMenu({
 					}
 				},
 				{
-					label: 'ðŸŽ¤ Change audio input',
+					label: '🎤 Change audio input',
 					// Only show it when right-clicking text
 
 					visible: browserWindow.vdonVersion, //browserWindow.node,
@@ -1990,7 +1990,7 @@ contextMenu({
 					}
 				},
 				{
-					label: 'ðŸŽ¥ Change video input [Requires Elevated Privileges]',
+					label: '🎥 Change video input [Requires Elevated Privileges]',
 					visible: !browserWindow.vdonVersion && !browserWindow.node,//!browserWindow.node,
 					click: () => {
 						let options  = {
@@ -2014,7 +2014,7 @@ contextMenu({
 					}
 				},
 				{
-					label: 'ðŸŽ¥ Change video input',
+					label: '🎥 Change video input',
 					// Only show it when right-clicking text
 
 					visible: browserWindow.vdonVersion, //browserWindow.node,
@@ -2062,7 +2062,7 @@ contextMenu({
 			]
 		},
 		{
-			label: 'ðŸ§° Enable Chrome Extension',
+			label: '🧰 Enable Chrome Extension',
 			// Only show it when right-clicking text
 
 			visible: extensions.length,
@@ -2092,7 +2092,7 @@ contextMenu({
 			}
 		},
 		{
-			label: 'ðŸ”‡ Mute the window',
+			label: '🔇 Mute the window',
 			type: 'checkbox',
 			visible: true,
 			checked: browserWindow.webContents.isAudioMuted(),
@@ -2106,7 +2106,7 @@ contextMenu({
 			}
 		},
 		{
-			label: 'ðŸ”´ Record Video (toggle)',
+			label: '🔴 Record Video (toggle)',
 			// Only show it when right-clicking text
 			visible: (browserWindow.vdonVersion && params.mediaType == "video") || false,
 			click: () => {
@@ -2116,7 +2116,7 @@ contextMenu({
 			}
 		},
 		{
-			label: 'âœ Edit URL', 
+			label: '✏️ Edit URL', 
 			// Only show it when right-clicking text
 			visible: true,
 			click: () => {
@@ -2181,12 +2181,12 @@ contextMenu({
 			}
 		},
 		{
-			label: 'ðŸªŸ IFrame Options',
+			label: '🪟 IFrame Options',
 			// Only show it when right-clicking text
 			visible: params.frameURL,
 			type: 'submenu',
 			submenu: [{
-				label: 'âœ Edit IFrame URL',
+				label: '✏️ Edit IFrame URL',
 				// Only show it when right-clicking text
 				visible: true,
 				click: () => {
@@ -2241,7 +2241,7 @@ contextMenu({
 					.catch(console.error);
 				}
 			},{
-				label: 'â™» Reload IFrame',
+				label: '♻ Reload IFrame',
 				// Only show it when right-clicking text
 				visible: true,
 				click: () => {
@@ -2252,7 +2252,7 @@ contextMenu({
 					});
 				}
 			},{
-				label: 'ðŸ”™ Go Back in IFrame',
+				label: '🔙 Go Back in IFrame',
 				// Only show it when right-clicking text
 				visible: true,
 				click: () => {
@@ -2276,7 +2276,7 @@ contextMenu({
 			}]
 		},
 	  {
-		label: 'ðŸ“‘ Insert CSS',
+		label: '📑 Insert CSS',
 		// Only show it when right-clicking text
 		visible: true,
 		click: async () => {
@@ -2317,7 +2317,7 @@ contextMenu({
 		}
 	  },
 		{
-		  label: 'ðŸ“ Insert JavaScript',
+		  label: '📝 Insert JavaScript',
 		  visible: true,
 		  click: async () => {
 			var onTop = browserWindow.isAlwaysOnTop();
@@ -2358,7 +2358,7 @@ contextMenu({
 		  }
 		},
 		{
-			label: 'âœ Edit Window Title',
+			label: '✏️ Edit Window Title',
 			// Only show it when right-clicking text
 			visible: true,
 			click: () => {
@@ -2396,7 +2396,7 @@ contextMenu({
 			}
 		},
 		{
-			label: 'â†” Resize window',
+			label: '↔️ Resize window',
 			// Only show it when right-clicking text
 			visible: true,
 			type: 'submenu',
@@ -2525,7 +2525,7 @@ contextMenu({
 			]
 		},
 		{
-			label: 'ðŸš¿ Clean Video Output',
+			label: '🚿 Clean Video Output',
 			type: 'checkbox',
 			visible: (!browserWindow.webContents.getURL().includes('vdo.ninja') && !browserWindow.webContents.getURL().includes('invite.cam')),
 			checked: false,
@@ -2581,7 +2581,7 @@ contextMenu({
 			}
 		},
 		{
-			label: 'ðŸ–±ï¸ Hide cursor',
+			label: '🖱️ Hide cursor',
 			type: 'checkbox',
 			visible: true,
 			checked: browserWindow.args.hidecursor || false,
@@ -2612,7 +2612,7 @@ contextMenu({
 			}
 		},
 		{
-			label: 'ðŸ“Œ Always on top',
+			label: '📌 Always on top',
 			type: 'checkbox',
 			visible: true,
 			checked: browserWindow.isAlwaysOnTop(),
@@ -2634,7 +2634,7 @@ contextMenu({
 			}
 		},
 		{
-			label: 'ðŸš«ðŸ–± ï¸Make UnClickable until in-focus or CTRL+SHIFT+ALT+X',
+			label: '🚫🖱️ Make UnClickable until in-focus or CTRL+SHIFT+ALT+X',
 			visible: true, // Only show it when pinned
 			click: () => {
 				if (browserWindow){
@@ -2668,14 +2668,14 @@ contextMenu({
 			}
 		},
 		{
-			label: 'ðŸ” Inspect Element',
+			label: '🔍 Inspect Element',
 			visible: true,
 			click: () => {
 				browserWindow.inspectElement(params.x, params.y)
 			}
 		},
 		{
-			label: 'âŒ Close',
+			label: '❌ Close',
 			// Only show it when right-clicking text
 			visible: true,
 			click: () => {
