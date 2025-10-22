@@ -29643,96 +29643,97 @@ if (navigator.userAgent.toLowerCase().indexOf(" electron/") > -1) {
 							reject(null);
 						});
 						document.querySelectorAll(".desktop-capturer-click").forEach(button => {
-						button.addEventListener("click", async () => {
-							try {
-								if (button.id == "captureDesktopAudio") {
-									const stream = await createElectronDesktopAudioStream();
+							button.addEventListener("click", async () => {
+								try {
+									if (button.id == "captureDesktopAudio") {
+										const stream = await createElectronDesktopAudioStream();
+										resolve(stream);
+										selectionElem.remove();
+										return;
+									}
+									const id = button.getAttribute("data-id");
+									const source = sources.find(source => source.id === id);
+									if (!source) {
+										throw new Error(`Source with id ${id} does not exist`);
+									}
+									const systemAudioCheckbox = getById("alsoCaptureAudio");
+							const appAudioCheckbox = getById("captureAppAudio");
+							const hadSystemAudioPreference = !!(systemAudioCheckbox && (systemAudioCheckbox.checked || systemAudioCheckbox.dataset.wasCheckedBeforeAppAudio === "true"));
+							const wantsAppAudio = !!(appAudioCheckbox && appAudioCheckbox.checked && electronSupportsApplicationAudio());
+							const wantsSystemAudio = !wantsAppAudio && !!(systemAudioCheckbox && systemAudioCheckbox.checked);
+
+							var audioStream = null;
+							if (wantsSystemAudio) {
+								audioStream = await createElectronDesktopAudioStream();
+							}
+
+							var new_constraints = {
+										audio: false,
+										video: {
+											mandatory: {
+												chromeMediaSource: "desktop",
+												chromeMediaSourceId: source.id
+										}
+										}
+									};
+									try {
+										if (constraints.video.width.ideal) {
+											new_constraints.video.mandatory.maxWidth = constraints.video.width.ideal;
+										}
+									} catch (e) {}
+									try {
+										if (constraints.video.height.ideal) {
+											new_constraints.video.mandatory.maxHeight = constraints.video.height.ideal;
+										}
+									} catch (e) {}
+									try {
+										if (constraints.video.frameRate.ideal) {
+											new_constraints.video.mandatory.maxFrameRate = constraints.video.frameRate.ideal;
+										}
+									} catch (e) {}
+									if (typeof warnlog === "function") {
+										warnlog(new_constraints);
+										warnlog("navigator.mediaDevices.getUserMedia starting...");
+									}
+									const stream = await window.navigator.mediaDevices.getUserMedia(new_constraints);
+									let attachedAppAudio = false;
+									if (wantsAppAudio) {
+									attachedAppAudio = await attachElectronApplicationAudio(stream, source);
+									if (!attachedAppAudio && hadSystemAudioPreference) {
+									if (!audioStream) {
+										try {
+											audioStream = await createElectronDesktopAudioStream();
+										} catch (audioErr) {
+											console.warn("Failed to fallback to desktop audio:", audioErr);
+										}
+									}
+									if (audioStream) {
+										console.warn("Falling back to desktop audio; application audio capture unavailable for selected source.");
+										if (systemAudioCheckbox) {
+											systemAudioCheckbox.checked = true;
+											delete systemAudioCheckbox.dataset.wasCheckedBeforeAppAudio;
+										}
+										if (appAudioCheckbox) {
+											appAudioCheckbox.checked = false;
+										}
+									}
+								}
+							}
+								if (!attachedAppAudio && audioStream && typeof audioStream.getAudioTracks === "function") {
+										const audioTracks = audioStream.getAudioTracks();
+										if (audioTracks.length) {
+											stream.addTrack(audioTracks[0]);
+										}
+									}
 									resolve(stream);
 									selectionElem.remove();
-									return;
+								} catch (err) {
+									errorlog("Error selecting desktop capture source:", err);
+									reject(err);
 								}
-								const id = button.getAttribute("data-id");
-								const source = sources.find(source => source.id === id);
-								if (!source) {
-									throw new Error(`Source with id ${id} does not exist`);
-								}
-								const systemAudioCheckbox = getById("alsoCaptureAudio");
-						const appAudioCheckbox = getById("captureAppAudio");
-						const hadSystemAudioPreference = !!(systemAudioCheckbox && (systemAudioCheckbox.checked || systemAudioCheckbox.dataset.wasCheckedBeforeAppAudio === "true"));
-						const wantsAppAudio = !!(appAudioCheckbox && appAudioCheckbox.checked && electronSupportsApplicationAudio());
-						const wantsSystemAudio = !wantsAppAudio && !!(systemAudioCheckbox && systemAudioCheckbox.checked);
-
-						var audioStream = null;
-						if (wantsSystemAudio) {
-							audioStream = await createElectronDesktopAudioStream();
-						}
-
-						var new_constraints = {
-									audio: false,
-									video: {
-										mandatory: {
-											chromeMediaSource: "desktop",
-											chromeMediaSourceId: source.id
-									}
-									}
-								};
-								try {
-									if (constraints.video.width.ideal) {
-										new_constraints.video.mandatory.maxWidth = constraints.video.width.ideal;
-									}
-								} catch (e) {}
-								try {
-									if (constraints.video.height.ideal) {
-										new_constraints.video.mandatory.maxHeight = constraints.video.height.ideal;
-									}
-								} catch (e) {}
-								try {
-									if (constraints.video.frameRate.ideal) {
-										new_constraints.video.mandatory.maxFrameRate = constraints.video.frameRate.ideal;
-									}
-								} catch (e) {}
-								if (typeof warnlog === "function") {
-									warnlog(new_constraints);
-									warnlog("navigator.mediaDevices.getUserMedia starting...");
-								}
-								const stream = await window.navigator.mediaDevices.getUserMedia(new_constraints);
-								let attachedAppAudio = false;
-								if (wantsAppAudio) {
-								attachedAppAudio = await attachElectronApplicationAudio(stream, source);
-								if (!attachedAppAudio && hadSystemAudioPreference) {
-								if (!audioStream) {
-									try {
-										audioStream = await createElectronDesktopAudioStream();
-									} catch (audioErr) {
-										console.warn("Failed to fallback to desktop audio:", audioErr);
-									}
-								}
-								if (audioStream) {
-									console.warn("Falling back to desktop audio; application audio capture unavailable for selected source.");
-									if (systemAudioCheckbox) {
-										systemAudioCheckbox.checked = true;
-										delete systemAudioCheckbox.dataset.wasCheckedBeforeAppAudio;
-									}
-									if (appAudioCheckbox) {
-										appAudioCheckbox.checked = false;
-									}
-								}
-							}
-						}
-							if (!attachedAppAudio && audioStream && typeof audioStream.getAudioTracks === "function") {
-									const audioTracks = audioStream.getAudioTracks();
-									if (audioTracks.length) {
-										stream.addTrack(audioTracks[0]);
-									}
-								}
-								resolve(stream);
-								selectionElem.remove();
-							} catch (err) {
-								errorlog("Error selecting desktop capture source:", err);
-								reject(err);
-							}
+							});
 						});
-					});
+					}
 				} catch (err) {
 					errorlog("Error displaying desktop capture sources:", err);
 					reject(err);
