@@ -23,10 +23,36 @@ const { Readable } = require('stream');
 const { fetch: undiciFetch } = require('undici');
 const activeStreams = new Map();
 const https = require('https');
+const { execSync } = require('child_process');
 
 let windowAudioCapture = null;
 const WINDOW_AUDIO_EVENT_CHANNEL = 'windowAudioStreamData';
 let activeWindowAudioSession = null;
+let cachedElevationState;
+
+function isProcessElevated() {
+	if (typeof cachedElevationState === 'boolean') {
+		return cachedElevationState;
+	}
+	if (process.platform === 'win32') {
+		try {
+			execSync('fltmc', { stdio: 'ignore' });
+			cachedElevationState = true;
+		} catch (error) {
+			if (error && error.code === 'ENOENT') {
+				console.warn('Elevation check failed: fltmc command not available; assuming process is not elevated.');
+			}
+			cachedElevationState = false;
+		}
+		return cachedElevationState;
+	}
+	if (typeof process.getuid === 'function') {
+		cachedElevationState = process.getuid() === 0;
+		return cachedElevationState;
+	}
+	cachedElevationState = false;
+	return cachedElevationState;
+}
 
 process.on('uncaughtException', function (error) {
 	console.error("uncaughtException");
@@ -206,8 +232,7 @@ function createYargs(){
   .option("usewgc", {
     alias: "wgc",
     describe: "Allow Windows Graphics Capture backend. Disable for better compatibility when running elevated.",
-    type: "boolean",
-    default: false
+    type: "boolean"
   })
   .describe("help", "Show help.") // Override --help usage message.
   .wrap(process.stdout.columns); 
@@ -614,9 +639,23 @@ if (!(Argv.dmf)){
 }
 
 if (process.platform === 'win32') {
-	const preferWgc = Argv.usewgc === true || Argv.wgc === true;
-	if (!preferWgc) {
+	const wgcValue = typeof Argv.usewgc !== 'undefined' ? Argv.usewgc : Argv.wgc;
+	const wgcOptionProvided = typeof wgcValue !== 'undefined';
+	const preferWgc = wgcValue === true;
+	const disableWgcViaCli = wgcOptionProvided && wgcValue === false;
+	let elevatedForCapture = false;
+	if (!disableWgcViaCli && !preferWgc) {
+		try {
+			elevatedForCapture = isProcessElevated();
+		} catch (error) {
+			console.warn('Unable to determine elevation state; assuming not elevated for WGC decisions.', error);
+		}
+	}
+	if (disableWgcViaCli || (!preferWgc && elevatedForCapture)) {
 		disableFeatureSet.add('WinUseBrowserMediaSource');
+		if (!disableWgcViaCli && elevatedForCapture) {
+			console.log('Windows Graphics Capture disabled automatically for elevated session. Launch with --usewgc to override.');
+		}
 	}
 }
 
