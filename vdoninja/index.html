@@ -32,6 +32,7 @@
 		<link rel="canonical" href="https://vdo.ninja/">
 		<link rel="author" href="/about" />
 		<link rel="me" href="https://vdo.ninja/about" />
+		<link rel="manifest" href="manifest.json">
 		
 		<!-- Primary Meta Tags -->
 		<title>VDO.Ninja</title>
@@ -42,7 +43,7 @@
 		
 		<meta name="msapplication-TileColor" content="#da532c" />
 		<meta name="theme-color" content="#0f131d" />
-		<link rel="stylesheet" href="./main.css?ver=4019" />
+		<link rel="stylesheet" href="./main.css?ver=4021" />
 		<script type="text/javascript" crossorigin="anonymous" src="./thirdparty/adapter.js"></script>
 		
 		<link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon" />
@@ -85,7 +86,7 @@
 		</span>
 		<script type="text/javascript" crossorigin="anonymous"  src="./thirdparty/CodecsHandler.js?ver=29"></script>
 		<script type="text/javascript" crossorigin="anonymous" src="./thirdparty/aes.js"></script>
-		<script type="text/javascript" crossorigin="anonymous" src="./webrtc.js?ver=876"></script>
+		<script type="text/javascript" crossorigin="anonymous" src="./webrtc.js?ver=878"></script>
 		<input id="zoomSlider" type="range" style="display: none;" />
 		<span id="electronDragZone" style="display:none;pointer-events: none; z-index:-10; position:absolute;top:0;left:0;width:100%;height:2%;min-height:20px;"></span>
 		<div id="header">
@@ -186,8 +187,12 @@
                         <i id="chattoggle" class="toggleSize las la-comment-alt"></i>
                         <div id="chatNotification"></div>
                     </div>
-                    <div id="mutespeakerbutton" onmousedown="event.preventDefault(); event.stopPropagation();" alt="Toggle the speaker output." aria-label="Mute Speaker output" title="Mute the Speaker (ALT + A)" onclick="toggleSpeakerMute()"  tabindex="2" role="button" aria-pressed="false" onkeyup="enterPressedClick(event,this);"  class="hidden float" style="cursor: pointer;" >
+                    <div id="mutespeakerbutton" onmousedown="handleSpeakerButtonMouseDown(event)" alt="Toggle the speaker output." aria-label="Mute Speaker output" title="Mute the Speaker (ALT + A)" onclick="toggleSpeakerMute()"  tabindex="2" role="button" aria-pressed="false" onkeyup="enterPressedClick(event,this);"  class="hidden float" style="cursor: pointer;" >
                         <i id="mutespeakertoggle" class="toggleSize las la-volume-up" style="position: relative; top: 0.5px;"></i>
+                        <div id="speakerVolumePanel" class="speaker-volume-panel hidden" role="group" aria-label="Playback volume">
+                            <input id="speakerVolumeSlider" type="range" min="1" max="100" value="100" orient="vertical" aria-label="Playback volume">
+                            <div id="speakerVolumeValue" class="speaker-volume-value">100%</div>
+                        </div>
                     </div>
                     <div id="mutebutton" onmousedown="toggleMute(false, event);event.preventDefault(); event.stopPropagation();" data-translate="mute-the-mic" title="Mute the Mic (CTRL/⌘ + M)" alt="Mute the Mic" aria-label="Mute Microphone" ontouchstart="toggleMute(false, event);event.preventDefault(); event.stopPropagation();" tabindex="2" role="button" aria-pressed="false" onkeyup="enterPressedClick(event,this);"  class="hidden float" style="cursor: pointer;">
                         <i id="mutetoggle" class="toggleSize las la-microphone" style="position: relative; top: 0.5px;"></i>
@@ -562,7 +567,7 @@
 							<p><span id="audioTipContext1"></span></p>
 						</div>
 					</div>
-					<br style="line-height: 0;" />
+					<span style="display:block;height:0;width:0;padding:0;margin:0;"></span>
 					<div id="headphonesDiv" class="audioMenu hidden" aria-hidden="true">
 						<div class="title">
 							<i class="las la-headphones"></i><span data-translate="select-output-source"> Audio Output Destination</span><button onclick="playtone()" title="Play a sound out of the selected audio playback device" class="testtonebutton" type="button">Test</button>
@@ -577,7 +582,7 @@
 							<p><span id="audioTipContextSR"></span></p>
 						</div>
 					</div>
-					<br style="line-height: 0;" />
+					<span style="display:block;height:0;width:0;padding:0;margin:0;"></span>
 					<div id="avatarDiv" class="hidden" aria-hidden="true">
 						<div class="title">
 							<i class="las la-robot"></i><span data-translate="select-avatar-image"> Default Avatar / Placeholder Image </span>
@@ -594,7 +599,7 @@
 							</label>
 						</div>
 					</div>
-					<br style="line-height: 0;" />
+					<span style="display:block;height:0;width:0;padding:0;margin:0;"></span>
 					<div id="effectsDiv">
 						<div class="title">
 							<i class="las la-robot"></i>
@@ -645,7 +650,7 @@
 							</div>
 						</div>
 					</div>
-					<br style="line-height: 0;" />
+					<span style="display:block;height:0;width:0;padding:0;margin:0;"></span>
 					<div id="addPasswordBasic">
                         <div class="title" title="Add an optional password">
                             <i class="las la-key"></i><span data-translate="add-a-password"> Add a Password</span>
@@ -653,10 +658,10 @@
                         <input type="text" id="passwordBasicInput" title="Enter an optional password here" placeholder="optional"/>
                     </div>
 					
-					<br style="line-height: 0;" />
+					<span style="display:block;height:0;width:0;padding:0;margin:0;"></span>
 					<div id="rememberStreamID" class="hidden" style="display:inline-block;" title="Remember and reuse the provided stream ID on each visit">
 						<br />
-						<br style="line-height: 0;" />
+						<span style="display:block;height:0;width:0;padding:0;margin:0;"></span>
                         Remember Stream ID: <input type="checkbox" id="rememberStreamIDcheck" checked="true" />
                     </div>
 					
@@ -2933,7 +2938,7 @@
 				<li><a onclick="changeLg('eu',false, true);toggle(document.getElementById('languages'));" style="cursor: pointer;" data-tz="Europe/Euskara">Basque</a></li>
 				<li><a onclick="changeLg('pig',false, true);toggle(document.getElementById('languages'));" style="cursor: pointer;">Pig Latin</a></li>
 			</ul>
-			<br style="line-height: 0.3;" />
+			<span style="display:block;height:0;width:0;padding:0;margin:0;"></span>
 			<i class="las la-exclamation-circle"></i><a href="https://github.com/steveseguin/vdoninja/tree/master/translations" target="_blank" rel="noopener noreferrer" data-translate='add-more-here'>Add More Here!</a>
 			<br />
 		</div>
@@ -2984,7 +2989,7 @@
 			// if (!window.location.search){document.body.innerHTML = "";} // uncomment this line, if you wish to try it.
 			
 			var session = WebRTC.Media; // session is a required global variable if configuring manually. Run before loading main.js but after webrtc.js.
-			session.version = "28.3"; // updated: default 1080p now + tweaked outbound bandwidth logic
+			session.version = "28.4"; // updated: default 1080p now + tweaked outbound bandwidth logic
 			session.streamID = session.generateStreamID(); // randomly generates a streamID for this session. You can set your own programmatically if needed
 			
 			session.defaultPassword = "someEncryptionKey123"; // Change this password if self-deploying for added security/privacy
@@ -3132,8 +3137,8 @@
 			}
 		</script>
 
-		<script type="text/javascript" crossorigin="anonymous" id="lib-js" src="./lib.js?ver=1365"></script>
-		<script type="text/javascript" crossorigin="anonymous" id="main-js" src="./main.js?ver=1002"></script>
+		<script type="text/javascript" crossorigin="anonymous" id="lib-js" src="./lib.js?ver=1369"></script>
+		<script type="text/javascript" crossorigin="anonymous" id="main-js" src="./main.js?ver=1004"></script>
 		
 	</body>
 </html>

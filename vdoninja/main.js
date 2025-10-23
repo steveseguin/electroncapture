@@ -1484,6 +1484,18 @@ async function main() {
 		session.screenshareStyle = urlParams.get("ssstyle") || urlParams.get("screensharestyle") || 1;
 		session.screenshareStyle = parseInt(session.screenshareStyle) || false;
 	}
+	if (urlParams.has("alignright") || urlParams.has("rightalign")) {
+		let alignValue = urlParams.get("alignright");
+		if (alignValue === null) {
+			alignValue = urlParams.get("rightalign");
+		}
+		if (alignValue === null || alignValue === "") {
+			session.alignRight = true;
+		} else {
+			const normalizedAlign = String(alignValue).toLowerCase();
+			session.alignRight = !["0", "false", "no", "off"].includes(normalizedAlign);
+		}
+	}
 
 	if (urlParams.has("suppresslocalaudio")) {
 		session.suppressLocalAudioPlayback = true;
@@ -2079,27 +2091,6 @@ async function main() {
 		session.cleanOutput = true;
 	}
 	
-	if (urlParams.has('timeouts')) {
-		try {
-			// Process each value, preserving existing ones when no value provided
-			// &timeouts=1000,3000 (updates first two values, keeps rest)
-			// &timeouts=,,,10 (updates only 4th value)
-			// &timeouts= (no changes)
-			// &timeouts=1000,abc,3000 (updates first and third, ignores invalid value)
-			// Guide here: https://gist.github.com/steveseguin/f754a3c9b97a9a091226c8dbc5dc654a
-		  urlParams.get('timeouts').split(',').forEach((val, index) => {
-			if (val !== '') {
-			  const parsedVal = parseInt(val, 10);
-			  if (!isNaN(parsedVal)) {
-				session.reconnectSpeed[index] = parsedVal;
-			  }
-			}
-		  });
-		} catch(e){
-			errorlog(e);
-		}
-	}
-
 	if (urlParams.has("retransmit")) {
 		session.retransmit = true;
 		session.dataMode = true;
@@ -4121,12 +4112,12 @@ async function main() {
 		if (!preset) {
 			return;
 		}
-	Object.keys(preset).forEach(key => {
-		const value = preset[key];
-		const sessionKey = key;
-		session[sessionKey] = value;
-	});
-}
+		Object.keys(preset).forEach(key => {
+			const value = preset[key];
+			const sessionKey = key;
+			session[sessionKey] = value;
+		});
+	}
 
 	if (urlParams.has("chunkprofile")) {
 		const profileName = (urlParams.get("chunkprofile") || "").toLowerCase();
@@ -5260,21 +5251,6 @@ async function main() {
 		session.stunOnly = true;
 	}
 
-	//if (!(ChromiumVersion>=57)){
-	//	getById("effectSelector").disabled=true;
-	//	getById("effectSelector3").disabled=true;
-	//	getById("effectSelector").title = "Effects are only support on Chromium-based browsers";
-	//	getById("effectSelector3").title = "Effects are only support on Chromium-based browsers";
-	//	var elementsTmp = document.querySelectorAll('[data-effectsNotice]');
-	//	for (let i = 0; i < elementsTmp.length; i++) {
-	//		elementsTmp[i].style.display = "inline-block";
-	//	}
-	//}
-
-	if (urlParams.has("viewereffect") || urlParams.has("viewereffects") || urlParams.has("ve")) {
-		session.viewereffects = parseInt(urlParams.get("viewereffect")) || parseInt(urlParams.get("ve")) || false;
-	}
-
 	if (urlParams.has("activespeaker") || urlParams.has("speakerview") || urlParams.has("sas")) {
 		session.activeSpeaker = urlParams.get("activespeaker") || urlParams.get("speakerview") || urlParams.get("sas") || 1;
 		session.activeSpeaker = parseInt(session.activeSpeaker);
@@ -5756,55 +5732,6 @@ async function main() {
 		}
 	}
 
-	// Reconnection tuning flags (0/off/false disable where applicable)
-	try {
-		if (urlParams.has("icequick")) {
-			const raw = (urlParams.get("icequick") || "").toString().toLowerCase();
-			if (raw === "off" || raw === "false" || raw === "0") { session.iceQuickRestartDelay = 0; }
-			else { const v = parseInt(raw, 10); if (!Number.isNaN(v)) { session.iceQuickRestartDelay = v; } }
-		}
-		if (urlParams.has("icequickios")) {
-			const raw = (urlParams.get("icequickios") || "").toString().toLowerCase();
-			if (raw === "off" || raw === "false" || raw === "0") { session.iceQuickRestartDelayIOS = 0; }
-			else { const v = parseInt(raw, 10); if (!Number.isNaN(v)) { session.iceQuickRestartDelayIOS = v; } }
-		}
-		if (urlParams.has("turncooldown")) {
-			const raw = (urlParams.get("turncooldown") || "").toString().toLowerCase();
-			if (raw === "off" || raw === "false" || raw === "0") { session.turnRotateCooldownMs = 0; }
-			else { const v = parseInt(raw, 10); if (!Number.isNaN(v)) { session.turnRotateCooldownMs = v; } }
-		}
-		if (urlParams.has("icerestartcooldown")) {
-			const raw = (urlParams.get("icerestartcooldown") || "").toString().toLowerCase();
-			if (raw === "off" || raw === "false" || raw === "0") { session.iceRestartCooldownMs = 0; }
-			else { const v = parseInt(raw, 10); if (!Number.isNaN(v)) { session.iceRestartCooldownMs = v; } }
-		}
-		if (urlParams.has("pcsdisconnectms")) {
-			const raw = (urlParams.get("pcsdisconnectms") || "").toString().toLowerCase();
-			if (raw === "off" || raw === "false") { session.pcsDisconnectCloseMs = null; }
-			else { const v = parseInt(raw, 10); if (!Number.isNaN(v)) { session.pcsDisconnectCloseMs = v; } }
-		}
-		if (urlParams.has("rpcdisconnectms")) {
-			const raw = (urlParams.get("rpcdisconnectms") || "").toString().toLowerCase();
-			if (raw === "off" || raw === "false") { session.rpcDisconnectCloseMs = null; }
-			else { const v = parseInt(raw, 10); if (!Number.isNaN(v)) { session.rpcDisconnectCloseMs = v; } }
-		}
-		if (urlParams.has("flowguardms")) {
-			const raw = (urlParams.get("flowguardms") || "").toString().toLowerCase();
-			if (raw === "off" || raw === "false" || raw === "0") { session.flowGuardMs = 0; }
-			else { const v = parseInt(raw, 10); if (!Number.isNaN(v)) { session.flowGuardMs = v; } }
-		}
-		if (urlParams.has("flowguardkbps")) {
-			const raw = (urlParams.get("flowguardkbps") || "").toString().toLowerCase();
-			if (raw === "off" || raw === "false") { session.flowGuardKbps = 0; }
-			else { const v = parseInt(raw, 10); if (!Number.isNaN(v)) { session.flowGuardKbps = v; } }
-		}
-		if (urlParams.has("flowguardpingms")) {
-			const raw = (urlParams.get("flowguardpingms") || "").toString().toLowerCase();
-			if (raw === "off" || raw === "false" || raw === "0") { session.flowGuardPingMs = 0; }
-			else { const v = parseInt(raw, 10); if (!Number.isNaN(v)) { session.flowGuardPingMs = v; } }
-		}
-	} catch(e) { errorlog(e); }
-
 	if (urlParams.has("osc") || urlParams.has("api")) {
 		if (urlParams.get("osc") || urlParams.get("api")) {
 			session.api = urlParams.get("osc") || urlParams.get("api") || false;
@@ -5865,21 +5792,21 @@ async function main() {
 
         if (urlParams.has("approvepopup")) {
             session.approval_popup = true;
-            try { console.log("[flags] &approvepopup detected; approval_popup=true"); } catch(e) {}
-        } else { try { console.log("[flags] &approvepopup NOT present; approval_popup=false"); } catch(e) {}
-        }
+            try { log("[flags] &approvepopup detected; approval_popup=true"); } catch(e) {}
+        } 
+		
         // No need for &codirectorapprove or &codirectorrouteapprove; routed approvals are default.
         if (urlParams.has("nocodirectorapprove")) {
             session.codirector_disable_approve = true;
-            try { console.log("[flags] &nocodirectorapprove enabled; co-director approvals disabled"); } catch(e) {}
+            try { log("[flags] &nocodirectorapprove enabled; co-director approvals disabled"); } catch(e) {}
         }
         // Force-hold overrides guest URL hold flags
         if (urlParams.has("forcehold")) {
             session.forceHoldType = 3; // hold without video
-            try { console.log("[flags] &forcehold enabled (queueType=3)"); } catch(e) {}
+            try { log("[flags] &forcehold enabled (queueType=3)"); } catch(e) {}
         } else if (urlParams.has("forceholdwithvideo")) {
             session.forceHoldType = 4; // hold with video
-            try { console.log("[flags] &forceholdwithvideo enabled (queueType=4)"); } catch(e) {}
+            try { log("[flags] &forceholdwithvideo enabled (queueType=4)"); } catch(e) {}
         }
         // Reflect current allow/disable state in the modal checkbox (allow=checked by default)
         try {
@@ -7456,35 +7383,12 @@ async function main() {
 
 		if ("volume" in e.data) {
 			// might not work with iframes or meshcast currently.
-			session.volume = parseFloat(e.data.volume) || 0;
-			if (session.volume > 1.0) {
+			var requestedVolume = parseFloat(e.data.volume) || 0;
+			if (requestedVolume > 1.0) {
 				// this is a bit quasi improper.  But the API is official 0 to 1.0; not 0 to 100, so this is mainly a catch for those not using the API right.
-				session.volume = session.volume / 100.0;
+				requestedVolume = requestedVolume / 100.0;
 			}
-			if (!("target" in e.data) || e.data.target == "*") {
-				if (session.videoElement) {
-					session.videoElement.volume = session.volume;
-				}
-			}
-			for (var i in session.rpcs) {
-				try {
-					if (!session.rpcs[i].videoElement) {
-						continue;
-					}
-					if ("streamID" in session.rpcs[i]) {
-						if ("target" in e.data) {
-							if (session.rpcs[i].streamID == e.data.target || e.data.target == "*") {
-								// specify a stream ID or let it apply to all videos
-								session.rpcs[i].videoElement.volume = session.volume;
-							}
-						} else {
-							session.rpcs[i].videoElement.volume = session.volume;
-						}
-					}
-				} catch (e) {
-					errorlog(e);
-				}
-			}
+			setSessionPlaybackVolume(requestedVolume, e.data.target);
 		}
 
 		if ("enableYouTube" in e.data) {

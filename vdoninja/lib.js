@@ -39985,10 +39985,12 @@ async function requestBasicPermissions(constraint = { video: true, audio: true }
 						warnlog("Permissions API is not fully supported in this browser.");
 					}
 
-					if (videoPermission === "granted") {
+					const safariPermissionBug = SafariVersion && SafariVersion > 18 && (iOS || iPad);
+
+					if (videoPermission === "granted" && !safariPermissionBug) {
 						constraint.video = false;
 					}
-					if (audioPermission === "granted") {
+					if (audioPermission === "granted" && !safariPermissionBug) {
 						constraint.audio = false;
 					}
 				}
