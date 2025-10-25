@@ -23,6 +23,13 @@ Lastly, since playback is agnostic, you can window-capture the same video multip
 ## Video guide on how to use Electron Capture
 [![Video Guide for Electron](https://user-images.githubusercontent.com/2575698/129784248-3270a876-6831-4595-9eb5-63665843e631.png)](https://youtu.be/mZ7X7WvRcRA "Video Guide for Electron")
 
+## Custom Electron Build (QP20)
+- The Windows build pipeline now expects the custom Electron binaries published on `steveseguin/electron` under the `v40.0.0-qp20` tag. During `npm install` our `postinstall` hook (`scripts/install-custom-electron.js`) replaces the stock Electron bits with the patched archive that clamps QP to 0-20 and enables NVENC.
+- Requirements: Node.js ≥ 18, git, and network access to GitHub Releases. From PowerShell or WSL run `npm install` (or `npm ci`) at the repo root; the hook downloads `electron-v40.0.0-qp20-win32-x64.zip`, unpacks it into `node_modules/electron/dist`, and stamps `.custom-version` so reinstalls are skipped.
+- Verify with `node scripts/install-custom-electron.js` (re-runs the hook) or by checking `node_modules/electron/dist/.custom-version`—it should read `40.0.0-qp20`. At runtime `npx electron --version` will still report the upstream package version, but the bundled bits are the custom build.
+- Building for Windows uses the same commands as before (`npm run build:win32`). The new `build.electronVersion` metadata keeps the generated installer aligned with the custom runtime.
+- To fall back to stock Electron set `CUSTOM_ELECTRON_SKIP=1` before installing, or delete `node_modules/electron/dist` and reinstall.
+
 ## Settings and Parameters
 
 | Parameter          | Alias     | Description                                     | Example values                     | Notes                                           |
@@ -399,7 +406,7 @@ These tweaks are entirely optional and aimed at advanced workflows. By default E
 --vaapienc                           # toggle VA-API hardware encode on Linux (enabled by default)
 --webrtcCodec=<auto|h264|vp9|av1>    # optional codec hint exposed to the renderer for custom scripts
 --webrtcBr=<bits-per-second>         # optional bitrate hint exposed to the renderer (0 leaves Chromium defaults)
---respectgpub                        # respect Chromium’s GPU blocklist instead of forcing acceleration
+--ignoregpub                         # ignore Chromium’s GPU blocklist (default is to respect it)
 --gpuinfo                            # open a chrome://gpu diagnostics window on launch
 --h264keytrial                       # enable the WebRTC H.264 SPS/PPS keyframe workaround (off by default)
 ```

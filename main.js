@@ -246,11 +246,16 @@ function createYargs(){
     type: "boolean",
     default: true
   })
-  .option("respectGpuBlocklist", {
-    alias: "respectgpub",
-    describe: "Respect Chromium's GPU blocklist instead of forcing hardware acceleration.",
+  .option("ignoreGpuBlocklist", {
+    alias: "ignoregpub",
+    describe: "Ignore Chromium's GPU blocklist (forces hardware acceleration even when blocklisted).",
     type: "boolean",
     default: false
+  })
+  .option("respectGpuBlocklist", {
+    alias: "respectgpub",
+    describe: "[Deprecated] Use --ignoregpub to disable the blocklist. Passing false here is equivalent to --ignoregpub.",
+    type: "boolean"
   })
   .option("encoderMode", {
     alias: "encmode",
@@ -629,6 +634,17 @@ Argv.webrtcPreferredCodec = normalizeCodecPreference(Argv.webrtcPreferredCodec);
 const parsedBitrate = Number(Argv.webrtcMaxBitrate);
 Argv.webrtcMaxBitrate = Number.isFinite(parsedBitrate) && parsedBitrate > 0 ? Math.floor(parsedBitrate) : 0;
 
+const legacyRespectFlagProvided = typeof Argv.respectGpuBlocklist === 'boolean';
+if (legacyRespectFlagProvided) {
+	console.warn('The --respectgpub/--respectGpuBlocklist flag is deprecated; use --ignoregpub instead.');
+	Argv.ignoreGpuBlocklist = Argv.respectGpuBlocklist === false;
+} else {
+	Argv.ignoreGpuBlocklist = Argv.ignoreGpuBlocklist === true;
+}
+delete Argv.respectGpuBlocklist;
+delete Argv.respectgpub;
+delete Argv.ignoregpub;
+
 const hardwareEncodingState = {
 	encoderModeOverride: null
 };
@@ -838,14 +854,15 @@ function parseDeepLink(deepLinkUrl) {
 			}
 		}
 
-		const booleanParamMappings = [
-			{ keys: ['d3d12enc', 'd3d12Encoder'], target: 'd3d12Encoder', alias: 'd3d12enc' },
-			{ keys: ['vaapienc', 'vaapiEncoder'], target: 'vaapiEncoder', alias: 'vaapienc' },
-			{ keys: ['respectgpub', 'respectGpuBlocklist'], target: 'respectGpuBlocklist', alias: 'respectgpub' },
-			{ keys: ['gpuinfo', 'gpudiag'], target: 'gpuinfo', alias: 'gpudiag' },
-			{ keys: ['h264keytrial', 'webrtcH264KeyframeTrial'], target: 'webrtcH264KeyframeTrial', alias: 'h264keytrial' },
-			{ keys: ['wgc', 'usewgc'], target: 'usewgc', alias: 'wgc' }
-		];
+			const booleanParamMappings = [
+				{ keys: ['d3d12enc', 'd3d12Encoder'], target: 'd3d12Encoder', alias: 'd3d12enc' },
+				{ keys: ['vaapienc', 'vaapiEncoder'], target: 'vaapiEncoder', alias: 'vaapienc' },
+				{ keys: ['ignoregpub', 'ignoreGpuBlocklist'], target: 'ignoreGpuBlocklist', alias: 'ignoregpub' },
+				{ keys: ['respectgpub', 'respectGpuBlocklist'], target: 'respectGpuBlocklist', alias: 'respectgpub' },
+				{ keys: ['gpuinfo', 'gpudiag'], target: 'gpuinfo', alias: 'gpudiag' },
+				{ keys: ['h264keytrial', 'webrtcH264KeyframeTrial'], target: 'webrtcH264KeyframeTrial', alias: 'h264keytrial' },
+				{ keys: ['wgc', 'usewgc'], target: 'usewgc', alias: 'wgc' }
+			];
 
 		booleanParamMappings.forEach(({ keys, target, alias }) => {
 			for (const key of keys) {
@@ -992,7 +1009,7 @@ if (disableFeatureSet.size > 0) {
 	}
 }
 
-if (!Argv.respectGpuBlocklist) {
+if (Argv.ignoreGpuBlocklist) {
 	app.commandLine.appendSwitch('ignore-gpu-blocklist');
 	console.log('Chromium GPU blocklist will be ignored for this session.');
 }
