@@ -14,7 +14,8 @@
     "build:rpi": "electron-builder --armv7l --linux  AppImage",
     "build:arm64": "electron-builder --arm64 --linux deb rpm AppImage",
     "clean": "rimraf ./dist",
-    "release": "electron-builder --publish always"
+    "release": "electron-builder --publish always",
+    "postinstall": "node ./scripts/install-custom-electron.js"
   },
   "repository": {
     "type": "git",
@@ -23,6 +24,7 @@
   "build": {
     "appId": "capture.electron",
     "productName": "elecap",
+    "electronVersion": "40.0.0-qp20",
     "protocols": {
       "name": "electroncapture",
       "schemes": [
