@@ -234,6 +234,54 @@ function createYargs(){
     describe: "Allow Windows Graphics Capture backend. Disable for better compatibility when running elevated.",
     type: "boolean"
   })
+  .option("d3d12Encoder", {
+    alias: "d3d12enc",
+    describe: "Enable D3D12 hardware video encoders on Windows when supported.",
+    type: "boolean",
+    default: false
+  })
+  .option("vaapiEncoder", {
+    alias: "vaapienc",
+    describe: "Enable VA-API hardware video encoders on Linux when supported.",
+    type: "boolean",
+    default: true
+  })
+  .option("respectGpuBlocklist", {
+    alias: "respectgpub",
+    describe: "Respect Chromium's GPU blocklist instead of forcing hardware acceleration.",
+    type: "boolean",
+    default: false
+  })
+  .option("encoderMode", {
+    alias: "encmode",
+    describe: "Default encoder mode for WebCodecs/WebRTC in the renderer (hardware|software|auto).",
+    type: "string",
+    default: "hardware"
+  })
+  .option("webrtcPreferredCodec", {
+    alias: "webrtcCodec",
+    describe: "Preferred outbound WebRTC codec to prioritize (auto|h264|vp9|av1).",
+    type: "string",
+    default: "auto"
+  })
+  .option("webrtcMaxBitrate", {
+    alias: "webrtcBr",
+    describe: "Default target max bitrate (in bps) for WebRTC video senders when unspecified.",
+    type: "number",
+    default: 0
+  })
+  .option("gpuinfo", {
+    alias: "gpudiag",
+    describe: "Open a chrome://gpu diagnostics window at startup.",
+    type: "boolean",
+    default: false
+  })
+  .option("webrtcH264KeyframeTrial", {
+    alias: "h264keytrial",
+    describe: "Enable WebRTC H.264 SPS/PPS keyframe field trial workaround.",
+    type: "boolean",
+    default: false
+  })
   .describe("help", "Show help.") // Override --help usage message.
   .wrap(process.stdout.columns); 
   
@@ -515,6 +563,145 @@ function hydrateArgsFromRawProcessArgs(args) {
 var Argv = hydrateArgsFromRawProcessArgs(createYargs());
 ;
 
+const VALID_ENCODER_MODES = new Set(['hardware', 'software', 'auto']);
+
+function normalizeEncoderModeToken(rawValue) {
+  if (typeof rawValue === 'boolean') {
+    return rawValue ? 'hardware' : 'software';
+  }
+  if (typeof rawValue !== 'string') {
+    return null;
+  }
+  const token = rawValue.trim().toLowerCase();
+  if (token === 'hardware' || token === 'hw' || token === 'gpu' || token === 'prefer-hardware') {
+    return 'hardware';
+  }
+  if (token === 'software' || token === 'sw' || token === 'cpu' || token === 'prefer-software') {
+    return 'software';
+  }
+  if (token === 'auto' || token === 'automatic') {
+    return 'auto';
+  }
+  if (token === 'default' || token === 'reset') {
+    return 'default';
+  }
+  return null;
+}
+
+function resolveEncoderModeOption(rawValue) {
+  const normalized = normalizeEncoderModeToken(rawValue);
+  if (normalized && VALID_ENCODER_MODES.has(normalized)) {
+    return normalized;
+  }
+  return 'hardware';
+}
+
+function normalizeEncoderModeOverride(rawValue) {
+  const normalized = normalizeEncoderModeToken(rawValue);
+  if (!normalized || normalized === 'default') {
+    return null;
+  }
+  if (VALID_ENCODER_MODES.has(normalized)) {
+    return normalized;
+  }
+  return null;
+}
+
+function normalizeCodecPreference(rawValue) {
+  if (typeof rawValue !== 'string') {
+    return 'auto';
+  }
+  const token = rawValue.trim().toLowerCase();
+  if (token === 'h264' || token === 'avc' || token === 'avc1' || token === 'h.264') {
+    return 'h264';
+  }
+  if (token === 'vp9' || token === 'vp09') {
+    return 'vp9';
+  }
+  if (token === 'av1' || token === 'av01') {
+    return 'av1';
+  }
+  return 'auto';
+}
+
+Argv.encoderMode = resolveEncoderModeOption(Argv.encoderMode);
+Argv.webrtcPreferredCodec = normalizeCodecPreference(Argv.webrtcPreferredCodec);
+const parsedBitrate = Number(Argv.webrtcMaxBitrate);
+Argv.webrtcMaxBitrate = Number.isFinite(parsedBitrate) && parsedBitrate > 0 ? Math.floor(parsedBitrate) : 0;
+
+const hardwareEncodingState = {
+	encoderModeOverride: null
+};
+
+ipcMain.handle('hardware-encoding:get-preferences', () => {
+	const effectiveMode = hardwareEncodingState.encoderModeOverride || Argv.encoderMode;
+	return {
+		defaultMode: Argv.encoderMode,
+		preferredMode: effectiveMode,
+		codecPreference: Argv.webrtcPreferredCodec,
+		maxBitrate: Argv.webrtcMaxBitrate
+	};
+});
+
+ipcMain.on('hardware-encoding:set-mode', (event, requestedMode) => {
+	const normalized = normalizeEncoderModeOverride(requestedMode);
+	if (normalized === hardwareEncodingState.encoderModeOverride) {
+		return;
+	}
+	if (!normalized) {
+		hardwareEncodingState.encoderModeOverride = null;
+	} else {
+		hardwareEncodingState.encoderModeOverride = normalized;
+	}
+	const effectiveMode = hardwareEncodingState.encoderModeOverride || Argv.encoderMode;
+	BrowserWindow.getAllWindows().forEach((windowInstance) => {
+		try {
+			windowInstance.webContents.send('hardware-encoding:mode-updated', effectiveMode);
+		} catch (error) {
+			console.warn('Failed to broadcast encoder mode update to a window:', error);
+		}
+	});
+	console.log('Hardware encoder mode updated:', {
+		requestedMode,
+		effectiveMode,
+		override: hardwareEncodingState.encoderModeOverride
+	});
+});
+
+let gpuDiagnosticsWindow = null;
+
+function openGpuDiagnosticsWindow() {
+	if (gpuDiagnosticsWindow && !gpuDiagnosticsWindow.isDestroyed()) {
+		gpuDiagnosticsWindow.focus();
+		return true;
+	}
+	try {
+		gpuDiagnosticsWindow = new BrowserWindow({
+			width: 1000,
+			height: 720,
+			title: 'GPU Diagnostics',
+			webPreferences: {
+				nodeIntegration: false,
+				contextIsolation: true,
+				sandbox: false
+			}
+		});
+		gpuDiagnosticsWindow.on('closed', () => {
+			gpuDiagnosticsWindow = null;
+		});
+		gpuDiagnosticsWindow.loadURL('chrome://gpu');
+		return true;
+	} catch (error) {
+		console.error('Failed to open GPU diagnostics window:', error);
+		gpuDiagnosticsWindow = null;
+		return false;
+	}
+}
+
+ipcMain.handle('hardware-encoding:open-gpu-diagnostics', () => {
+	return openGpuDiagnosticsWindow();
+});
+
 if (Argv.help) {
   Argv.showHelp();
   process.exit(0); // Exit the script after showing help.
@@ -527,41 +714,164 @@ if (!app.requestSingleInstanceLock(Argv)) {
 
 
 function parseDeepLink(deepLinkUrl) {
-    console.log('Parsing deep link:', deepLinkUrl);
-    try {
-        // Create a copy of default args
-        const newArgs = {...Argv};
-        
-        deepLinkUrl = deepLinkUrl.replace("electroncapture://", "https://");
-        let url = new URL(deepLinkUrl);
-        
-        console.log('Parsed URL:', {
-            pathname: url.pathname,
-            search: url.search,
-            hash: url.hash
-        });
-        
-        newArgs.url = url.href;
-        
-        // Parse window parameters from query string
-        const params = new URLSearchParams(url.search);
-        
-        // Map URL parameters to window arguments
-        if (params.has('w')) newArgs.width = parseInt(params.get('w'));
-        if (params.has('h')) newArgs.height = parseInt(params.get('h'));
-        if (params.has('x')) newArgs.x = parseInt(params.get('x'));
-        if (params.has('y')) newArgs.y = parseInt(params.get('y'));
-        if (params.has('pin')) newArgs.pin = params.get('pin') === 'true';
-        if (params.has('title')) newArgs.title = params.get('title');
-        if (params.has('full')) newArgs.fullscreen = params.get('full') === 'true';
-        if (params.has('min')) newArgs.minimized = params.get('min') === 'true';
+	console.log('Parsing deep link:', deepLinkUrl);
+	try {
+		const newArgs = { ...Argv };
 
-        console.log('Parsed deep link args:', newArgs);
-        return newArgs;
-    } catch (error) {
-        console.error('Error parsing deep link URL:', error);
-        return null;
-    }
+		deepLinkUrl = deepLinkUrl.replace("electroncapture://", "https://");
+		const url = new URL(deepLinkUrl);
+
+		console.log('Parsed URL:', {
+			pathname: url.pathname,
+			search: url.search,
+			hash: url.hash
+		});
+
+		const assignWithAlias = (key, alias, value) => {
+			newArgs[key] = value;
+			if (alias) {
+				newArgs[alias] = value;
+			}
+		};
+
+		const parseBooleanValue = (rawValue) => {
+			if (rawValue === null) {
+				return undefined;
+			}
+			const trimmed = rawValue.trim();
+			if (!trimmed.length) {
+				return true;
+			}
+			if (/^(false|0|no|off|disable|disabled)$/i.test(trimmed)) {
+				return false;
+			}
+			if (/^(true|1|yes|on|enable|enabled)$/i.test(trimmed)) {
+				return true;
+			}
+			return undefined;
+		};
+
+		const parseIntegerValue = (rawValue) => {
+			if (typeof rawValue !== 'string') {
+				return undefined;
+			}
+			const trimmed = rawValue.trim();
+			if (!trimmed.length) {
+				return undefined;
+			}
+			const parsed = Number.parseInt(trimmed, 10);
+			return Number.isFinite(parsed) ? parsed : undefined;
+		};
+
+		assignWithAlias('url', 'u', url.href);
+		newArgs._ = Array.isArray(newArgs._)
+			? [url.href, ...newArgs._.filter((entry) => entry !== url.href)]
+			: [url.href];
+
+		const params = new URLSearchParams(url.search);
+
+		const width = parseIntegerValue(params.get('w'));
+		if (typeof width === 'number') {
+			assignWithAlias('width', 'w', width);
+		}
+		const height = parseIntegerValue(params.get('h'));
+		if (typeof height === 'number') {
+			assignWithAlias('height', 'h', height);
+		}
+		const xPos = parseIntegerValue(params.get('x'));
+		if (typeof xPos === 'number') {
+			assignWithAlias('x', 'x', xPos);
+		}
+		const yPos = parseIntegerValue(params.get('y'));
+		if (typeof yPos === 'number') {
+			assignWithAlias('y', 'y', yPos);
+		}
+
+		if (params.has('title')) {
+			assignWithAlias('title', 't', params.get('title'));
+		}
+
+		[
+			{ key: 'pin', target: 'pin', alias: 'p' },
+			{ key: 'full', target: 'fullscreen', alias: 'f' },
+			{ key: 'min', target: 'minimized', alias: 'min' }
+		].forEach(({ key, target, alias }) => {
+			if (!params.has(key)) {
+				return;
+			}
+			const parsed = parseBooleanValue(params.get(key));
+			if (typeof parsed === 'boolean') {
+				assignWithAlias(target, alias, parsed);
+			}
+		});
+
+		const encoderKey = ['encmode', 'encoderMode'].find((key) => params.has(key));
+		if (encoderKey) {
+			const rawMode = params.get(encoderKey);
+			if (rawMode !== null && rawMode.trim().length) {
+				assignWithAlias('encoderMode', 'encmode', resolveEncoderModeOption(rawMode));
+			}
+		}
+
+		const codecKey = ['webrtcCodec', 'webrtcPreferredCodec'].find((key) => params.has(key));
+		if (codecKey) {
+			const rawCodec = params.get(codecKey);
+			if (rawCodec !== null && rawCodec.trim().length) {
+				assignWithAlias('webrtcPreferredCodec', 'webrtcCodec', normalizeCodecPreference(rawCodec));
+			}
+		}
+
+		const bitrateKey = ['webrtcBr', 'webrtcMaxBitrate'].find((key) => params.has(key));
+		if (bitrateKey) {
+			const rawBitrate = params.get(bitrateKey);
+			if (rawBitrate !== null) {
+				const trimmed = rawBitrate.trim();
+				if (!trimmed.length) {
+					assignWithAlias('webrtcMaxBitrate', 'webrtcBr', 0);
+				} else {
+					const parsedBitrate = Number(trimmed);
+					if (Number.isFinite(parsedBitrate) && parsedBitrate >= 0) {
+						const normalizedBitrate = parsedBitrate > 0 ? Math.floor(parsedBitrate) : 0;
+						assignWithAlias('webrtcMaxBitrate', 'webrtcBr', normalizedBitrate);
+					}
+				}
+			}
+		}
+
+		const booleanParamMappings = [
+			{ keys: ['d3d12enc', 'd3d12Encoder'], target: 'd3d12Encoder', alias: 'd3d12enc' },
+			{ keys: ['vaapienc', 'vaapiEncoder'], target: 'vaapiEncoder', alias: 'vaapienc' },
+			{ keys: ['respectgpub', 'respectGpuBlocklist'], target: 'respectGpuBlocklist', alias: 'respectgpub' },
+			{ keys: ['gpuinfo', 'gpudiag'], target: 'gpuinfo', alias: 'gpudiag' },
+			{ keys: ['h264keytrial', 'webrtcH264KeyframeTrial'], target: 'webrtcH264KeyframeTrial', alias: 'h264keytrial' },
+			{ keys: ['wgc', 'usewgc'], target: 'usewgc', alias: 'wgc' }
+		];
+
+		booleanParamMappings.forEach(({ keys, target, alias }) => {
+			for (const key of keys) {
+				if (!params.has(key)) {
+					continue;
+				}
+				const parsed = parseBooleanValue(params.get(key));
+				if (typeof parsed === 'boolean') {
+					assignWithAlias(target, alias, parsed);
+				}
+				return;
+			}
+		});
+
+		assignWithAlias('encoderMode', 'encmode', resolveEncoderModeOption(newArgs.encoderMode));
+		assignWithAlias('webrtcPreferredCodec', 'webrtcCodec', normalizeCodecPreference(newArgs.webrtcPreferredCodec));
+		const effectiveBitrate = Number(newArgs.webrtcMaxBitrate);
+		const sanitizedBitrate = Number.isFinite(effectiveBitrate) && effectiveBitrate > 0 ? Math.floor(effectiveBitrate) : 0;
+		assignWithAlias('webrtcMaxBitrate', 'webrtcBr', sanitizedBitrate);
+
+		console.log('Parsed deep link args:', newArgs);
+		return newArgs;
+	} catch (error) {
+		console.error('Error parsing deep link URL:', error);
+		return null;
+	}
 }
 
 function registerProtocolHandling() {
@@ -622,7 +932,7 @@ if (!(Argv.hwa)){
 	console.log("HWA DISABLED");
 }
 
-const enableFeatureSet = new Set();
+const enableFeatureSet = new Set(['WebAssemblySimd', 'PlatformHEVCEncoderSupport']);
 const disableFeatureSet = new Set();
 
 if (!(Argv.mf)){
@@ -659,8 +969,20 @@ if (process.platform === 'win32') {
 	}
 }
 
+if (process.platform === 'win32' && Argv.d3d12Encoder === true) {
+    enableFeatureSet.add('D3D12VideoEncodeAccelerator');
+} else if (process.platform === 'win32') {
+    console.log('D3D12 video encode accelerator disabled (enable with --d3d12enc).');
+}
+
+if (process.platform === 'linux' && Argv.vaapiEncoder !== false) {
+	enableFeatureSet.add('VaapiVideoEncoder');
+}
+
 if (enableFeatureSet.size > 0) {
-	app.commandLine.appendSwitch('enable-features', Array.from(enableFeatureSet).join(','));
+	const featureList = Array.from(enableFeatureSet).join(',');
+	app.commandLine.appendSwitch('enable-features', featureList);
+	console.log('Enabling Chromium features:', featureList);
 }
 
 if (disableFeatureSet.size > 0) {
@@ -670,7 +992,14 @@ if (disableFeatureSet.size > 0) {
 	}
 }
 
-app.commandLine.appendSwitch('enable-features', 'WebAssemblySimd'); // Might not be needed in the future with Chromium; not supported on older Chromium. For faster greenscreen effects.
+if (!Argv.respectGpuBlocklist) {
+	app.commandLine.appendSwitch('ignore-gpu-blocklist');
+	console.log('Chromium GPU blocklist will be ignored for this session.');
+}
+if (Argv.webrtcH264KeyframeTrial) {
+	app.commandLine.appendSwitch('force-fieldtrials', 'WebRTC-H264-SpsPpsIdrIsH264Keyframe/Enabled/');
+	console.log('WebRTC H264 SPS/PPS keyframe field trial enabled.');
+}
 app.commandLine.appendSwitch('webrtc-max-cpu-consumption-percentage', '100');
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
 app.commandLine.appendSwitch('max-web-media-player-count', '5000');
@@ -2871,10 +3200,13 @@ app.whenReady().then(function(){
         }
     });
 
-    // Register protocol handler first
-    registerProtocolHandling();
-    
+	// Register protocol handler first
+	registerProtocolHandling();
+	
 	createWindow(Argv);
+	if (Argv.gpuinfo) {
+		openGpuDiagnosticsWindow();
+	}
     
     // Handle Windows-specific startup
     if (process.platform === 'win32') {

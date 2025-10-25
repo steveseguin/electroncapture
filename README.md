@@ -383,6 +383,45 @@ npm install
 Seems to work with newer npm versions
 
 
+### Advanced encoder controls (optional)
+
+These tweaks are entirely optional and aimed at advanced workflows. By default Electron Capture:
+
+- Prefers hardware encoding through Media Foundation on Windows (NVENC) while leaving the newer Chromium D3D12 encoder disabled unless opted in.
+- Enables `PlatformHEVCEncoderSupport` so HEVC/H.265 hardware encode is available when the operating system exposes it.
+- Falls back to software automatically when alpha channels, 10‑bit color, or unsupported codecs are requested.
+
+#### CLI switches
+
+```
+--encmode=<hardware|software|auto>   # default hardware; switch to software to disable GPU encode or auto to let the renderer decide
+--d3d12enc                           # opt-in to Chromium’s D3D12 Video Encode Accelerator (off by default)
+--vaapienc                           # toggle VA-API hardware encode on Linux (enabled by default)
+--webrtcCodec=<auto|h264|vp9|av1>    # optional codec hint exposed to the renderer for custom scripts
+--webrtcBr=<bits-per-second>         # optional bitrate hint exposed to the renderer (0 leaves Chromium defaults)
+--respectgpub                        # respect Chromium’s GPU blocklist instead of forcing acceleration
+--gpuinfo                            # open a chrome://gpu diagnostics window on launch
+--h264keytrial                       # enable the WebRTC H.264 SPS/PPS keyframe workaround (off by default)
+```
+
+Pass these on the command line or embed them in electroncapture:// links (for example `...&encmode=software` or `...&h264keytrial=1`).
+
+Codec and bitrate hints are only surfaced through the renderer API; Electron Capture no longer overrides WebRTC settings on your behalf, so VDO.Ninja can manage them natively.
+
+#### In-app console helpers
+
+Inside any renderer window you can use `window.electronCaptureEncoder` to inspect or adjust the current session:
+
+```js
+window.electronCaptureEncoder.getState();             // returns { defaultMode, preferredMode, codecPreference, maxBitrate }
+window.electronCaptureEncoder.setPreferredMode('software'); // flip hardware/software/auto at runtime
+window.electronCaptureEncoder.resetPreferredMode();  // revert to the CLI default
+window.electronCaptureEncoder.openGpuDiagnostics();  // open chrome://gpu from within Electron
+```
+
+Use the preferred mode helper to toggle hardware acceleration without restarting the app, or check the GPU diagnostics window to confirm whether `mf_video_encode` (Media Foundation / NVENC) is active.
+
+
 ### Security considerations
 
 The Electron Capture doesn't auto-update. This is partially because a stable browser with expected and tested outcomes is important for live streaming. Browsers that auto-update are not reliable, and introduce unexpected issues, month to month.
@@ -398,4 +437,3 @@ Please understand the security implications of using the Electron Capture app, a
 ### Thank you
 
 "Electron capture is one process that unstable atoms can use to become more stable. " - https://education.jlab.org/glossary/electroncapture.html
-

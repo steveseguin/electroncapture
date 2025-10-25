@@ -1,10 +1,9 @@
 ﻿// preload.js
 const { ipcRenderer, contextBridge } = require('electron');
-const path = require('path');
 
 let WindowAudioStream = null;
 try {
-  WindowAudioStream = require(path.join(__dirname, 'window-audio-stream.js'));
+  WindowAudioStream = require('./window-audio-stream.js');
   if (WindowAudioStream && typeof WindowAudioStream !== 'function' && WindowAudioStream.default) {
     WindowAudioStream = WindowAudioStream.default;
   }
@@ -18,6 +17,128 @@ const APP_AUDIO_PARAM_NAMES = ['appaudio', 'appAudio', 'appAudioTarget'];
 let appAudioTarget = null;
 let windowAudioStreamInstance = null;
 let displayMediaHookInstalled = false;
+
+const encoderPreferences = {
+  defaultMode: 'hardware',
+  preferredMode: 'hardware',
+  codecPreference: 'auto',
+  maxBitrate: 0
+};
+
+function parseEncoderMode(rawValue) {
+  if (typeof rawValue === 'boolean') {
+    return rawValue ? 'hardware' : 'software';
+  }
+  if (typeof rawValue !== 'string') {
+    return null;
+  }
+  const token = rawValue.trim().toLowerCase();
+  if (token === 'hardware' || token === 'hw' || token === 'gpu' || token === 'prefer-hardware') {
+    return 'hardware';
+  }
+  if (token === 'software' || token === 'sw' || token === 'cpu' || token === 'prefer-software') {
+    return 'software';
+  }
+  if (token === 'auto' || token === 'automatic') {
+    return 'auto';
+  }
+  return null;
+}
+
+const DEFAULT_OVERRIDE_SENTINEL = '__electronCaptureDefaultMode';
+
+function normalizeEncoderModeOverride(rawValue) {
+  if (rawValue === undefined || rawValue === null) {
+    return DEFAULT_OVERRIDE_SENTINEL;
+  }
+  if (typeof rawValue === 'string') {
+    const token = rawValue.trim().toLowerCase();
+    if (token === 'default' || token === 'reset') {
+      return DEFAULT_OVERRIDE_SENTINEL;
+    }
+  }
+  return parseEncoderMode(rawValue);
+}
+
+function applyPreferences(preferences) {
+  if (!preferences || typeof preferences !== 'object') {
+    return;
+  }
+  const normalizedDefault = parseEncoderMode(preferences.defaultMode);
+  if (normalizedDefault) {
+    encoderPreferences.defaultMode = normalizedDefault;
+  }
+  const normalizedPreferred = parseEncoderMode(preferences.preferredMode);
+  encoderPreferences.preferredMode = normalizedPreferred || encoderPreferences.defaultMode;
+
+  if (typeof preferences.codecPreference === 'string' && preferences.codecPreference.trim().length) {
+    encoderPreferences.codecPreference = preferences.codecPreference.trim();
+  }
+
+  if (typeof preferences.maxBitrate === 'number' && Number.isFinite(preferences.maxBitrate) && preferences.maxBitrate >= 0) {
+    encoderPreferences.maxBitrate = Math.floor(preferences.maxBitrate);
+  }
+}
+
+ipcRenderer.invoke('hardware-encoding:get-preferences')
+  .then(applyPreferences)
+  .catch((error) => {
+    console.warn('Unable to load hardware encoding preferences:', error);
+  });
+
+ipcRenderer.on('hardware-encoding:mode-updated', (_event, mode) => {
+  const normalized = parseEncoderMode(mode);
+  encoderPreferences.preferredMode = normalized || encoderPreferences.defaultMode;
+});
+
+function openGpuDiagnosticsFromRenderer() {
+  return ipcRenderer.invoke('hardware-encoding:open-gpu-diagnostics')
+    .then((result) => Boolean(result))
+    .catch((error) => {
+      console.warn('Failed to open GPU diagnostics window:', error);
+      return false;
+    });
+}
+
+function exposeEncoderControls() {
+  const api = {
+    getState: () => ({
+      defaultMode: encoderPreferences.defaultMode,
+      preferredMode: encoderPreferences.preferredMode,
+      codecPreference: encoderPreferences.codecPreference,
+      maxBitrate: encoderPreferences.maxBitrate
+    }),
+    setPreferredMode: (mode) => {
+      const normalized = normalizeEncoderModeOverride(mode);
+      if (!normalized) {
+        return encoderPreferences.preferredMode;
+      }
+      if (normalized === DEFAULT_OVERRIDE_SENTINEL) {
+        encoderPreferences.preferredMode = encoderPreferences.defaultMode;
+        ipcRenderer.send('hardware-encoding:set-mode', null);
+        return encoderPreferences.preferredMode;
+      }
+      encoderPreferences.preferredMode = normalized;
+      ipcRenderer.send('hardware-encoding:set-mode', normalized);
+      return encoderPreferences.preferredMode;
+    },
+    resetPreferredMode: () => {
+      encoderPreferences.preferredMode = encoderPreferences.defaultMode;
+      ipcRenderer.send('hardware-encoding:set-mode', null);
+      return encoderPreferences.preferredMode;
+    },
+    openGpuDiagnostics: () => openGpuDiagnosticsFromRenderer()
+  };
+
+  try {
+    contextBridge.exposeInMainWorld('electronCaptureEncoder', api);
+  } catch (error) {
+    console.warn('Unable to expose encoder controls via contextBridge; falling back to window property.', error);
+    window.electronCaptureEncoder = api;
+  }
+}
+
+exposeEncoderControls();
 
 function sanitizeAppAudioTarget(value) {
   if (value === null || value === undefined) {
