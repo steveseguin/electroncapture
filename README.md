@@ -24,9 +24,9 @@ Lastly, since playback is agnostic, you can window-capture the same video multip
 [![Video Guide for Electron](https://user-images.githubusercontent.com/2575698/129784248-3270a876-6831-4595-9eb5-63665843e631.png)](https://youtu.be/mZ7X7WvRcRA "Video Guide for Electron")
 
 ## Custom Electron Build (QP20)
-- The Windows build pipeline now expects the custom Electron binaries published on `steveseguin/electron` under the `v40.0.0-qp20` tag. During `npm install` our `postinstall` hook (`scripts/install-custom-electron.js`) replaces the stock Electron bits with the patched archive that clamps QP to 0-20 and enables NVENC.
-- Requirements: Node.js ≥ 18, git, and network access to GitHub Releases. From PowerShell or WSL run `npm install` (or `npm ci`) at the repo root; the hook downloads `electron-v40.0.0-qp20-win32-x64.zip`, unpacks it into `node_modules/electron/dist`, and stamps `.custom-version` so reinstalls are skipped.
-- Verify with `node scripts/install-custom-electron.js` (re-runs the hook) or by checking `node_modules/electron/dist/.custom-version`—it should read `40.0.0-qp20`. At runtime `npx electron --version` will still report the upstream package version, but the bundled bits are the custom build.
+- The pipeline now targets the custom binaries published on `steveseguin/electron` under the `v36.9.5-qp20` tag. During `npm install` our `postinstall` hook (`scripts/install-custom-electron.js`) replaces the stock Electron bits with the patched archive that clamps QP to 0-20 and enables NVENC.
+- Requirements: Node.js ≥ 18, git, and network access to GitHub Releases. From PowerShell or WSL run `npm install` (or `npm ci`) at the repo root; the hook pulls `electron-v36.9.5-qp20-${platform}-${arch}.zip` (Linux: `linux-x64`, Windows: `win32-x64`), unpacks it into `node_modules/electron/dist`, and stamps `.custom-version` so reinstalls are skipped.
+- Verify with `node scripts/install-custom-electron.js` (re-runs the hook) or by checking `node_modules/electron/dist/.custom-version`—it should read `36.9.5-qp20`. At runtime `npx electron --version` will still report the upstream package version, but the bundled bits are the custom build.
 - Building for Windows uses the same commands as before (`npm run build:win32`). The new `build.electronVersion` metadata keeps the generated installer aligned with the custom runtime.
 - To fall back to stock Electron set `CUSTOM_ELECTRON_SKIP=1` before installing, or delete `node_modules/electron/dist` and reinstall.
 

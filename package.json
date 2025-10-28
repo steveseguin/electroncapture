@@ -24,7 +24,7 @@
   "build": {
     "appId": "capture.electron",
     "productName": "elecap",
-    "electronVersion": "40.0.0-qp20",
+    "electronVersion": "36.9.5-qp20",
     "protocols": {
       "name": "electroncapture",
       "schemes": [
@@ -140,7 +140,7 @@
   },
   "devDependencies": {
     "@electron/fuses": "^2.0.0",
-    "electron": "36.1.0",
+    "electron": "36.9.5",
     "electron-builder": "^24.13.3",
     "electron-notarize": "git://github.com/electron/notarize.git",
     "rimraf": "^5.0.5",
