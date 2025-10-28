@@ -72,10 +72,10 @@ async function main () {
   const electronDir = path.dirname(electronPkgPath);
   const distDir = path.join(electronDir, 'dist');
   const markerPath = path.join(distDir, '.custom-version');
-  const markerSignature = `${target.version}:${platform}:${arch}`;
+  const markerValue = `${CUSTOM_VERSION}:${platform}:${arch}`;
 
-  if (await isCustomVersionPresent(markerPath, markerSignature)) {
-    console.log(`[custom-electron] ${target.version} already installed for ${platform}/${arch}; skipping download.`);
+  if (await isCustomVersionPresent(markerPath, markerValue)) {
+    console.log(`[custom-electron] ${CUSTOM_VERSION} already installed for ${platform}/${arch}; skipping download.`);
     return;
   }
 
@@ -144,23 +144,17 @@ async function main () {
 
   await relocateTypeDefinitions(distDir, electronDir);
 
-  await fs.promises.writeFile(path.join(distDir, 'version'), `${target.version}`);
-  await fs.promises.writeFile(markerPath, markerSignature);
+  await fs.promises.writeFile(path.join(distDir, 'version'), `${CUSTOM_VERSION}`);
+  await fs.promises.writeFile(markerPath, `${markerValue}\n`);
   await fs.promises.writeFile(path.join(electronDir, 'path.txt'), getPlatformPath(platform));
 
   console.log(`[custom-electron] Installed ${target.version} for ${platform}/${arch}.`);
 }
 
-async function isCustomVersionPresent (markerPath, expectedSignature) {
+async function isCustomVersionPresent (markerPath, expectedValue) {
   try {
     const data = await fs.promises.readFile(markerPath, 'utf8');
-    const trimmed = data.trim();
-    if (trimmed === expectedSignature) {
-      return true;
-    }
-
-    // Backwards compatibility with markers that only stored the version (e.g. win binaries on disk).
-    return false;
+    return data.trim() === expectedValue;
   } catch {
     return false;
   }
