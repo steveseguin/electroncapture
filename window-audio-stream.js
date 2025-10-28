@@ -92,7 +92,9 @@ class WindowAudioStream {
 
             this.sampleRate = result.sampleRate || 48000;
             this.channels = result.channels || 2;
-            this.usingProcessLoopback = !!result.usingProcessSpecificLoopback;
+            const processLoopbackActive = !!(result.usingProcessSpecificLoopback ?? result.usingProcessLoopback);
+            this.usingProcessLoopback = processLoopbackActive;
+            console.log(`WindowAudioStream: Process-specific loopback ${processLoopbackActive ? 'active' : 'unavailable; using system loopback'}`);
 
             const destination = this.audioContext.createMediaStreamDestination();
             this.scriptProcessor = this.audioContext.createScriptProcessor(this.bufferSize, this.channels, this.channels);
