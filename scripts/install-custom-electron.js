@@ -7,17 +7,33 @@ const path = require('path');
 const { pipeline } = require('stream/promises');
 const { Readable } = require('stream');
 
-const CUSTOM_RELEASE_TAG = 'v36.9.5-qp20';
-const CUSTOM_VERSION = '36.9.5-qp20';
-const MIRROR_BASE = 'https://github.com/steveseguin/electron/releases/download/';
 const CHECKSUM_MANIFEST = 'SHASUMS256.txt';
-const ARTIFACTS = new Map([
-  ['win32', new Map([
-    ['x64', 'electron-v36.9.5-qp20-win32-x64.zip']
-  ])],
-  ['linux', new Map([
-    ['x64', 'electron-v36.9.5-qp20-linux-x64.zip']
-  ])]
+const PLATFORM_TARGETS = new Map([
+  ['win32', {
+    version: '36.9.5-qp20',
+    releaseTag: 'v36.9.5-qp20',
+    mirrorBase: 'https://github.com/steveseguin/electron/releases/download/',
+    artifacts: new Map([
+      ['x64', 'electron-v36.9.5-qp20-win32-x64.zip']
+    ])
+  }],
+  ['linux', {
+    version: '36.9.5-qp20',
+    releaseTag: 'v36.9.5-qp20',
+    mirrorBase: 'https://github.com/steveseguin/electron/releases/download/',
+    artifacts: new Map([
+      ['x64', 'electron-v36.9.5-qp20-linux-x64.zip']
+    ])
+  }],
+  ['darwin', {
+    version: '36.9.5',
+    releaseTag: 'v36.9.5',
+    mirrorBase: 'https://github.com/electron/electron/releases/download/',
+    artifacts: new Map([
+      ['x64', 'electron-v36.9.5-darwin-x64.zip'],
+      ['arm64', 'electron-v36.9.5-darwin-arm64.zip']
+    ])
+  }]
 ]);
 
 main().catch(err => {
@@ -34,8 +50,15 @@ async function main () {
 
   const platform = process.platform;
   const arch = process.arch;
+  const target = PLATFORM_TARGETS.get(platform);
 
-  if (!ARTIFACTS.has(platform) || !ARTIFACTS.get(platform).has(arch)) {
+  if (!target) {
+    console.log(`[custom-electron] No custom build configured for ${platform}/${arch}; skipping.`);
+    return;
+  }
+
+  const filename = target.artifacts.get(arch);
+  if (!filename) {
     console.log(`[custom-electron] No custom build configured for ${platform}/${arch}; skipping.`);
     return;
   }
@@ -49,16 +72,16 @@ async function main () {
   const electronDir = path.dirname(electronPkgPath);
   const distDir = path.join(electronDir, 'dist');
   const markerPath = path.join(distDir, '.custom-version');
+  const markerSignature = `${target.version}:${platform}:${arch}`;
 
-  if (await isCustomVersionPresent(markerPath)) {
-    console.log(`[custom-electron] ${CUSTOM_VERSION} already installed; skipping download.`);
+  if (await isCustomVersionPresent(markerPath, markerSignature)) {
+    console.log(`[custom-electron] ${target.version} already installed for ${platform}/${arch}; skipping download.`);
     return;
   }
 
   await fs.promises.rm(distDir, { recursive: true, force: true });
   await fs.promises.mkdir(distDir, { recursive: true });
 
-  const filename = ARTIFACTS.get(platform).get(arch);
   const localArtifact = resolveLocalArtifact(filename);
   let cleanup = async () => {};
   let zipPath;
@@ -75,14 +98,14 @@ async function main () {
       console.log('[custom-electron] No checksum entry found locally; will verify via computed hash only.');
     }
   } else {
-    const downloadUrl = `${MIRROR_BASE}${CUSTOM_RELEASE_TAG}/${filename}`;
+    const downloadUrl = `${target.mirrorBase}${target.releaseTag}/${filename}`;
     const tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'electron-custom-'));
     cleanup = async () => {
       await fs.promises.rm(tmpDir, { recursive: true, force: true });
     };
     zipPath = path.join(tmpDir, filename);
     try {
-      const checksums = await loadChecksums();
+      const checksums = await loadChecksums(target);
       expectedChecksum = checksums.get(filename);
 
       if (!expectedChecksum) {
@@ -121,17 +144,23 @@ async function main () {
 
   await relocateTypeDefinitions(distDir, electronDir);
 
-  await fs.promises.writeFile(path.join(distDir, 'version'), `${CUSTOM_VERSION}`);
-  await fs.promises.writeFile(markerPath, CUSTOM_VERSION);
+  await fs.promises.writeFile(path.join(distDir, 'version'), `${target.version}`);
+  await fs.promises.writeFile(markerPath, markerSignature);
   await fs.promises.writeFile(path.join(electronDir, 'path.txt'), getPlatformPath(platform));
 
-  console.log(`[custom-electron] Installed ${CUSTOM_VERSION} for ${platform}/${arch}.`);
+  console.log(`[custom-electron] Installed ${target.version} for ${platform}/${arch}.`);
 }
 
-async function isCustomVersionPresent (markerPath) {
+async function isCustomVersionPresent (markerPath, expectedSignature) {
   try {
     const data = await fs.promises.readFile(markerPath, 'utf8');
-    return data.trim() === CUSTOM_VERSION;
+    const trimmed = data.trim();
+    if (trimmed === expectedSignature) {
+      return true;
+    }
+
+    // Backwards compatibility with markers that only stored the version (e.g. win binaries on disk).
+    return false;
   } catch {
     return false;
   }
@@ -160,14 +189,15 @@ function resolveFromCwd (id) {
   }
 }
 
-const checksumCache = { manifest: null, entries: null };
+const checksumCache = new Map();
 
-async function loadChecksums () {
-  if (checksumCache.entries) {
-    return checksumCache.entries;
+async function loadChecksums (target) {
+  const cacheKey = `${target.mirrorBase}|${target.releaseTag}`;
+  if (checksumCache.has(cacheKey)) {
+    return checksumCache.get(cacheKey);
   }
 
-  const manifestUrl = `${MIRROR_BASE}${CUSTOM_RELEASE_TAG}/${CHECKSUM_MANIFEST}`;
+  const manifestUrl = `${target.mirrorBase}${target.releaseTag}/${CHECKSUM_MANIFEST}`;
   console.log(`[custom-electron] Fetching checksum manifest ${manifestUrl}`);
   const response = await fetch(manifestUrl, {
     redirect: 'follow',
@@ -180,8 +210,7 @@ async function loadChecksums () {
 
   const text = await response.text();
   const entries = parseChecksumManifest(text);
-  checksumCache.manifest = text;
-  checksumCache.entries = entries;
+  checksumCache.set(cacheKey, entries);
   return entries;
 }
 

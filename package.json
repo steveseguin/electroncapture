@@ -8,7 +8,7 @@
     "start": "electron .",
     "build": "run-os",
     "build:win32": "electron-builder --win",
-    "build:darwin": "electron-builder --mac --universal",
+    "build:darwin": "electron-builder --mac --universal --config.electronVersion=36.9.5 --config.electronDownload.mirror=https://github.com/electron/electron/releases/download/ --config.electronDownload.customDir=v36.9.5",
     "build:linux": "electron-builder --linux",
     "build:rpideb": "USE_SYSTEM_FPM=true electron-builder --armv7l --linux deb",
     "build:rpi": "electron-builder --armv7l --linux  AppImage",
