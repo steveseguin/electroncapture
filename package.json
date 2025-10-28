@@ -14,7 +14,8 @@
     "build:rpi": "electron-builder --armv7l --linux  AppImage",
     "build:arm64": "electron-builder --arm64 --linux deb rpm AppImage",
     "clean": "rimraf ./dist",
-    "release": "electron-builder --publish always"
+    "release": "electron-builder --publish always",
+    "postinstall": "node ./scripts/install-custom-electron.js"
   },
   "repository": {
     "type": "git",
@@ -23,6 +24,12 @@
   "build": {
     "appId": "capture.electron",
     "productName": "elecap",
+    "electronVersion": "36.9.5-qp20",
+    "electronDist": "node_modules/electron/dist",
+    "electronDownload": {
+      "mirror": "https://github.com/steveseguin/electron/releases/download/",
+      "customDir": "v36.9.5-qp20"
+    },
     "protocols": {
       "name": "electroncapture",
       "schemes": [
@@ -78,9 +85,7 @@
         {
           "target": "portable",
           "arch": [
-            "ia32",
-            "x64",
-            "arm64"
+            "x64"
           ]
         }
       ],
@@ -138,7 +143,7 @@
   },
   "devDependencies": {
     "@electron/fuses": "^2.0.0",
-    "electron": "36.1.0",
+    "electron": "36.9.5",
     "electron-builder": "^24.13.3",
     "electron-notarize": "git://github.com/electron/notarize.git",
     "rimraf": "^5.0.5",

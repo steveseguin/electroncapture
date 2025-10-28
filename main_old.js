@@ -1,4 +1,4 @@
-﻿// Modules to control application life and create native browser window
+// Modules to control application life and create native browser window
 const electron = require('electron')
 const process = require('process')
 const prompt = require('electron-prompt');
@@ -9,6 +9,7 @@ const {app, BrowserWindow, BrowserView, webFrameMain, desktopCapturer, ipcMain, 
 const contextMenu = require('electron-context-menu');
 const Yargs = require('yargs')
 const isDev = require('electron-is-dev');
+
 
 ipcMain.on('getSources', async function(eventRet, args) {
 	try{
@@ -22,36 +23,6 @@ const { Readable } = require('stream');
 const { fetch: undiciFetch } = require('undici');
 const activeStreams = new Map();
 const https = require('https');
-const { execSync } = require('child_process');
-
-let windowAudioCapture = null;
-const WINDOW_AUDIO_EVENT_CHANNEL = 'windowAudioStreamData';
-let activeWindowAudioSession = null;
-let cachedElevationState;
-
-function isProcessElevated() {
-	if (typeof cachedElevationState === 'boolean') {
-		return cachedElevationState;
-	}
-	if (process.platform === 'win32') {
-		try {
-			execSync('fltmc', { stdio: 'ignore' });
-			cachedElevationState = true;
-		} catch (error) {
-			if (error && error.code === 'ENOENT') {
-				console.warn('Elevation check failed: fltmc command not available; assuming process is not elevated.');
-			}
-			cachedElevationState = false;
-		}
-		return cachedElevationState;
-	}
-	if (typeof process.getuid === 'function') {
-		cachedElevationState = process.getuid() === 0;
-		return cachedElevationState;
-	}
-	cachedElevationState = false;
-	return cachedElevationState;
-}
 
 process.on('uncaughtException', function (error) {
 	console.error("uncaughtException");
@@ -60,42 +31,7 @@ process.on('uncaughtException', function (error) {
 
 unhandled();
 
-try {
-  console.log('Loading window-audio-capture module...');
-  windowAudioCapture = require('./native-modules/window-audio-capture');
-  console.log('Module loaded successfully');
-  
-  // Test if the module methods exist and log them
-  const methods = Object.keys(windowAudioCapture);
-  console.log('Module methods:', methods);
-  
-  // Check if we have the expected API structure
-  if (!windowAudioCapture.getWindowList && windowAudioCapture.captureInstance) {
-    console.log('Module has captureInstance structure');
-  }
-  
-  // Test the getWindowList function
-  try {
-    let windows;
-    if (windowAudioCapture.getWindowList) {
-      windows = windowAudioCapture.getWindowList();
-    } else if (windowAudioCapture.captureInstance && windowAudioCapture.captureInstance.getWindowList) {
-      windows = windowAudioCapture.captureInstance.getWindowList();
-    }
-    
-    console.log('Windows list type:', typeof windows);
-    console.log('Is array:', Array.isArray(windows));
-    console.log('Windows length:', windows ? (Array.isArray(windows) ? windows.length : 'not an array') : 'undefined');
-    console.log('First window:', windows && windows.length > 0 ? windows[0] : 'none');
-  } catch (testError) {
-    console.error('Error testing getWindowList:', testError);
-  }
-} catch (err) {
-  console.error('Error loading window-audio-capture module:', err);
-}
-
 var ver = app.getVersion();
-const DEFAULT_URL = `https://vdo.ninja/electron?version=${ver}`;
 
 function createYargs(){
   var argv = Yargs.usage('Usage: $0 -w=num -h=num -u="string" -p')
@@ -126,7 +62,7 @@ function createYargs(){
   .option("u", {
     alias: "url",
     describe: "The URL of the window to load.",
-	default: DEFAULT_URL,
+	default: "https://vdo.ninja/electron?version="+ver,
     type: "string"
 
   })
@@ -228,494 +164,13 @@ function createYargs(){
     type: "boolean",
 	default: null
   })
-  .option("usewgc", {
-    alias: "wgc",
-    describe: "Allow Windows Graphics Capture backend. Disable for better compatibility when running elevated.",
-    type: "boolean"
-  })
-  .option("d3d12Encoder", {
-    alias: "d3d12enc",
-    describe: "Enable D3D12 hardware video encoders on Windows when supported.",
-    type: "boolean",
-    default: false
-  })
-  .option("vaapiEncoder", {
-    alias: "vaapienc",
-    describe: "Enable VA-API hardware video encoders on Linux when supported.",
-    type: "boolean",
-    default: true
-  })
-  .option("ignoreGpuBlocklist", {
-    alias: "ignoregpub",
-    describe: "Ignore Chromium's GPU blocklist (forces hardware acceleration even when blocklisted).",
-    type: "boolean",
-    default: false
-  })
-  .option("respectGpuBlocklist", {
-    alias: "respectgpub",
-    describe: "[Deprecated] Use --ignoregpub to disable the blocklist. Passing false here is equivalent to --ignoregpub.",
-    type: "boolean"
-  })
-  .option("encoderMode", {
-    alias: "encmode",
-    describe: "Default encoder mode for WebCodecs/WebRTC in the renderer (hardware|software|auto).",
-    type: "string",
-    default: "hardware"
-  })
-  .option("webrtcPreferredCodec", {
-    alias: "webrtcCodec",
-    describe: "Preferred outbound WebRTC codec to prioritize (auto|h264|vp9|av1).",
-    type: "string",
-    default: "auto"
-  })
-  .option("webrtcMaxBitrate", {
-    alias: "webrtcBr",
-    describe: "Default target max bitrate (in bps) for WebRTC video senders when unspecified.",
-    type: "number",
-    default: 0
-  })
-  .option("gpuinfo", {
-    alias: "gpudiag",
-    describe: "Open a chrome://gpu diagnostics window at startup.",
-    type: "boolean",
-    default: false
-  })
-  .option("webrtcH264KeyframeTrial", {
-    alias: "h264keytrial",
-    describe: "Enable WebRTC H.264 SPS/PPS keyframe field trial workaround.",
-    type: "boolean",
-    default: false
-  })
   .describe("help", "Show help.") // Override --help usage message.
   .wrap(process.stdout.columns); 
   
   return argv.argv;
 }
 
-function sanitizeCliToken(value) {
-  if (typeof value !== 'string') {
-    return value;
-  }
-  const trimmed = value.trim();
-  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
-    return trimmed.slice(1, -1);
-  }
-  return trimmed;
-}
-
-function collectPotentialCliArgs() {
-  const aggregated = [];
-
-  const directArgs = Array.isArray(process.argv) ? process.argv.slice(2) : [];
-  for (const entry of directArgs) {
-    const sanitized = sanitizeCliToken(entry);
-    if (typeof sanitized === 'string' && sanitized.length) {
-      aggregated.push(sanitized);
-    }
-  }
-
-  const envRaw = process.env.npm_config_argv;
-  if (envRaw) {
-    try {
-      const parsed = JSON.parse(envRaw);
-      const candidateLists = [];
-      if (Array.isArray(parsed.original)) {
-        candidateLists.push(parsed.original);
-      }
-      if (Array.isArray(parsed.cooked)) {
-        candidateLists.push(parsed.cooked);
-      }
-
-      const appendTokens = (sequence) => {
-        if (!Array.isArray(sequence)) {
-          return;
-        }
-        let startIndex = sequence.indexOf('--');
-        if (startIndex === -1) {
-          startIndex = 0;
-        } else {
-          startIndex += 1;
-        }
-        for (let i = startIndex; i < sequence.length; i++) {
-          const sanitized = sanitizeCliToken(sequence[i]);
-          if (typeof sanitized === 'string' && sanitized.length && !aggregated.includes(sanitized)) {
-            aggregated.push(sanitized);
-          }
-        }
-      };
-
-      candidateLists.forEach(appendTokens);
-    } catch (error) {
-      console.warn('Unable to parse npm_config_argv for CLI hydration:', error);
-    }
-  }
-
-  return aggregated;
-}
-
-function hydrateArgsFromRawProcessArgs(args) {
-  if (!args || typeof args !== 'object') {
-    return args;
-  }
-
-  const rawArgs = collectPotentialCliArgs();
-  if (!rawArgs.length) {
-    return args;
-  }
-
-  try {
-    console.log('hydrateArgsFromRawProcessArgs.rawArgs', rawArgs);
-  } catch (e) {}
-
-  const findIndex = (predicate) => rawArgs.findIndex(predicate);
-
-  const urlKeys = new Set(['--url', '-u']);
-  let urlIndex = findIndex((entry) => urlKeys.has(entry));
-  let resolvedUrl = null;
-
-  if (urlIndex !== -1) {
-    const nextValue = rawArgs[urlIndex + 1];
-    if (typeof nextValue === 'string' && !nextValue.startsWith('-')) {
-      resolvedUrl = nextValue;
-    }
-  } else {
-    urlIndex = findIndex((entry) => typeof entry === 'string' && entry.toLowerCase().startsWith('--url='));
-    if (urlIndex !== -1) {
-      resolvedUrl = rawArgs[urlIndex].slice(6);
-    }
-  }
-
-  if (!resolvedUrl) {
-    const httpIndex = findIndex((entry) => typeof entry === 'string' && /^https?:\/\//i.test(entry));
-    if (httpIndex !== -1) {
-      const collected = [rawArgs[httpIndex]];
-      for (let i = httpIndex + 1; i < rawArgs.length; i++) {
-        const value = rawArgs[i];
-        if (typeof value !== 'string' || value.startsWith('-')) {
-          break;
-        }
-        collected.push(value);
-      }
-      resolvedUrl = collected.join(' ');
-    }
-  }
-
-  if (resolvedUrl && typeof resolvedUrl === 'string') {
-    const sanitizedUrl = sanitizeCliToken(resolvedUrl);
-    if (sanitizedUrl.length) {
-      args.url = sanitizedUrl;
-      args.u = sanitizedUrl;
-      if (Array.isArray(args._)) {
-        if (!args._.includes(sanitizedUrl)) {
-          args._.unshift(sanitizedUrl);
-        }
-      } else {
-        args._ = [sanitizedUrl];
-      }
-    }
-  }
-
-  const coerceBoolean = (value) => {
-    if (typeof value === 'boolean') {
-      return value;
-    }
-    if (typeof value === 'number') {
-      if (Number.isFinite(value)) {
-        if (value === 0) {
-          return false;
-        }
-        if (value === 1) {
-          return true;
-        }
-      }
-    }
-    if (typeof value === 'string') {
-      const trimmed = value.trim();
-      if (!trimmed.length) {
-        return undefined;
-      }
-      if (/^(false|0|no|off|disable|disabled)$/i.test(trimmed)) {
-        return false;
-      }
-      if (/^(true|1|yes|on|enable|enabled)$/i.test(trimmed)) {
-        return true;
-      }
-    }
-    return undefined;
-  };
-
-  let nodeExplicit = false;
-
-  const applyNodeValue = (value) => {
-    if (typeof value === 'boolean') {
-      args.node = value;
-      args.n = value;
-      nodeExplicit = true;
-    }
-  };
-
-  const tryApplyBoolean = (candidate) => {
-    const coerced = coerceBoolean(candidate);
-    if (typeof coerced === 'boolean') {
-      applyNodeValue(coerced);
-      return true;
-    }
-    return false;
-  };
-
-  const normalizeToken = (token) => (typeof token === 'string' ? token.trim() : '');
-
-  if (typeof args.node === 'boolean') {
-    args.n = args.node;
-  } else if (typeof args.n === 'boolean') {
-    args.node = args.n;
-  }
-
-  for (let i = 0; i < rawArgs.length; i++) {
-    const token = normalizeToken(rawArgs[i]);
-    if (!token) {
-      continue;
-    }
-
-    const lower = token.toLowerCase();
-
-    if (lower === '--no-node' || lower === '--disable-node') {
-      applyNodeValue(false);
-      continue;
-    }
-
-    if (token === '--node' || token === '-n') {
-      const nextValue = rawArgs[i + 1];
-      if (!tryApplyBoolean(nextValue)) {
-        applyNodeValue(true);
-      } else {
-        i += 1;
-      }
-      continue;
-    }
-
-    if (lower.startsWith('--node=')) {
-      const value = token.slice('--node='.length);
-      if (!tryApplyBoolean(value)) {
-        applyNodeValue(true);
-      }
-      continue;
-    }
-
-    if (lower.startsWith('-n=')) {
-      const value = token.slice(3);
-      if (!tryApplyBoolean(value)) {
-        applyNodeValue(true);
-      }
-      continue;
-    }
-  }
-
-  if (!nodeExplicit && typeof args.url === 'string') {
-    try {
-      const parsedUrl = new URL(args.url);
-      const nodeParamKeys = ['node', 'nodeintegration', 'nodeIntegration', 'enableNode'];
-      for (const key of nodeParamKeys) {
-        if (!parsedUrl.searchParams.has(key)) {
-          continue;
-        }
-        const rawValue = parsedUrl.searchParams.get(key);
-        if (rawValue === null || rawValue === '') {
-          applyNodeValue(true);
-        } else if (!tryApplyBoolean(rawValue)) {
-          const lowered = rawValue.trim().toLowerCase();
-          if (lowered && /^(disable|disabled|off|no)$/i.test(lowered)) {
-            applyNodeValue(false);
-          } else if (lowered && /^(auto)$/i.test(lowered)) {
-            // leave for heuristic step
-          } else {
-            applyNodeValue(true);
-          }
-        }
-        break;
-      }
-    } catch (_error) {
-      // ignore malformed URLs
-    }
-  }
-
-  if (!nodeExplicit) {
-    let preferNodeIntegration = false;
-    if (typeof args.url === 'string') {
-      const loweredUrl = args.url.toLowerCase();
-      if (loweredUrl.includes('screenshare') || loweredUrl.includes('appaudio')) {
-        preferNodeIntegration = true;
-      }
-    }
-    if (preferNodeIntegration) {
-      applyNodeValue(true);
-    }
-  }
-
-  if (typeof args.node !== 'boolean') {
-    args.node = false;
-  }
-  if (typeof args.n !== 'boolean') {
-    args.n = args.node;
-  }
-
-  args.__nodeExplicit = nodeExplicit;
-
-  return args;
-}
-
-var Argv = hydrateArgsFromRawProcessArgs(createYargs());
-;
-
-const VALID_ENCODER_MODES = new Set(['hardware', 'software', 'auto']);
-
-function normalizeEncoderModeToken(rawValue) {
-  if (typeof rawValue === 'boolean') {
-    return rawValue ? 'hardware' : 'software';
-  }
-  if (typeof rawValue !== 'string') {
-    return null;
-  }
-  const token = rawValue.trim().toLowerCase();
-  if (token === 'hardware' || token === 'hw' || token === 'gpu' || token === 'prefer-hardware') {
-    return 'hardware';
-  }
-  if (token === 'software' || token === 'sw' || token === 'cpu' || token === 'prefer-software') {
-    return 'software';
-  }
-  if (token === 'auto' || token === 'automatic') {
-    return 'auto';
-  }
-  if (token === 'default' || token === 'reset') {
-    return 'default';
-  }
-  return null;
-}
-
-function resolveEncoderModeOption(rawValue) {
-  const normalized = normalizeEncoderModeToken(rawValue);
-  if (normalized && VALID_ENCODER_MODES.has(normalized)) {
-    return normalized;
-  }
-  return 'hardware';
-}
-
-function normalizeEncoderModeOverride(rawValue) {
-  const normalized = normalizeEncoderModeToken(rawValue);
-  if (!normalized || normalized === 'default') {
-    return null;
-  }
-  if (VALID_ENCODER_MODES.has(normalized)) {
-    return normalized;
-  }
-  return null;
-}
-
-function normalizeCodecPreference(rawValue) {
-  if (typeof rawValue !== 'string') {
-    return 'auto';
-  }
-  const token = rawValue.trim().toLowerCase();
-  if (token === 'h264' || token === 'avc' || token === 'avc1' || token === 'h.264') {
-    return 'h264';
-  }
-  if (token === 'vp9' || token === 'vp09') {
-    return 'vp9';
-  }
-  if (token === 'av1' || token === 'av01') {
-    return 'av1';
-  }
-  return 'auto';
-}
-
-Argv.encoderMode = resolveEncoderModeOption(Argv.encoderMode);
-Argv.webrtcPreferredCodec = normalizeCodecPreference(Argv.webrtcPreferredCodec);
-const parsedBitrate = Number(Argv.webrtcMaxBitrate);
-Argv.webrtcMaxBitrate = Number.isFinite(parsedBitrate) && parsedBitrate > 0 ? Math.floor(parsedBitrate) : 0;
-
-const legacyRespectFlagProvided = typeof Argv.respectGpuBlocklist === 'boolean';
-if (legacyRespectFlagProvided) {
-	console.warn('The --respectgpub/--respectGpuBlocklist flag is deprecated; use --ignoregpub instead.');
-	Argv.ignoreGpuBlocklist = Argv.respectGpuBlocklist === false;
-} else {
-	Argv.ignoreGpuBlocklist = Argv.ignoreGpuBlocklist === true;
-}
-delete Argv.respectGpuBlocklist;
-delete Argv.respectgpub;
-delete Argv.ignoregpub;
-
-const hardwareEncodingState = {
-	encoderModeOverride: null
-};
-
-ipcMain.handle('hardware-encoding:get-preferences', () => {
-	const effectiveMode = hardwareEncodingState.encoderModeOverride || Argv.encoderMode;
-	return {
-		defaultMode: Argv.encoderMode,
-		preferredMode: effectiveMode,
-		codecPreference: Argv.webrtcPreferredCodec,
-		maxBitrate: Argv.webrtcMaxBitrate
-	};
-});
-
-ipcMain.on('hardware-encoding:set-mode', (event, requestedMode) => {
-	const normalized = normalizeEncoderModeOverride(requestedMode);
-	if (normalized === hardwareEncodingState.encoderModeOverride) {
-		return;
-	}
-	if (!normalized) {
-		hardwareEncodingState.encoderModeOverride = null;
-	} else {
-		hardwareEncodingState.encoderModeOverride = normalized;
-	}
-	const effectiveMode = hardwareEncodingState.encoderModeOverride || Argv.encoderMode;
-	BrowserWindow.getAllWindows().forEach((windowInstance) => {
-		try {
-			windowInstance.webContents.send('hardware-encoding:mode-updated', effectiveMode);
-		} catch (error) {
-			console.warn('Failed to broadcast encoder mode update to a window:', error);
-		}
-	});
-	console.log('Hardware encoder mode updated:', {
-		requestedMode,
-		effectiveMode,
-		override: hardwareEncodingState.encoderModeOverride
-	});
-});
-
-let gpuDiagnosticsWindow = null;
-
-function openGpuDiagnosticsWindow() {
-	if (gpuDiagnosticsWindow && !gpuDiagnosticsWindow.isDestroyed()) {
-		gpuDiagnosticsWindow.focus();
-		return true;
-	}
-	try {
-		gpuDiagnosticsWindow = new BrowserWindow({
-			width: 1000,
-			height: 720,
-			title: 'GPU Diagnostics',
-			webPreferences: {
-				nodeIntegration: false,
-				contextIsolation: true,
-				sandbox: false
-			}
-		});
-		gpuDiagnosticsWindow.on('closed', () => {
-			gpuDiagnosticsWindow = null;
-		});
-		gpuDiagnosticsWindow.loadURL('chrome://gpu');
-		return true;
-	} catch (error) {
-		console.error('Failed to open GPU diagnostics window:', error);
-		gpuDiagnosticsWindow = null;
-		return false;
-	}
-}
-
-ipcMain.handle('hardware-encoding:open-gpu-diagnostics', () => {
-	return openGpuDiagnosticsWindow();
-});
+var Argv = createYargs();
 
 if (Argv.help) {
   Argv.showHelp();
@@ -729,165 +184,41 @@ if (!app.requestSingleInstanceLock(Argv)) {
 
 
 function parseDeepLink(deepLinkUrl) {
-	console.log('Parsing deep link:', deepLinkUrl);
-	try {
-		const newArgs = { ...Argv };
+    console.log('Parsing deep link:', deepLinkUrl);
+    try {
+        // Create a copy of default args
+        const newArgs = {...Argv};
+        
+        deepLinkUrl = deepLinkUrl.replace("electroncapture://", "https://");
+        let url = new URL(deepLinkUrl);
+        
+        console.log('Parsed URL:', {
+            pathname: url.pathname,
+            search: url.search,
+            hash: url.hash
+        });
+        
+        newArgs.url = url.href;
+        
+        // Parse window parameters from query string
+        const params = new URLSearchParams(url.search);
+        
+        // Map URL parameters to window arguments
+        if (params.has('w')) newArgs.width = parseInt(params.get('w'));
+        if (params.has('h')) newArgs.height = parseInt(params.get('h'));
+        if (params.has('x')) newArgs.x = parseInt(params.get('x'));
+        if (params.has('y')) newArgs.y = parseInt(params.get('y'));
+        if (params.has('pin')) newArgs.pin = params.get('pin') === 'true';
+        if (params.has('title')) newArgs.title = params.get('title');
+        if (params.has('full')) newArgs.fullscreen = params.get('full') === 'true';
+        if (params.has('min')) newArgs.minimized = params.get('min') === 'true';
 
-		deepLinkUrl = deepLinkUrl.replace("electroncapture://", "https://");
-		const url = new URL(deepLinkUrl);
-
-		console.log('Parsed URL:', {
-			pathname: url.pathname,
-			search: url.search,
-			hash: url.hash
-		});
-
-		const assignWithAlias = (key, alias, value) => {
-			newArgs[key] = value;
-			if (alias) {
-				newArgs[alias] = value;
-			}
-		};
-
-		const parseBooleanValue = (rawValue) => {
-			if (rawValue === null) {
-				return undefined;
-			}
-			const trimmed = rawValue.trim();
-			if (!trimmed.length) {
-				return true;
-			}
-			if (/^(false|0|no|off|disable|disabled)$/i.test(trimmed)) {
-				return false;
-			}
-			if (/^(true|1|yes|on|enable|enabled)$/i.test(trimmed)) {
-				return true;
-			}
-			return undefined;
-		};
-
-		const parseIntegerValue = (rawValue) => {
-			if (typeof rawValue !== 'string') {
-				return undefined;
-			}
-			const trimmed = rawValue.trim();
-			if (!trimmed.length) {
-				return undefined;
-			}
-			const parsed = Number.parseInt(trimmed, 10);
-			return Number.isFinite(parsed) ? parsed : undefined;
-		};
-
-		assignWithAlias('url', 'u', url.href);
-		newArgs._ = Array.isArray(newArgs._)
-			? [url.href, ...newArgs._.filter((entry) => entry !== url.href)]
-			: [url.href];
-
-		const params = new URLSearchParams(url.search);
-
-		const width = parseIntegerValue(params.get('w'));
-		if (typeof width === 'number') {
-			assignWithAlias('width', 'w', width);
-		}
-		const height = parseIntegerValue(params.get('h'));
-		if (typeof height === 'number') {
-			assignWithAlias('height', 'h', height);
-		}
-		const xPos = parseIntegerValue(params.get('x'));
-		if (typeof xPos === 'number') {
-			assignWithAlias('x', 'x', xPos);
-		}
-		const yPos = parseIntegerValue(params.get('y'));
-		if (typeof yPos === 'number') {
-			assignWithAlias('y', 'y', yPos);
-		}
-
-		if (params.has('title')) {
-			assignWithAlias('title', 't', params.get('title'));
-		}
-
-		[
-			{ key: 'pin', target: 'pin', alias: 'p' },
-			{ key: 'full', target: 'fullscreen', alias: 'f' },
-			{ key: 'min', target: 'minimized', alias: 'min' }
-		].forEach(({ key, target, alias }) => {
-			if (!params.has(key)) {
-				return;
-			}
-			const parsed = parseBooleanValue(params.get(key));
-			if (typeof parsed === 'boolean') {
-				assignWithAlias(target, alias, parsed);
-			}
-		});
-
-		const encoderKey = ['encmode', 'encoderMode'].find((key) => params.has(key));
-		if (encoderKey) {
-			const rawMode = params.get(encoderKey);
-			if (rawMode !== null && rawMode.trim().length) {
-				assignWithAlias('encoderMode', 'encmode', resolveEncoderModeOption(rawMode));
-			}
-		}
-
-		const codecKey = ['webrtcCodec', 'webrtcPreferredCodec'].find((key) => params.has(key));
-		if (codecKey) {
-			const rawCodec = params.get(codecKey);
-			if (rawCodec !== null && rawCodec.trim().length) {
-				assignWithAlias('webrtcPreferredCodec', 'webrtcCodec', normalizeCodecPreference(rawCodec));
-			}
-		}
-
-		const bitrateKey = ['webrtcBr', 'webrtcMaxBitrate'].find((key) => params.has(key));
-		if (bitrateKey) {
-			const rawBitrate = params.get(bitrateKey);
-			if (rawBitrate !== null) {
-				const trimmed = rawBitrate.trim();
-				if (!trimmed.length) {
-					assignWithAlias('webrtcMaxBitrate', 'webrtcBr', 0);
-				} else {
-					const parsedBitrate = Number(trimmed);
-					if (Number.isFinite(parsedBitrate) && parsedBitrate >= 0) {
-						const normalizedBitrate = parsedBitrate > 0 ? Math.floor(parsedBitrate) : 0;
-						assignWithAlias('webrtcMaxBitrate', 'webrtcBr', normalizedBitrate);
-					}
-				}
-			}
-		}
-
-			const booleanParamMappings = [
-				{ keys: ['d3d12enc', 'd3d12Encoder'], target: 'd3d12Encoder', alias: 'd3d12enc' },
-				{ keys: ['vaapienc', 'vaapiEncoder'], target: 'vaapiEncoder', alias: 'vaapienc' },
-				{ keys: ['ignoregpub', 'ignoreGpuBlocklist'], target: 'ignoreGpuBlocklist', alias: 'ignoregpub' },
-				{ keys: ['respectgpub', 'respectGpuBlocklist'], target: 'respectGpuBlocklist', alias: 'respectgpub' },
-				{ keys: ['gpuinfo', 'gpudiag'], target: 'gpuinfo', alias: 'gpudiag' },
-				{ keys: ['h264keytrial', 'webrtcH264KeyframeTrial'], target: 'webrtcH264KeyframeTrial', alias: 'h264keytrial' },
-				{ keys: ['wgc', 'usewgc'], target: 'usewgc', alias: 'wgc' }
-			];
-
-		booleanParamMappings.forEach(({ keys, target, alias }) => {
-			for (const key of keys) {
-				if (!params.has(key)) {
-					continue;
-				}
-				const parsed = parseBooleanValue(params.get(key));
-				if (typeof parsed === 'boolean') {
-					assignWithAlias(target, alias, parsed);
-				}
-				return;
-			}
-		});
-
-		assignWithAlias('encoderMode', 'encmode', resolveEncoderModeOption(newArgs.encoderMode));
-		assignWithAlias('webrtcPreferredCodec', 'webrtcCodec', normalizeCodecPreference(newArgs.webrtcPreferredCodec));
-		const effectiveBitrate = Number(newArgs.webrtcMaxBitrate);
-		const sanitizedBitrate = Number.isFinite(effectiveBitrate) && effectiveBitrate > 0 ? Math.floor(effectiveBitrate) : 0;
-		assignWithAlias('webrtcMaxBitrate', 'webrtcBr', sanitizedBitrate);
-
-		console.log('Parsed deep link args:', newArgs);
-		return newArgs;
-	} catch (error) {
-		console.error('Error parsing deep link URL:', error);
-		return null;
-	}
+        console.log('Parsed deep link args:', newArgs);
+        return newArgs;
+    } catch (error) {
+        console.error('Error parsing deep link URL:', error);
+        return null;
+    }
 }
 
 function registerProtocolHandling() {
@@ -948,74 +279,20 @@ if (!(Argv.hwa)){
 	console.log("HWA DISABLED");
 }
 
-const enableFeatureSet = new Set(['WebAssemblySimd', 'PlatformHEVCEncoderSupport']);
-const disableFeatureSet = new Set();
-
 if (!(Argv.mf)){
-	enableFeatureSet.add('MediaFoundationVideoCapture');
+	app.commandLine.appendSwitch('enable-features', 'MediaFoundationVideoCapture');
 	//app.commandLine.appendSwitch('force-directshow')
 	//console.log("Media Foundations video cap ENABLED");
 	// --force-directshow
 }
 if (!(Argv.dmf)){
-	disableFeatureSet.add('MediaFoundationVideoCapture');
+	app.commandLine.appendSwitch('disable-features', 'MediaFoundationVideoCapture');
 	//app.commandLine.appendSwitch('force-directshow')
 	//console.log("Media Foundations video cap ENABLED");
 	// --force-directshow
 }
 
-if (process.platform === 'win32') {
-	const wgcValue = typeof Argv.usewgc !== 'undefined' ? Argv.usewgc : Argv.wgc;
-	const wgcOptionProvided = typeof wgcValue !== 'undefined';
-	const preferWgc = wgcValue === true;
-	const disableWgcViaCli = wgcOptionProvided && wgcValue === false;
-	let elevatedForCapture = false;
-	if (!disableWgcViaCli && !preferWgc) {
-		try {
-			elevatedForCapture = isProcessElevated();
-		} catch (error) {
-			console.warn('Unable to determine elevation state; assuming not elevated for WGC decisions.', error);
-		}
-	}
-	if (disableWgcViaCli || (!preferWgc && elevatedForCapture)) {
-		disableFeatureSet.add('WinUseBrowserMediaSource');
-		if (!disableWgcViaCli && elevatedForCapture) {
-			console.log('Windows Graphics Capture disabled automatically for elevated session. Launch with --usewgc to override.');
-		}
-	}
-}
-
-if (process.platform === 'win32' && Argv.d3d12Encoder === true) {
-    enableFeatureSet.add('D3D12VideoEncodeAccelerator');
-} else if (process.platform === 'win32') {
-    console.log('D3D12 video encode accelerator disabled (enable with --d3d12enc).');
-}
-
-if (process.platform === 'linux' && Argv.vaapiEncoder !== false) {
-	enableFeatureSet.add('VaapiVideoEncoder');
-}
-
-if (enableFeatureSet.size > 0) {
-	const featureList = Array.from(enableFeatureSet).join(',');
-	app.commandLine.appendSwitch('enable-features', featureList);
-	console.log('Enabling Chromium features:', featureList);
-}
-
-if (disableFeatureSet.size > 0) {
-	app.commandLine.appendSwitch('disable-features', Array.from(disableFeatureSet).join(','));
-	if (disableFeatureSet.has('WinUseBrowserMediaSource')) {
-		console.log('Windows Graphics Capture disabled (override with --wgc to re-enable).');
-	}
-}
-
-if (Argv.ignoreGpuBlocklist) {
-	app.commandLine.appendSwitch('ignore-gpu-blocklist');
-	console.log('Chromium GPU blocklist will be ignored for this session.');
-}
-if (Argv.webrtcH264KeyframeTrial) {
-	app.commandLine.appendSwitch('force-fieldtrials', 'WebRTC-H264-SpsPpsIdrIsH264Keyframe/Enabled/');
-	console.log('WebRTC H264 SPS/PPS keyframe field trial enabled.');
-}
+app.commandLine.appendSwitch('enable-features', 'WebAssemblySimd'); // Might not be needed in the future with Chromium; not supported on older Chromium. For faster greenscreen effects.
 app.commandLine.appendSwitch('webrtc-max-cpu-consumption-percentage', '100');
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
 app.commandLine.appendSwitch('max-web-media-player-count', '5000');
@@ -1191,217 +468,6 @@ ipcMain.handle('closeStream', async (event, streamId) => {
   return true;
 });
 
-function normalizeAudioCaptureTarget(rawTarget) {
-	if (rawTarget === null || rawTarget === undefined) {
-		return null;
-	}
-	if (typeof rawTarget === 'number') {
-		if (!Number.isFinite(rawTarget) || rawTarget <= 0) {
-			return null;
-		}
-		return {
-			requestTarget: rawTarget,
-			clientId: String(rawTarget)
-		};
-	}
-	if (typeof rawTarget === 'string') {
-		const trimmed = rawTarget.trim();
-		if (!trimmed.length) {
-			return null;
-		}
-		if (/^\d+$/.test(trimmed)) {
-			const numericValue = Number(trimmed);
-			if (!Number.isFinite(numericValue) || numericValue <= 0) {
-				return null;
-			}
-			return {
-				requestTarget: numericValue,
-				clientId: trimmed
-			};
-		}
-		return {
-			requestTarget: trimmed,
-			clientId: trimmed
-		};
-	}
-	return null;
-}
-
-async function stopActiveWindowAudioCapture(reason = 'unknown', expectedWebContentsId = null) {
-	if (!windowAudioCapture || typeof windowAudioCapture.stopStreamCapture !== 'function') {
-		activeWindowAudioSession = null;
-		return { success: false, error: 'window-audio-capture module unavailable' };
-	}
-	if (!activeWindowAudioSession) {
-		return { success: true };
-	}
-	if (expectedWebContentsId !== null && activeWindowAudioSession.webContentsId !== expectedWebContentsId) {
-		return { success: true };
-	}
-
-	const { webContents, destroyListener } = activeWindowAudioSession;
-
-	if (webContents && !webContents.isDestroyed() && typeof destroyListener === 'function') {
-		webContents.removeListener('destroyed', destroyListener);
-	}
-
-	activeWindowAudioSession = null;
-
-	try {
-		await windowAudioCapture.stopStreamCapture();
-		return { success: true };
-	} catch (error) {
-		console.warn('Error stopping window audio capture (' + reason + '):', error);
-		return { success: false, error: error.message || 'Failed to stop window audio capture' };
-	}
-}
-
-function forwardWindowAudioData(webContents, clientId, baseSampleRate, baseChannels, payload) {
-	if (!payload || !webContents || webContents.isDestroyed()) {
-		return;
-	}
-
-	const data = payload && payload.data ? payload.data : payload;
-	if (!data) {
-		return;
-	}
-
-	let samples = data.samples;
-
-	if (!(samples instanceof Float32Array)) {
-		if (Array.isArray(samples) || (samples && typeof samples.length === 'number')) {
-			try {
-				samples = Float32Array.from(samples);
-			} catch (err) {
-				console.warn('Failed to convert audio samples to Float32Array:', err);
-				samples = new Float32Array(0);
-			}
-		} else {
-			samples = new Float32Array(0);
-		}
-	}
-
-	const message = {
-		clientId,
-		data: {
-			samples,
-			sampleRate: data.sampleRate || baseSampleRate || 48000,
-			channels: data.channels || baseChannels || 2
-		}
-	};
-
-	try {
-		webContents.send(WINDOW_AUDIO_EVENT_CHANNEL, message);
-	} catch (error) {
-		console.warn('Failed to forward window audio data to renderer:', error);
-	}
-}
-
-ipcMain.handle('windowAudio:getTargets', async () => {
-	if (!windowAudioCapture) {
-		return { success: false, error: 'window-audio-capture module unavailable' };
-	}
-	try {
-		const windows = typeof windowAudioCapture.getWindowList === 'function' ? await windowAudioCapture.getWindowList() : [];
-		const sessions = typeof windowAudioCapture.getAudioSessions === 'function' ? await windowAudioCapture.getAudioSessions() : [];
-		return { success: true, windows, sessions };
-	} catch (error) {
-		console.error('Error retrieving window audio targets:', error);
-		return { success: false, error: error.message || 'Failed to retrieve audio targets' };
-	}
-});
-
-ipcMain.handle('windowAudio:getSessions', async () => {
-	if (!windowAudioCapture || typeof windowAudioCapture.getAudioSessions !== 'function') {
-		return { success: false, error: 'window-audio-capture module unavailable' };
-	}
-	try {
-		const sessions = await windowAudioCapture.getAudioSessions();
-		return { success: true, sessions };
-	} catch (error) {
-		console.error('Error retrieving window audio sessions:', error);
-		return { success: false, error: error.message || 'Failed to retrieve audio sessions' };
-	}
-});
-
-ipcMain.handle('windowAudio:startStreamCapture', async (event, rawTarget) => {
-	if (!windowAudioCapture || typeof windowAudioCapture.startStreamCapture !== 'function') {
-		return { success: false, error: 'window-audio-capture module unavailable' };
-	}
-
-	const normalized = normalizeAudioCaptureTarget(rawTarget);
-	if (!normalized) {
-		return { success: false, error: 'Invalid window audio capture target' };
-	}
-
-	const webContents = event.sender;
-
-	await stopActiveWindowAudioCapture('pre-start cleanup');
-
-	const baseSampleRateFallback = 48000;
-	const baseChannelFallback = 2;
-
-	const forwarder = (payload) => {
-		if (!activeWindowAudioSession || activeWindowAudioSession.webContentsId !== webContents.id) {
-			return;
-		}
-		const sampleRate = activeWindowAudioSession.sampleRate || baseSampleRateFallback;
-		const channels = activeWindowAudioSession.channels || baseChannelFallback;
-		forwardWindowAudioData(webContents, normalized.clientId, sampleRate, channels, payload);
-	};
-
-	let startResult;
-	try {
-		startResult = await windowAudioCapture.startStreamCapture(normalized.requestTarget, forwarder);
-	} catch (error) {
-		console.error('Error starting window audio capture:', error);
-		return { success: false, error: error.message || 'Failed to start window audio capture' };
-	}
-
-	if (!startResult || startResult.success === false) {
-		return { success: false, error: startResult && startResult.error ? startResult.error : 'Failed to start window audio capture' };
-	}
-
-	const destroyListener = () => {
-		stopActiveWindowAudioCapture('renderer destroyed', webContents.id).catch(err => {
-			console.warn('Error stopping window audio capture after renderer destroyed:', err);
-		});
-	};
-
-	if (!webContents.isDestroyed()) {
-		webContents.once('destroyed', destroyListener);
-	}
-
-	activeWindowAudioSession = {
-		webContents,
-		webContentsId: webContents.id,
-		clientId: normalized.clientId,
-		destroyListener,
-		sampleRate: startResult.sampleRate || baseSampleRateFallback,
-		channels: startResult.channels || baseChannelFallback
-	};
-
-	return {
-		success: true,
-		sampleRate: activeWindowAudioSession.sampleRate,
-		channels: activeWindowAudioSession.channels,
-		usingProcessSpecificLoopback: !!(startResult && startResult.usingProcessSpecificLoopback)
-	};
-});
-
-ipcMain.handle('windowAudio:stopStreamCapture', async (event) => {
-	if (!windowAudioCapture || typeof windowAudioCapture.stopStreamCapture !== 'function') {
-		return { success: false, error: 'window-audio-capture module unavailable' };
-	}
-
-	const result = await stopActiveWindowAudioCapture('renderer request', event && event.sender ? event.sender.id : null);
-	if (!result.success && result.error) {
-		return result;
-	}
-
-	return { success: true };
-});
-
 ipcMain.handle('prompt', async (event, arg) => {
   try {
     arg.val = arg.val || '';
@@ -1444,87 +510,6 @@ async function createWindow(args, reuse=false) {
   }
   
   var URL = args.url, NODE = args.node, WIDTH = args.width, HEIGHT = args.height, TITLE = args.title, PIN = args.pin, X = args.x, Y = args.y, FULLSCREEN = args.fullscreen, UNCLICKABLE = args.uc, MINIMIZED = args.min, CSS = args.css, BGCOLOR = args.chroma, JS = args.js;
-
-
-  let nodeExplicitFlag = args.__nodeExplicit === true;
-
-  const assignNodeIntegration = (value, markExplicit = true) => {
-    if (typeof value !== 'boolean') {
-      return;
-    }
-    NODE = value;
-    args.node = value;
-    args.n = value;
-    if (markExplicit) {
-      nodeExplicitFlag = true;
-    }
-  };
-
-  if (typeof NODE !== 'boolean') {
-    assignNodeIntegration(false, false);
-  }
-
-  if (typeof URL === 'string') {
-    URL = formatURL(URL.trim());
-  } else if (URL != null) {
-    try {
-      URL = formatURL(String(URL));
-    } catch (conversionError) {
-      console.warn('Unable to normalize URL value from args:', conversionError);
-    }
-  }
-
-  args.url = URL;
-
-
-  if (!nodeExplicitFlag && typeof URL === 'string') {
-    let preferenceResolved = false;
-    try {
-      const parsedUrl = new URL(URL);
-      const nodeParamKeys = ['node', 'nodeintegration', 'nodeIntegration', 'enableNode'];
-      for (const key of nodeParamKeys) {
-        if (!parsedUrl.searchParams.has(key)) {
-          continue;
-        }
-        const rawValue = parsedUrl.searchParams.get(key);
-        if (rawValue === null || rawValue === '') {
-          assignNodeIntegration(true);
-          preferenceResolved = true;
-        } else {
-          const normalized = rawValue.trim().toLowerCase();
-          if (/^(disable|disabled|off|no|false|0)$/i.test(normalized)) {
-            assignNodeIntegration(false);
-            preferenceResolved = true;
-          } else if (/^(enable|enabled|on|yes|true|1)$/i.test(normalized)) {
-            assignNodeIntegration(true);
-            preferenceResolved = true;
-          } else if (/^(auto)$/i.test(normalized)) {
-            // leave for heuristic fallback
-          } else {
-            assignNodeIntegration(true);
-            preferenceResolved = true;
-          }
-        }
-        break;
-      }
-    } catch (error) {
-      // ignore malformed URLs
-    }
-
-    if (!preferenceResolved) {
-      const loweredUrl = URL.toLowerCase();
-      if (loweredUrl.includes('screenshare') || loweredUrl.includes('appaudio')) {
-        assignNodeIntegration(true);
-        preferenceResolved = true;
-      }
-    }
-
-    if (preferenceResolved) {
-      nodeExplicitFlag = true;
-    }
-  }
-
-  args.__nodeExplicit = nodeExplicitFlag;
 
   let factor = screen.getPrimaryDisplay().scaleFactor;
   
@@ -1632,7 +617,6 @@ async function createWindow(args, reuse=false) {
 		//focusable: false,
 		width: targetWidth,
 		height: targetHeight,
-		resizable: true,
 		frame: false,
 		backgroundColor: '#0000',
 		fullscreenable: true,
@@ -1651,6 +635,8 @@ async function createWindow(args, reuse=false) {
 		},
 		title: currentTitle
 	});
+	
+	
 	
 	mainWindow.webContents.session.webRequest.onHeadersReceived({ urls: [ "*://*/*" ] },
 		(d, c)=>{
@@ -2169,7 +1155,7 @@ contextMenu({
 			}
 		},
 		{
-			label: '✖️ Open New Window',
+			label: '✖ Open New Window',
 			// Only show it when right-clicking text
 			visible: true,
 			click: () => {
@@ -2180,7 +1166,7 @@ contextMenu({
 			}
 		},
 		{
-			label: '⚠️ Elevate Privilege',
+			label: '⚠ Elevate Privilege',
 			// Only show it when right-clicking text
 
 			visible: !browserWindow.node,
@@ -2499,7 +1485,7 @@ contextMenu({
 			}
 		},
 		{
-			label: '✏️ Edit URL', 
+			label: '✏ Edit URL', 
 			// Only show it when right-clicking text
 			visible: true,
 			click: () => {
@@ -2569,7 +1555,7 @@ contextMenu({
 			visible: params.frameURL,
 			type: 'submenu',
 			submenu: [{
-				label: '✏️ Edit IFrame URL',
+				label: '✏ Edit IFrame URL',
 				// Only show it when right-clicking text
 				visible: true,
 				click: () => {
@@ -2741,7 +1727,7 @@ contextMenu({
 		  }
 		},
 		{
-			label: '✏️ Edit Window Title',
+			label: '✏ Edit Window Title',
 			// Only show it when right-clicking text
 			visible: true,
 			click: () => {
@@ -2779,7 +1765,7 @@ contextMenu({
 			}
 		},
 		{
-			label: '↔️ Resize window',
+			label: '↔ Resize window',
 			// Only show it when right-clicking text
 			visible: true,
 			type: 'submenu',
@@ -3017,7 +2003,7 @@ contextMenu({
 			}
 		},
 		{
-			label: '🚫🖱️ Make UnClickable until in-focus or CTRL+SHIFT+ALT+X',
+			label: '🚫🖱 ️Make UnClickable until in-focus or CTRL+SHIFT+ALT+X',
 			visible: true, // Only show it when pinned
 			click: () => {
 				if (browserWindow){
@@ -3215,13 +2201,10 @@ app.whenReady().then(function(){
         }
     });
 
-	// Register protocol handler first
-	registerProtocolHandling();
-	
+    // Register protocol handler first
+    registerProtocolHandling();
+    
 	createWindow(Argv);
-	if (Argv.gpuinfo) {
-		openGpuDiagnosticsWindow();
-	}
     
     // Handle Windows-specific startup
     if (process.platform === 'win32') {
