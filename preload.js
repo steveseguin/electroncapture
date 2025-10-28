@@ -139,7 +139,6 @@ function exposeEncoderControls() {
 }
 
 exposeEncoderControls();
-
 function sanitizeAppAudioTarget(value) {
   if (value === null || value === undefined) {
     return null;
@@ -710,8 +709,3 @@ function requestOutputAudioStream() {
 		});
 	});
 }
-
-
-
-
-

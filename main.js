@@ -10,7 +10,6 @@ const contextMenu = require('electron-context-menu');
 const Yargs = require('yargs')
 const isDev = require('electron-is-dev');
 
-
 ipcMain.on('getSources', async function(eventRet, args) {
 	try{
 		const sources = await desktopCapturer.getSources({ types: args.types });
@@ -1633,6 +1632,7 @@ async function createWindow(args, reuse=false) {
 		//focusable: false,
 		width: targetWidth,
 		height: targetHeight,
+		resizable: true,
 		frame: false,
 		backgroundColor: '#0000',
 		fullscreenable: true,
@@ -1651,8 +1651,6 @@ async function createWindow(args, reuse=false) {
 		},
 		title: currentTitle
 	});
-	
-	
 	
 	mainWindow.webContents.session.webRequest.onHeadersReceived({ urls: [ "*://*/*" ] },
 		(d, c)=>{
@@ -3319,16 +3317,3 @@ electron.powerMonitor.on('on-battery', () => {
 		});
 	notification.show();
 })
-
-
-
-
-
-
-
-
-
-
-
-
-

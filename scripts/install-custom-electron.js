@@ -1,20 +1,22 @@
 #!/usr/bin/env node
 
+const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { pipeline } = require('stream/promises');
 const { Readable } = require('stream');
 
-const CUSTOM_RELEASE_TAG = 'v40.0.0-qp20';
-const CUSTOM_VERSION = '40.0.0-qp20';
+const CUSTOM_RELEASE_TAG = 'v36.9.5-qp20';
+const CUSTOM_VERSION = '36.9.5-qp20';
 const MIRROR_BASE = 'https://github.com/steveseguin/electron/releases/download/';
+const CHECKSUM_MANIFEST = 'SHASUMS256.txt';
 const ARTIFACTS = new Map([
   ['win32', new Map([
-    ['x64', 'electron-v40.0.0-qp20-win32-x64.zip']
+    ['x64', 'electron-v36.9.5-qp20-win32-x64.zip']
   ])],
   ['linux', new Map([
-    ['x64', 'electron-v40.0.0-qp20-linux-x64.zip']
+    ['x64', 'electron-v36.9.5-qp20-linux-x64.zip']
   ])]
 ]);
 
@@ -57,25 +59,65 @@ async function main () {
   await fs.promises.mkdir(distDir, { recursive: true });
 
   const filename = ARTIFACTS.get(platform).get(arch);
-  const downloadUrl = `${MIRROR_BASE}${CUSTOM_RELEASE_TAG}/${filename}`;
-  const tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'electron-custom-'));
-  const zipPath = path.join(tmpDir, filename);
+  const localArtifact = resolveLocalArtifact(filename);
+  let cleanup = async () => {};
+  let zipPath;
+  let expectedChecksum;
 
-  console.log(`[custom-electron] Downloading ${downloadUrl}`);
-  const response = await fetch(downloadUrl, {
-    redirect: 'follow',
-    headers: { 'User-Agent': 'electroncapture-custom-installer' }
-  });
+  if (localArtifact) {
+    zipPath = localArtifact.zipPath;
+    console.log(`[custom-electron] Using local artifact ${zipPath}`);
+    if (localArtifact.manifestPath) {
+      const checksums = await loadChecksumFile(localArtifact.manifestPath);
+      expectedChecksum = checksums.get(filename);
+    }
+    if (!expectedChecksum) {
+      console.log('[custom-electron] No checksum entry found locally; will verify via computed hash only.');
+    }
+  } else {
+    const downloadUrl = `${MIRROR_BASE}${CUSTOM_RELEASE_TAG}/${filename}`;
+    const tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'electron-custom-'));
+    cleanup = async () => {
+      await fs.promises.rm(tmpDir, { recursive: true, force: true });
+    };
+    zipPath = path.join(tmpDir, filename);
+    try {
+      const checksums = await loadChecksums();
+      expectedChecksum = checksums.get(filename);
 
-  if (!response.ok || !response.body) {
-    throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+      if (!expectedChecksum) {
+        throw new Error(`No checksum entry found for ${filename} in ${CHECKSUM_MANIFEST}`);
+      }
+
+      console.log(`[custom-electron] Downloading ${downloadUrl}`);
+      const response = await fetch(downloadUrl, {
+        redirect: 'follow',
+        headers: { 'User-Agent': 'electroncapture-custom-installer' }
+      });
+
+      if (!response.ok || !response.body) {
+        throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+      }
+
+      const nodeStream = Readable.fromWeb(response.body);
+      await pipeline(nodeStream, fs.createWriteStream(zipPath));
+    } catch (err) {
+      await cleanup();
+      throw err;
+    }
   }
 
-  const nodeStream = Readable.fromWeb(response.body);
-  await pipeline(nodeStream, fs.createWriteStream(zipPath));
+  try {
+    const actualChecksum = await sha256File(zipPath);
+    if (expectedChecksum && actualChecksum !== expectedChecksum) {
+      throw new Error(`Checksum mismatch for ${filename}: expected ${expectedChecksum} but got ${actualChecksum}`);
+    }
 
-  const extractZip = require(require.resolve('extract-zip', { paths: [electronDir] }));
-  await extractZip(zipPath, { dir: distDir });
+    const extractZip = require(require.resolve('extract-zip', { paths: [electronDir] }));
+    await extractZip(zipPath, { dir: distDir });
+  } finally {
+    await cleanup();
+  }
 
   await relocateTypeDefinitions(distDir, electronDir);
 
@@ -118,6 +160,64 @@ function resolveFromCwd (id) {
   }
 }
 
+const checksumCache = { manifest: null, entries: null };
+
+async function loadChecksums () {
+  if (checksumCache.entries) {
+    return checksumCache.entries;
+  }
+
+  const manifestUrl = `${MIRROR_BASE}${CUSTOM_RELEASE_TAG}/${CHECKSUM_MANIFEST}`;
+  console.log(`[custom-electron] Fetching checksum manifest ${manifestUrl}`);
+  const response = await fetch(manifestUrl, {
+    redirect: 'follow',
+    headers: { 'User-Agent': 'electroncapture-custom-installer' }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to download checksum manifest: ${response.status} ${response.statusText}`);
+  }
+
+  const text = await response.text();
+  const entries = parseChecksumManifest(text);
+  checksumCache.manifest = text;
+  checksumCache.entries = entries;
+  return entries;
+}
+
+function parseChecksumManifest (text) {
+  const entries = new Map();
+  const lines = text.split(/\r?\n/);
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) {
+      continue;
+    }
+
+    const match = line.match(/^([a-fA-F0-9]{64}) \*(.+)$/);
+    if (match) {
+      const [, hash, file] = match;
+      entries.set(file, hash.toLowerCase());
+    }
+  }
+
+  if (entries.size === 0) {
+    throw new Error('Checksum manifest parsed but no entries were found.');
+  }
+
+  return entries;
+}
+
+async function sha256File (filePath) {
+  return new Promise((resolve, reject) => {
+    const hash = crypto.createHash('sha256');
+    const stream = fs.createReadStream(filePath);
+    stream.on('data', chunk => hash.update(chunk));
+    stream.on('error', reject);
+    stream.on('end', () => resolve(hash.digest('hex')));
+  });
+}
+
 function getPlatformPath (platform) {
   switch (platform) {
     case 'darwin':
@@ -131,4 +231,32 @@ function getPlatformPath (platform) {
     default:
       throw new Error(`Unsupported platform ${platform}`);
   }
+}
+
+function resolveLocalArtifact (filename) {
+  for (const dir of getLocalDirCandidates()) {
+    const candidate = path.join(dir, filename);
+    if (fs.existsSync(candidate)) {
+      const manifestPath = path.join(dir, CHECKSUM_MANIFEST);
+      return {
+        zipPath: candidate,
+        manifestPath: fs.existsSync(manifestPath) ? manifestPath : null
+      };
+    }
+  }
+  return null;
+}
+
+function getLocalDirCandidates () {
+  const dirs = new Set();
+  if (process.env.CUSTOM_ELECTRON_LOCAL_DIR) {
+    dirs.add(process.env.CUSTOM_ELECTRON_LOCAL_DIR);
+  }
+  dirs.add(path.join(os.homedir(), 'electron-work-v36', 'src', 'out', 'Release'));
+  return Array.from(dirs);
+}
+
+async function loadChecksumFile (manifestPath) {
+  const contents = await fs.promises.readFile(manifestPath, 'utf8');
+  return parseChecksumManifest(contents);
 }
