@@ -1,0 +1,3 @@
+[submodule "window-audio-capture"]
+	path = native-modules/window-audio-capture
+url = git@github.com:steveseguin/window-audio-capture-plugin.git
