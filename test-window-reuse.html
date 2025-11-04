@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>ElectronCapture Window Reuse Tester</title>
+	<style>
+		body {
+			font-family: Arial, sans-serif;
+			margin: 2rem auto;
+			max-width: 720px;
+			line-height: 1.5;
+		}
+		label {
+			display: block;
+			margin-top: 1rem;
+			font-weight: bold;
+		}
+		input[type="text"],
+		input[type="number"] {
+			width: 100%;
+			padding: 0.4rem;
+			box-sizing: border-box;
+			margin-top: 0.25rem;
+		}
+		.controls {
+			display: flex;
+			gap: 1rem;
+			flex-wrap: wrap;
+			margin-top: 1rem;
+		}
+		.controls label {
+			flex: 1 1 150px;
+		}
+		.preview {
+			background: #f4f4f4;
+			padding: 0.75rem;
+			margin-top: 1rem;
+			font-family: monospace;
+			word-break: break-all;
+		}
+		button {
+			margin-top: 1rem;
+			padding: 0.6rem 1rem;
+			font-size: 1rem;
+			cursor: pointer;
+		}
+		.notice {
+			background: #fff8e6;
+			border-left: 4px solid #ff9f1c;
+			padding: 0.75rem;
+			margin-bottom: 1.5rem;
+		}
+	</style>
+</head>
+<body>
+	<h1>ElectronCapture Window Reuse Tester</h1>
+	<p class="notice">
+		This page builds <code>electroncapture://</code> links that include the new <code>windowName</code> parameter.
+		Open a link once, tweak the settings, then open it again to confirm ElectronCapture reuses the same window
+		instead of spawning a new one. (Works only on systems where the custom protocol is registered.)
+	</p>
+
+	<label>
+		Base URL to load inside ElectronCapture
+		<input type="text" id="targetUrl" value="https://vdo.ninja/?view=mydemo123">
+	</label>
+
+	<div class="controls">
+		<label>
+			Window Name (required for reuse)
+			<input type="text" id="windowName" value="MyTestWindow">
+		</label>
+		<label>
+			Width (px)
+			<input type="number" id="width" min="200" value="1280">
+		</label>
+		<label>
+			Height (px)
+			<input type="number" id="height" min="200" value="720">
+		</label>
+	</div>
+
+	<div class="controls">
+		<label>
+			X Position
+			<input type="number" id="posX" placeholder="leave blank">
+		</label>
+		<label>
+			Y Position
+			<input type="number" id="posY" placeholder="leave blank">
+		</label>
+	</div>
+
+	<div class="controls">
+		<label>
+			<input type="checkbox" id="pinWindow">
+			Pin (always on top)
+		</label>
+		<label>
+			<input type="checkbox" id="startMinimized">
+			Start minimized
+		</label>
+	</div>
+
+	<div class="preview" id="previewLink"></div>
+
+	<button id="launchBtn">Launch electroncapture:// link</button>
+	<button id="copyBtn">Copy link to clipboard</button>
+
+	<script>
+		const previewEl = document.getElementById('previewLink');
+		const inputs = ['targetUrl', 'windowName', 'width', 'height', 'posX', 'posY', 'pinWindow', 'startMinimized'];
+
+		function buildLink() {
+			const url = new URL(document.getElementById('targetUrl').value);
+			const params = url.searchParams;
+			params.set('windowName', document.getElementById('windowName').value.trim());
+			const width = document.getElementById('width').value;
+			const height = document.getElementById('height').value;
+			if (width) params.set('w', width);
+			if (height) params.set('h', height);
+			const posX = document.getElementById('posX').value;
+			const posY = document.getElementById('posY').value;
+			if (posX) params.set('x', posX);
+			if (posY) params.set('y', posY);
+			if (document.getElementById('pinWindow').checked) {
+				params.set('pin', '1');
+			} else {
+				params.delete('pin');
+			}
+			if (document.getElementById('startMinimized').checked) {
+				params.set('min', '1');
+			} else {
+				params.delete('min');
+			}
+			const electronUrl = 'electroncapture://' + url.toString().replace(/^https?:\/\//i, '');
+			return electronUrl;
+		}
+
+		function updatePreview() {
+			const link = buildLink();
+			previewEl.textContent = link;
+		}
+
+		function launchLink() {
+			const link = buildLink();
+			window.location.href = link;
+		}
+
+		async function copyLink() {
+			const link = buildLink();
+			try {
+				await navigator.clipboard.writeText(link);
+				alert('Link copied to clipboard!');
+			} catch (err) {
+				alert('Unable to copy link: ' + err.message);
+			}
+		}
+
+		inputs.forEach(id => {
+			const el = document.getElementById(id);
+			const eventName = el.type === 'checkbox' ? 'change' : 'input';
+			el.addEventListener(eventName, updatePreview);
+		});
+
+		document.getElementById('launchBtn').addEventListener('click', launchLink);
+		document.getElementById('copyBtn').addEventListener('click', copyLink);
+
+		updatePreview();
+	</script>
+</body>
+</html>
