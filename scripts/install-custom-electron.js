@@ -48,8 +48,8 @@ async function main () {
     return;
   }
 
-  const platform = process.platform;
-  const arch = process.arch;
+  const platform = process.env.npm_config_platform || process.platform;
+  const arch = process.env.npm_config_arch || process.arch;
   const target = PLATFORM_TARGETS.get(platform);
 
   if (!target) {
@@ -57,6 +57,7 @@ async function main () {
     return;
   }
 
+  const customVersion = target.version;
   const filename = target.artifacts.get(arch);
   if (!filename) {
     console.log(`[custom-electron] No custom build configured for ${platform}/${arch}; skipping.`);
@@ -72,10 +73,10 @@ async function main () {
   const electronDir = path.dirname(electronPkgPath);
   const distDir = path.join(electronDir, 'dist');
   const markerPath = path.join(distDir, '.custom-version');
-  const markerValue = `${CUSTOM_VERSION}:${platform}:${arch}`;
+  const markerValue = `${customVersion}:${platform}:${arch}`;
 
   if (await isCustomVersionPresent(markerPath, markerValue)) {
-    console.log(`[custom-electron] ${CUSTOM_VERSION} already installed for ${platform}/${arch}; skipping download.`);
+    console.log(`[custom-electron] ${customVersion} already installed for ${platform}/${arch}; skipping download.`);
     return;
   }
 
@@ -144,7 +145,7 @@ async function main () {
 
   await relocateTypeDefinitions(distDir, electronDir);
 
-  await fs.promises.writeFile(path.join(distDir, 'version'), `${CUSTOM_VERSION}`);
+  await fs.promises.writeFile(path.join(distDir, 'version'), `${customVersion}`);
   await fs.promises.writeFile(markerPath, `${markerValue}\n`);
   await fs.promises.writeFile(path.join(electronDir, 'path.txt'), getPlatformPath(platform));
 

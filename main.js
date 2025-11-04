@@ -117,6 +117,174 @@ function getScaleFactorForWindow(targetWindow) {
 	}
 }
 
+function getPrimaryDisplaySafe() {
+	try {
+		return screen.getPrimaryDisplay();
+	} catch (error) {
+		return null;
+	}
+}
+
+function getAllDisplaysSorted() {
+	const displays = screen.getAllDisplays();
+	if (!Array.isArray(displays)) {
+		return [];
+	}
+	return [...displays].sort((a, b) => a.id - b.id);
+}
+
+function getPhysicalBoundsForDisplay(display) {
+	if (!display || !display.bounds) {
+		return null;
+	}
+	const scaleFactor = display.scaleFactor || 1;
+	return {
+		x: Math.round(display.bounds.x * scaleFactor),
+		y: Math.round(display.bounds.y * scaleFactor),
+		width: Math.round(display.bounds.width * scaleFactor),
+		height: Math.round(display.bounds.height * scaleFactor)
+	};
+}
+
+function findDisplayByPhysicalPoint(point) {
+	if (!point) {
+		return null;
+	}
+	const displays = getAllDisplaysSorted();
+	for (const display of displays) {
+		const bounds = getPhysicalBoundsForDisplay(display);
+		if (!bounds) {
+			continue;
+		}
+		if (
+			point.x >= bounds.x &&
+			point.x < bounds.x + bounds.width &&
+			point.y >= bounds.y &&
+			point.y < bounds.y + bounds.height
+		) {
+			return display;
+		}
+	}
+	return null;
+}
+
+function resolveDisplayForArgs(args) {
+	const displays = getAllDisplaysSorted();
+	if (!displays.length) {
+		return getPrimaryDisplaySafe();
+	}
+
+	if (typeof args.monitor === 'number' && !Number.isNaN(args.monitor) && args.monitor >= 0) {
+		const index = Math.min(displays.length - 1, Math.floor(args.monitor));
+		return displays[index];
+	}
+
+	const hasExplicitX = typeof args.x === 'number' && args.x !== -1;
+	const hasExplicitY = typeof args.y === 'number' && args.y !== -1;
+	if (hasExplicitX || hasExplicitY) {
+		try {
+			const physicalPoint = {
+				x: hasExplicitX ? args.x : 0,
+				y: hasExplicitY ? args.y : 0
+			};
+			const display = findDisplayByPhysicalPoint(physicalPoint);
+			if (display) {
+				return display;
+			}
+			const primaryScale = getPrimaryDisplaySafe()?.scaleFactor || 1;
+			const dipPoint = {
+				x: Math.round(physicalPoint.x / primaryScale),
+				y: Math.round(physicalPoint.y / primaryScale)
+			};
+			const fallbackDisplay = screen.getDisplayNearestPoint(dipPoint);
+			if (fallbackDisplay) {
+				return fallbackDisplay;
+			}
+		} catch (error) {
+			console.warn('Failed to resolve display from coordinates, falling back to primary:', error);
+		}
+	}
+
+	return displays.find((display) => display.id === getPrimaryDisplaySafe()?.id) || displays[0];
+}
+
+function clampPhysicalSizeToDisplay(display, requestedWidth, requestedHeight) {
+	const safeDisplay = display || getPrimaryDisplaySafe();
+	const scaleFactor = (safeDisplay && safeDisplay.scaleFactor) || 1;
+	const workArea = (safeDisplay && safeDisplay.workAreaSize) || (safeDisplay && safeDisplay.size);
+	if (!workArea) {
+		return {
+			width: requestedWidth,
+			height: requestedHeight
+		};
+	}
+
+	const maxPhysicalWidth = Math.max(1, Math.round(workArea.width * scaleFactor));
+	const maxPhysicalHeight = Math.max(1, Math.round(workArea.height * scaleFactor));
+	let width = requestedWidth;
+	let height = requestedHeight;
+
+	if (typeof width === 'number' && typeof height === 'number') {
+		if (width > maxPhysicalWidth) {
+			height = Math.round(height * maxPhysicalWidth / width);
+			width = maxPhysicalWidth;
+		}
+		if (height > maxPhysicalHeight) {
+			width = Math.round(width * maxPhysicalHeight / height);
+			height = maxPhysicalHeight;
+		}
+	} else if (typeof width === 'number' && width > maxPhysicalWidth) {
+		width = maxPhysicalWidth;
+	} else if (typeof height === 'number' && height > maxPhysicalHeight) {
+		height = maxPhysicalHeight;
+	}
+
+	return { width, height };
+}
+
+function applyRequestedWindowSize(windowInstance, options = {}) {
+	if (!windowInstance || windowInstance.isDestroyed()) {
+		return;
+	}
+	const clampToWorkArea = !!options.clampToWorkArea;
+	if (windowInstance.isDestroyed()) {
+		return;
+	}
+	if (windowInstance.isFullScreen()) {
+		return;
+	}
+	const requestedWidth = typeof windowInstance.args?.width === 'number' ? windowInstance.args.width : null;
+	const requestedHeight = typeof windowInstance.args?.height === 'number' ? windowInstance.args.height : null;
+	if (requestedWidth === null && requestedHeight === null) {
+		return;
+	}
+
+	let display;
+	try {
+		display = screen.getDisplayMatching(windowInstance.getBounds());
+	} catch (error) {
+		display = getPrimaryDisplaySafe();
+	}
+	const scaleFactor = (display && display.scaleFactor) || 1;
+	const currentSize = windowInstance.getSize();
+	let targetPhysicalWidth = requestedWidth !== null ? requestedWidth : currentSize[0] * scaleFactor;
+	let targetPhysicalHeight = requestedHeight !== null ? requestedHeight : currentSize[1] * scaleFactor;
+
+	if (clampToWorkArea) {
+		const clamped = clampPhysicalSizeToDisplay(display, targetPhysicalWidth, targetPhysicalHeight);
+		targetPhysicalWidth = requestedWidth !== null ? clamped.width : targetPhysicalWidth;
+		targetPhysicalHeight = requestedHeight !== null ? clamped.height : targetPhysicalHeight;
+	}
+
+	const nextWidth = requestedWidth !== null ? Math.max(1, Math.round(targetPhysicalWidth / scaleFactor)) : currentSize[0];
+	const nextHeight = requestedHeight !== null ? Math.max(1, Math.round(targetPhysicalHeight / scaleFactor)) : currentSize[1];
+
+	if (nextWidth !== currentSize[0] || nextHeight !== currentSize[1]) {
+		windowInstance.setSize(nextWidth, nextHeight);
+	}
+	windowInstance.__lastDisplayId = display ? display.id : windowInstance.__lastDisplayId;
+}
+
 function applyArgsToExistingWindow(windowInstance, args) {
 	if (!windowInstance || windowInstance.isDestroyed()) {
 		return false;
@@ -343,6 +511,12 @@ function createYargs(){
   .option("fullscreen", {
     alias: "f",
     describe: "Enables full-screen mode for the first window on its load.",
+    type: "boolean",
+    default: false
+  })
+  .option("multiinstance", {
+    alias: ["standalone"],
+    describe: "Opt-out of the single-instance lock so this run stays isolated from other launches.",
     type: "boolean",
     default: false
   })
@@ -810,6 +984,8 @@ delete Argv.respectGpuBlocklist;
 delete Argv.respectgpub;
 delete Argv.ignoregpub;
 
+const allowMultipleInstances = Argv.multiinstance === true || Argv.standalone === true;
+
 const hardwareEncodingState = {
 	encoderModeOverride: null
 };
@@ -888,9 +1064,11 @@ if (Argv.help) {
   process.exit(0); // Exit the script after showing help.
 }
 
-if (!app.requestSingleInstanceLock(Argv)) {
-	console.log("requestSingleInstanceLock");
-	return;
+if (!allowMultipleInstances) {
+	if (!app.requestSingleInstanceLock(Argv)) {
+		console.log("requestSingleInstanceLock");
+		return;
+	}
 }
 
 
@@ -1724,7 +1902,8 @@ async function createWindow(args, reuse=false) {
 		delete args.windowName;
 	}
 
-  let factor = screen.getPrimaryDisplay().scaleFactor;
+	const initialDisplay = resolveDisplayForArgs(args) || getPrimaryDisplaySafe();
+	let factor = (initialDisplay && initialDisplay.scaleFactor) || (getPrimaryDisplaySafe()?.scaleFactor) || 1;
   
   console.log(args);
   
@@ -1807,10 +1986,10 @@ async function createWindow(args, reuse=false) {
     currentTitle = TITLE.toString() + " " +(counter.toString());
   }
   
-  var ttt = screen.getPrimaryDisplay().workAreaSize;
+	var ttt = (initialDisplay && initialDisplay.workAreaSize) || (getPrimaryDisplaySafe()?.workAreaSize) || screen.getPrimaryDisplay().workAreaSize;
   
-  var targetWidth = WIDTH / factor;
-  var targetHeight = HEIGHT / factor;
+	var targetWidth = WIDTH / factor;
+	var targetHeight = HEIGHT / factor;
   
   var tainted = false;
   if (targetWidth > ttt.width){
@@ -1850,6 +2029,7 @@ async function createWindow(args, reuse=false) {
 		title: currentTitle
 	});
 	mainWindow.__immutableWebPreferences = desiredImmutableWebPreferences;
+	mainWindow.__lastDisplayId = initialDisplay ? initialDisplay.id : null;
 	
 	mainWindow.webContents.session.webRequest.onHeadersReceived({ urls: [ "*://*/*" ] },
 		(d, c)=>{
@@ -2090,7 +2270,6 @@ async function createWindow(args, reuse=false) {
 	mainWindow.webContents.on('did-finish-load', function(e){
 		console.log("did-finish-load");
 		if (tainted){
-			mainWindow.setSize(parseInt(WIDTH/factor), parseInt(HEIGHT/factor)); // allows for larger than display resolution.
 			tainted=false;
 		}
 		if (mainWindow && mainWindow.webContents.getURL().includes('youtube.com')){

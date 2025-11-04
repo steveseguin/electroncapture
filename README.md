@@ -118,6 +118,8 @@ start elecap.exe -w 640 -h 360 -x 640 -y 360 -u="https://vdo.ninja/?scene&fakegu
 - Please also note,the use ot timeout /T 1, as adding a delay between loading apps allows them to load correctly
 - x and y position is available in v1.5.2 and up; x or y values must be greater than 0.
 
+If you want each launch to operate as a completely separate process (instead of reusing the existing instance's windows), start it with the `--multiinstance` flag (alias: `--standalone`).
+
 <img src="https://user-images.githubusercontent.com/2575698/80891745-290d3000-8c94-11ea-85c4-ae0e7cd1ec19.png " alt="" data-canonical-src="https://user-images.githubusercontent.com/2575698/80891745-290d3000-8c94-11ea-85c4-ae0e7cd1ec19.png " style="display:inline-block" height="300" />
 
 If you right-click the application, you'll get a context menu with additional options. Changing resolutions dynamically is an option, for example.
