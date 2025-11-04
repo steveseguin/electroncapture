@@ -29,6 +29,172 @@ const WINDOW_AUDIO_EVENT_CHANNEL = 'windowAudioStreamData';
 let activeWindowAudioSession = null;
 let cachedElevationState;
 
+const namedWindowRegistry = new Map();
+
+function normalizeWindowName(value) {
+	if (typeof value !== 'string') {
+		return null;
+	}
+	const trimmed = value.trim();
+	return trimmed.length ? trimmed : null;
+}
+
+function getWindowRegistryKey(name) {
+	const normalized = normalizeWindowName(name);
+	return normalized ? normalized.toLowerCase() : null;
+}
+
+function getNamedWindowInstance(name) {
+	const key = getWindowRegistryKey(name);
+	if (!key) {
+		return null;
+	}
+	const instance = namedWindowRegistry.get(key);
+	if (instance && !instance.isDestroyed()) {
+		return instance;
+	}
+	if (namedWindowRegistry.has(key)) {
+		namedWindowRegistry.delete(key);
+	}
+	return null;
+}
+
+function registerNamedWindowInstance(windowInstance, name) {
+	const key = getWindowRegistryKey(name);
+	if (!key || !windowInstance) {
+		return;
+	}
+	namedWindowRegistry.set(key, windowInstance);
+	windowInstance.__namedWindowKey = key;
+	windowInstance.once('closed', () => {
+		if (namedWindowRegistry.get(key) === windowInstance) {
+			namedWindowRegistry.delete(key);
+		}
+	});
+}
+
+function getImmutablePreferencesForWindow(windowInstance) {
+	if (!windowInstance || typeof windowInstance !== 'object') {
+		return null;
+	}
+	if (windowInstance.__immutableWebPreferences && typeof windowInstance.__immutableWebPreferences === 'object') {
+		return windowInstance.__immutableWebPreferences;
+	}
+	if (typeof windowInstance.node === 'boolean') {
+		const nodeEnabled = !!windowInstance.node;
+		return {
+			nodeIntegration: nodeEnabled,
+			nodeIntegrationInSubFrames: nodeEnabled,
+			contextIsolation: !nodeEnabled
+		};
+	}
+	return null;
+}
+
+function immutablePreferencesMatch(existingWindow, requestedPreferences) {
+	if (!requestedPreferences || typeof requestedPreferences !== 'object') {
+		return true;
+	}
+	const existingPreferences = getImmutablePreferencesForWindow(existingWindow);
+	if (!existingPreferences) {
+		return false;
+	}
+	return Object.keys(requestedPreferences).every((key) => existingPreferences[key] === requestedPreferences[key]);
+}
+
+function getScaleFactorForWindow(targetWindow) {
+	try {
+		const bounds = targetWindow.getBounds();
+		const display = screen.getDisplayMatching(bounds);
+		return (display && display.scaleFactor) || screen.getPrimaryDisplay().scaleFactor || 1;
+	} catch (error) {
+		console.warn('Failed to determine window scale factor, defaulting to 1:', error);
+		try {
+			return screen.getPrimaryDisplay().scaleFactor || 1;
+		} catch (displayError) {
+			return 1;
+		}
+	}
+}
+
+function applyArgsToExistingWindow(windowInstance, args) {
+	if (!windowInstance || windowInstance.isDestroyed()) {
+		return false;
+	}
+
+	const mergedArgs = {
+		...(windowInstance.args || {}),
+		...args
+	};
+	windowInstance.args = mergedArgs;
+
+	const factor = getScaleFactorForWindow(windowInstance);
+
+	try {
+		if (typeof mergedArgs.url === 'string' && mergedArgs.url.length) {
+			const currentUrl = windowInstance.webContents.getURL();
+			if (currentUrl !== mergedArgs.url) {
+				windowInstance.webContents.loadURL(mergedArgs.url);
+			}
+		}
+
+		if (typeof mergedArgs.width === 'number' || typeof mergedArgs.height === 'number') {
+			const currentSize = windowInstance.getSize();
+			const nextWidth = typeof mergedArgs.width === 'number' ? parseInt(mergedArgs.width / factor) : currentSize[0];
+			const nextHeight = typeof mergedArgs.height === 'number' ? parseInt(mergedArgs.height / factor) : currentSize[1];
+			windowInstance.setSize(nextWidth, nextHeight);
+		}
+
+		const hasExplicitX = typeof mergedArgs.x === 'number' && mergedArgs.x !== -1;
+		const hasExplicitY = typeof mergedArgs.y === 'number' && mergedArgs.y !== -1;
+		if (hasExplicitX || hasExplicitY) {
+			const currentPosition = windowInstance.getPosition();
+			const nextX = hasExplicitX ? Math.floor(mergedArgs.x / factor) : currentPosition[0];
+			const nextY = hasExplicitY ? Math.floor(mergedArgs.y / factor) : currentPosition[1];
+			windowInstance.setPosition(nextX, nextY);
+		}
+
+		if (typeof mergedArgs.pin === 'boolean') {
+			if (mergedArgs.pin) {
+				if (process.platform === 'darwin') {
+					windowInstance.setAlwaysOnTop(true, 'floating', 1);
+				} else {
+					windowInstance.setAlwaysOnTop(true, 'level');
+				}
+				windowInstance.setVisibleOnAllWorkspaces(true);
+			} else {
+				windowInstance.setAlwaysOnTop(false);
+				windowInstance.setVisibleOnAllWorkspaces(false);
+			}
+		}
+
+		if (typeof mergedArgs.fullscreen === 'boolean') {
+			windowInstance.full = mergedArgs.fullscreen;
+			windowInstance.setFullScreen(mergedArgs.fullscreen);
+		}
+
+		if (typeof mergedArgs.min === 'boolean') {
+			if (mergedArgs.min) {
+				windowInstance.minimize();
+			} else {
+				windowInstance.restore();
+			}
+		} else if (windowInstance.isMinimized()) {
+			windowInstance.restore();
+		}
+	} catch (error) {
+		console.error('Failed to apply arguments to existing window:', error);
+		return false;
+	}
+
+	if (!mergedArgs.min) {
+		windowInstance.show();
+		windowInstance.focus();
+	}
+
+	return true;
+}
+
 function isProcessElevated() {
 	if (typeof cachedElevationState === 'boolean') {
 		return cachedElevationState;
@@ -806,6 +972,14 @@ function parseDeepLink(deepLinkUrl) {
 			assignWithAlias('title', 't', params.get('title'));
 		}
 
+		const windowNameKey = ['windowName', 'window'].find((key) => params.has(key));
+		if (windowNameKey) {
+			const normalizedName = normalizeWindowName(params.get(windowNameKey));
+			if (normalizedName) {
+				newArgs.windowName = normalizedName;
+			}
+		}
+
 		[
 			{ key: 'pin', target: 'pin', alias: 'p' },
 			{ key: 'full', target: 'fullscreen', alias: 'f' },
@@ -1464,21 +1638,20 @@ async function createWindow(args, reuse=false) {
     assignNodeIntegration(false, false);
   }
 
-  if (typeof URL === 'string') {
-    URL = formatURL(URL.trim());
-  } else if (URL != null) {
-    try {
-      URL = formatURL(String(URL));
+	if (typeof URL === 'string') {
+		URL = formatURL(URL.trim());
+	} else if (URL != null) {
+		try {
+			URL = formatURL(String(URL));
     } catch (conversionError) {
       console.warn('Unable to normalize URL value from args:', conversionError);
     }
-  }
+	}
 
-  args.url = URL;
+	args.url = URL;
 
-
-  if (!nodeExplicitFlag && typeof URL === 'string') {
-    let preferenceResolved = false;
+	if (!nodeExplicitFlag && typeof URL === 'string') {
+		let preferenceResolved = false;
     try {
       const parsedUrl = new URL(URL);
       const nodeParamKeys = ['node', 'nodeintegration', 'nodeIntegration', 'enableNode'];
@@ -1522,9 +1695,34 @@ async function createWindow(args, reuse=false) {
     if (preferenceResolved) {
       nodeExplicitFlag = true;
     }
-  }
+	  }
 
   args.__nodeExplicit = nodeExplicitFlag;
+
+  const desiredImmutableWebPreferences = {
+  	nodeIntegration: !!NODE,
+  	nodeIntegrationInSubFrames: !!NODE,
+  	contextIsolation: !NODE
+  };
+
+	const requestedWindowName = normalizeWindowName(args.windowName);
+	if (requestedWindowName) {
+		args.windowName = requestedWindowName;
+		const existingWindow = getNamedWindowInstance(requestedWindowName);
+		if (existingWindow) {
+			if (!immutablePreferencesMatch(existingWindow, desiredImmutableWebPreferences)) {
+				console.log(`Skipping reuse for "${requestedWindowName}" because immutable webPreferences differ.`);
+			} else {
+				console.log(`Reusing existing window named "${requestedWindowName}".`);
+				if (applyArgsToExistingWindow(existingWindow, args)) {
+					return existingWindow;
+				}
+				console.warn(`Failed to reuse window "${requestedWindowName}" cleanly; creating a new window instead.`);
+			}
+		}
+	} else if (args.windowName) {
+		delete args.windowName;
+	}
 
   let factor = screen.getPrimaryDisplay().scaleFactor;
   
@@ -1651,6 +1849,7 @@ async function createWindow(args, reuse=false) {
 		},
 		title: currentTitle
 	});
+	mainWindow.__immutableWebPreferences = desiredImmutableWebPreferences;
 	
 	mainWindow.webContents.session.webRequest.onHeadersReceived({ urls: [ "*://*/*" ] },
 		(d, c)=>{
@@ -1666,6 +1865,12 @@ async function createWindow(args, reuse=false) {
 	//var appData = process.env.APPDATA+"\\..\\Local" || (process.platform == 'darwin' ? process.env.HOME + '/Library/Preferences' : process.env.HOME + "/.local/share")
 
 	mainWindow.args = args; // storing settings
+	if (args.windowName) {
+		mainWindow.windowName = args.windowName;
+		registerNamedWindowInstance(mainWindow, args.windowName);
+	} else {
+		mainWindow.windowName = null;
+	}
 	mainWindow.vdonVersion = false;
 	mainWindow.PPTHotkey = false;
 	
