@@ -4,3 +4,4 @@
 /native-modules/*
 !/native-modules/window-audio-capture
 mac.sh
+/vdoninja
