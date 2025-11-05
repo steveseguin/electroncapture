@@ -1384,11 +1384,10 @@ function openGpuDiagnosticsWindow() {
 	if (gpuDiagnosticsWindow && !gpuDiagnosticsWindow.isDestroyed()) {
 		gpuDiagnosticsWindow.focus();
 		try {
-			console.log('Reusing window bounds final:', windowInstance.getBounds());
+			console.log('Reusing GPU diagnostics window bounds:', gpuDiagnosticsWindow.getBounds());
 		} catch (error) {
-			console.warn('Unable to read bounds after ensuring visibility:', error);
+			console.warn('Unable to read GPU diagnostics window bounds:', error);
 		}
-
 		return true;
 	}
 	try {
@@ -1424,8 +1423,10 @@ if (Argv.help) {
 }
 
 if (!allowMultipleInstances) {
-	if (!app.requestSingleInstanceLock(Argv)) {
-		console.log("requestSingleInstanceLock");
+	const gotInstanceLock = app.requestSingleInstanceLock(Argv);
+	if (!gotInstanceLock) {
+		console.log('requestSingleInstanceLock');
+		app.exit(0); // ensure the helper instance terminates after handing off args
 		return;
 	}
 }
