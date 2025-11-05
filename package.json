@@ -5,17 +5,26 @@
   "author": "Steve Seguin <steve@seguin.email>",
   "main": "main.js",
   "scripts": {
+    "prestart": "node ./scripts/install-window-audio-capture.js",
     "start": "electron .",
     "build": "run-os",
+    "prebuild": "node ./scripts/install-window-audio-capture.js",
     "build:win32": "electron-builder --win",
+    "prebuild:win32": "node ./scripts/install-window-audio-capture.js",
     "build:darwin": "electron-builder --mac --universal --config.electronVersion=36.9.5 --config.electronDownload.mirror=https://github.com/electron/electron/releases/download/ --config.electronDownload.customDir=v36.9.5",
+    "prebuild:darwin": "node ./scripts/install-window-audio-capture.js",
     "build:linux": "electron-builder --linux",
+    "prebuild:linux": "node ./scripts/install-window-audio-capture.js",
     "build:rpideb": "USE_SYSTEM_FPM=true electron-builder --armv7l --linux deb",
+    "prebuild:rpideb": "node ./scripts/install-window-audio-capture.js",
     "build:rpi": "electron-builder --armv7l --linux  AppImage",
+    "prebuild:rpi": "node ./scripts/install-window-audio-capture.js",
     "build:arm64": "electron-builder --arm64 --linux deb rpm AppImage",
+    "prebuild:arm64": "node ./scripts/install-window-audio-capture.js",
     "clean": "rimraf ./dist",
     "release": "electron-builder --publish always",
-    "postinstall": "node ./scripts/install-custom-electron.js"
+    "native-modules:rebuild": "node ./scripts/install-window-audio-capture.js --force",
+    "postinstall": "node ./scripts/install-custom-electron.js && node ./scripts/install-window-audio-capture.js"
   },
   "repository": {
     "type": "git",
