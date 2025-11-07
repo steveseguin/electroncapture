@@ -40,13 +40,61 @@
       pointer-events: none;
     }
     .shell {
-      width: min(1040px, 100%);
+      width: min(1080px, 100%);
       background: rgba(7, 7, 12, 0.88);
       border: 1px solid rgba(255,255,255,0.08);
       border-radius: 22px;
       padding: 2.5rem;
       box-shadow: 0 30px 70px rgba(0,0,0,0.65);
       backdrop-filter: blur(20px);
+    }
+    .titlebar {
+      -webkit-app-region: drag;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding-bottom: 1rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .titlebar h1 {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.7);
+    }
+    .titlebar-buttons {
+      display: flex;
+      gap: 0.35rem;
+      -webkit-app-region: no-drag;
+    }
+    .titlebar-buttons button,
+    .titlebar-buttons select {
+      height: 32px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      font-size: 0.85rem;
+      padding: 0 0.6rem;
+    }
+    .titlebar-buttons button {
+      width: 32px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .titlebar-buttons button.danger {
+      background: rgba(255,95,95,0.25);
+      color: #ffb0b0;
+    }
+    .titlebar-buttons button.active {
+      background: rgba(108,99,255,0.65);
     }
     header.page-header {
       display: flex;
@@ -57,21 +105,23 @@
       margin-bottom: 2rem;
     }
     .page-header h1 {
-      margin: 0 0 0.5rem;
-      font-size: clamp(1.75rem, 2.5vw, 2.35rem);
+      margin: 0 0 0.4rem;
+      font-size: clamp(1.6rem, 2.4vw, 2.2rem);
       font-weight: 700;
       letter-spacing: -0.02em;
     }
     .page-header .lede {
       margin: 0;
-      color: rgba(255,255,255,0.75);
-      max-width: 48ch;
-      line-height: 1.45;
+      color: rgba(255,255,255,0.68);
+      max-width: 42ch;
+      line-height: 1.4;
     }
     .header-actions {
       display: flex;
-      gap: 0.75rem;
+      gap: 0.6rem;
       flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
     }
     .panels {
       display: grid;
@@ -100,6 +150,19 @@
     .panel p {
       margin: 0;
       color: rgba(255,255,255,0.72);
+    }
+    .panel-kicker {
+      font-size: 0.85rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.55);
+      margin: 0 0 0.35rem;
+    }
+    .panel-actions {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+      -webkit-app-region: no-drag;
     }
     .field-group {
       display: flex;
@@ -152,6 +215,10 @@
       background: rgba(255,255,255,0.07);
       color: rgba(255,255,255,0.9);
     }
+    button.subtle {
+      background: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.85);
+    }
     button:disabled {
       opacity: 0.55;
       cursor: not-allowed;
@@ -166,6 +233,23 @@
     .share-status {
       font-size: 0.95rem;
       color: rgba(255,255,255,0.85);
+      margin: 0 0 0.45rem;
+    }
+    .share-summary {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+    .share-summary-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      min-width: 140px;
+    }
+    .share-summary-buttons button {
+      width: 100%;
     }
     .share-meta {
       display: grid;
@@ -189,6 +273,51 @@
       margin: 0.2rem 0 0;
       font-size: 0.95rem;
       font-weight: 600;
+    }
+    .share-meta.summary-meta {
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    }
+    .share-meta.summary-meta dd {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: rgba(255,255,255,0.85);
+    }
+    .advanced-toggle {
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.05);
+      color: rgba(255,255,255,0.9);
+      border-radius: 999px;
+      padding: 0.35rem 0.9rem;
+      font-size: 0.85rem;
+      align-self: flex-start;
+      cursor: pointer;
+    }
+    .advanced-options {
+      display: none;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .advanced-options.visible {
+      display: block;
+    }
+    .share-details,
+    .invite-details {
+      margin-top: 1.25rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .share-details[hidden],
+    .invite-details[hidden] {
+      display: none;
+    }
+    .invite-summary {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
     }
     .field-grid {
       display: grid;
@@ -239,6 +368,16 @@
       header.page-header {
         flex-direction: column;
       }
+      .share-summary {
+        flex-direction: column;
+      }
+      .share-summary-buttons {
+        flex-direction: row;
+        width: 100%;
+      }
+      .share-summary-buttons button {
+        flex: 1;
+      }
       .panel {
         padding: 1.2rem;
       }
@@ -247,14 +386,31 @@
 </head>
 <body>
   <div class="shell">
+    <div class="titlebar">
+      <h1>Versus Game Capture</h1>
+      <div class="titlebar-buttons" aria-label="Window controls">
+        <button id="windowMinTitleBtn" title="Minimize window" type="button">—</button>
+        <button id="windowPinTitleBtn" title="Toggle always-on-top" type="button">📌</button>
+        <select id="windowSizeSelect" title="Window size preset">
+          <option value="custom">Window size</option>
+          <option value="1280x720">1280 × 720</option>
+          <option value="1600x900">1600 × 900</option>
+          <option value="1600x960">1600 × 960</option>
+          <option value="1920x1080">1920 × 1080</option>
+          <option value="2560x1440">2560 × 1440</option>
+        </select>
+        <button class="danger" id="windowCloseTitleBtn" title="Close window" type="button">✕</button>
+      </div>
+    </div>
     <header class="page-header">
       <div>
-        <p class="status-pill">Versus Game Capture</p>
-        <h1>Share or join in seconds</h1>
-        <p class="lede">Pick a game or paste the invite your producer sent. We’ll handle the high-quality VDO link, cursor defaults, and audio so you can focus on playing.</p>
+        <p class="status-pill">Quick share</p>
+        <h1>Ready when you are</h1>
+        <p class="lede">Start a Versus link or drop into an invite—no setup, no hidden menus.</p>
       </div>
       <div class="header-actions">
         <button class="ghost" id="openClassicBtn" type="button">Open classic interface</button>
+        <button class="ghost subtle" id="openInvitePanelBtn" type="button">Join invite</button>
         <button class="primary" id="sharePrimaryBtn" type="button">Share my game</button>
       </div>
     </header>
@@ -263,90 +419,121 @@
       <section class="panel share-panel" id="sharePanel">
         <div class="panel-head">
           <div>
-            <h2>Quick-share stream</h2>
-            <p>Your stream ID is saved locally so you can relaunch in one tap.</p>
+            <p class="panel-kicker">Quick share</p>
+            <h2>Share my game</h2>
           </div>
-          <button class="primary" id="shareGoLiveBtn" type="button">Share my game</button>
-        </div>
-        <p class="share-status" id="shareStatusMessage">Generating stream ID…</p>
-        <div class="field-group">
-          <label for="streamIdField">Stream ID</label>
-          <div class="input-row">
-            <input id="streamIdField" type="text" readonly value="">
-            <button class="ghost" id="copyStreamIdBtn" type="button">Copy</button>
-            <button class="ghost" id="regenStreamIdBtn" type="button">Regenerate</button>
-          </div>
-          <small class="hint">Memorable IDs mix words, numbers, and underscores so friends can type them easily.</small>
-        </div>
-        <div class="field-group">
-          <label for="viewerLinkField">Viewer link</label>
-          <div class="input-row">
-            <input id="viewerLinkField" type="text" readonly value="">
-            <button class="ghost" id="copyViewerLinkBtn" type="button">Copy link</button>
-            <button class="ghost" id="openViewerLinkBtn" type="button">Open</button>
+          <div class="panel-actions">
+            <button class="primary" id="shareGoLiveBtn" type="button">Go live</button>
+            <button class="ghost subtle" id="shareDetailsToggleBtn" type="button">Edit details</button>
           </div>
         </div>
-        <div class="field-grid">
+        <div class="share-summary">
+          <div class="share-summary-info">
+            <p class="share-status" id="shareStatusMessage">Generating stream ID…</p>
+            <dl class="share-meta summary-meta">
+              <div>
+                <dt>Stream ID</dt>
+                <dd id="shareSummaryStreamId">—</dd>
+              </div>
+              <div>
+                <dt>Viewer link</dt>
+                <dd id="shareSummaryViewerHint">—</dd>
+              </div>
+            </dl>
+          </div>
+          <div class="share-summary-buttons">
+            <button class="ghost" id="summaryCopyLinkBtn" type="button">Copy link</button>
+            <button class="ghost subtle" id="summaryOpenLinkBtn" type="button">Open</button>
+          </div>
+        </div>
+        <div class="share-details" id="shareDetailsSection" hidden>
           <div class="field-group">
-            <label for="roomInput">Room (optional)</label>
-            <input id="roomInput" type="text" placeholder="versusLobby">
+            <label for="streamIdField">Stream ID</label>
+            <div class="input-row">
+              <input id="streamIdField" type="text" readonly value="">
+              <button class="ghost" id="copyStreamIdBtn" type="button">Copy</button>
+              <button class="ghost" id="regenStreamIdBtn" type="button">Regenerate</button>
+            </div>
+            <small class="hint">Memorable IDs mix words, numbers, and underscores so friends can type them easily.</small>
           </div>
           <div class="field-group">
-            <label for="roomPasswordInput">Password (optional)</label>
-            <input id="roomPasswordInput" type="text" placeholder="secret123">
+            <label for="viewerLinkField">Viewer link</label>
+            <div class="input-row">
+              <input id="viewerLinkField" type="text" readonly value="">
+              <button class="ghost" id="copyViewerLinkBtn" type="button">Copy link</button>
+              <button class="ghost" id="openViewerLinkBtn" type="button">Open</button>
+            </div>
           </div>
+          <div class="field-grid">
+            <div class="field-group">
+              <label for="roomInput">Room (optional)</label>
+              <input id="roomInput" type="text" placeholder="versusLobby">
+            </div>
+            <div class="field-group">
+              <label for="roomPasswordInput">Password (optional)</label>
+              <input id="roomPasswordInput" type="text" placeholder="secret123">
+            </div>
+          </div>
+          <button class="advanced-toggle" id="advancedToggleBtn" type="button">Advanced options</button>
+          <div class="advanced-options" id="advancedOptions">
+            <dl class="share-meta">
+              <div>
+                <dt>Quality preset</dt>
+                <dd id="qualityPresetLabel">—</dd>
+              </div>
+              <div>
+                <dt>Bitrate</dt>
+                <dd id="bitrateLabel">—</dd>
+              </div>
+              <div>
+                <dt>Codec</dt>
+                <dd id="codecLabel">—</dd>
+              </div>
+            </dl>
+          </div>
+          <div class="error" id="shareErrorMessage" hidden></div>
         </div>
-        <dl class="share-meta">
-          <div>
-            <dt>Quality preset</dt>
-            <dd id="qualityPresetLabel">—</dd>
-          </div>
-          <div>
-            <dt>Video bitrate</dt>
-            <dd id="bitrateLabel">—</dd>
-          </div>
-          <div>
-            <dt>Codec</dt>
-            <dd id="codecLabel">—</dd>
-          </div>
-        </dl>
-        <div class="error" id="shareErrorMessage" hidden></div>
       </section>
 
       <section class="panel invite-panel">
         <div class="panel-head">
           <div>
-            <h2>Join with an invite</h2>
-            <p>Deep links from Versus or electroncapture:// will auto-fill here.</p>
+            <p class="panel-kicker">Join with invite</p>
+            <h2>Producer guided</h2>
           </div>
-          <span class="status-pill" id="inviteStatusPill">Waiting for invite</span>
+          <button class="ghost subtle" id="inviteDetailsToggleBtn" type="button">Paste invite</button>
         </div>
-        <dl class="status-card">
-          <div>
-            <dt>Pending invite</dt>
-            <dd id="pendingInviteLabel">—</dd>
-          </div>
-          <div>
-            <dt>Slot</dt>
-            <dd id="slotLabel">—</dd>
-          </div>
-          <div>
-            <dt>Preset</dt>
-            <dd id="presetLabel">—</dd>
-          </div>
-        </dl>
-        <form id="inviteForm" autocomplete="off">
-          <div class="field-group">
-            <label for="inviteInput">Paste invite or VDO link</label>
-            <input id="inviteInput" type="url" name="invite" placeholder="https://versus.cam/invite/abc123" spellcheck="false" autocomplete="off">
-          </div>
-          <div class="actions">
-            <button class="primary" id="connectBtn" type="submit">Connect to invite</button>
-            <button class="secondary" type="button" id="fallbackBtn">Open classic VDO.Ninja</button>
-          </div>
-          <small class="hint">Need to return to this dashboard? Use the Versus invite again or click “Share my game.”</small>
-          <div class="error" id="errorMessage" hidden></div>
-        </form>
+        <div class="invite-summary">
+          <span class="status-pill" id="inviteStatusPill">Waiting for invite</span>
+          <dl class="status-card">
+            <div>
+              <dt>Pending invite</dt>
+              <dd id="pendingInviteLabel">—</dd>
+            </div>
+            <div>
+              <dt>Slot</dt>
+              <dd id="slotLabel">—</dd>
+            </div>
+            <div>
+              <dt>Preset</dt>
+              <dd id="presetLabel">—</dd>
+            </div>
+          </dl>
+        </div>
+        <div class="invite-details" id="inviteDetailsSection" hidden>
+          <form id="inviteForm" autocomplete="off">
+            <div class="field-group">
+              <label for="inviteInput">Paste invite or VDO link</label>
+              <input id="inviteInput" type="url" name="invite" placeholder="https://versus.cam/invite/abc123" spellcheck="false" autocomplete="off">
+            </div>
+            <div class="actions">
+              <button class="primary" id="connectBtn" type="submit">Connect to invite</button>
+              <button class="secondary" type="button" id="fallbackBtn">Open classic VDO.Ninja</button>
+            </div>
+            <small class="hint">Need to return to this dashboard? Use the Versus invite again or click “Share my game.”</small>
+            <div class="error" id="errorMessage" hidden></div>
+          </form>
+        </div>
       </section>
     </div>
   </div>
@@ -367,7 +554,19 @@
     const regenStreamIdBtn = document.getElementById('regenStreamIdBtn');
     const roomInput = document.getElementById('roomInput');
     const roomPasswordInput = document.getElementById('roomPasswordInput');
+    const shareDetailsSection = document.getElementById('shareDetailsSection');
+    const shareDetailsToggleBtn = document.getElementById('shareDetailsToggleBtn');
+    const shareSummaryStreamId = document.getElementById('shareSummaryStreamId');
+    const shareSummaryViewerHint = document.getElementById('shareSummaryViewerHint');
+    const summaryCopyLinkBtn = document.getElementById('summaryCopyLinkBtn');
+    const summaryOpenLinkBtn = document.getElementById('summaryOpenLinkBtn');
     const openClassicBtn = document.getElementById('openClassicBtn');
+    const windowMinBtn = document.getElementById('windowMinTitleBtn');
+    const windowPinBtn = document.getElementById('windowPinTitleBtn');
+    const windowCloseBtn = document.getElementById('windowCloseTitleBtn');
+    const windowSizeSelect = document.getElementById('windowSizeSelect');
+    const advancedToggleBtn = document.getElementById('advancedToggleBtn');
+    const advancedOptions = document.getElementById('advancedOptions');
 
     const qualityPresetLabel = document.getElementById('qualityPresetLabel');
     const bitrateLabel = document.getElementById('bitrateLabel');
@@ -377,6 +576,9 @@
     const pendingEl = document.getElementById('pendingInviteLabel');
     const slotEl = document.getElementById('slotLabel');
     const presetEl = document.getElementById('presetLabel');
+    const inviteDetailsSection = document.getElementById('inviteDetailsSection');
+    const inviteDetailsToggleBtn = document.getElementById('inviteDetailsToggleBtn');
+    const openInvitePanelBtn = document.getElementById('openInvitePanelBtn');
     const inviteInput = document.getElementById('inviteInput');
     const inviteForm = document.getElementById('inviteForm');
     const connectBtn = document.getElementById('connectBtn');
@@ -390,11 +592,16 @@
       roomCode: '',
       roomPassword: ''
     };
+    const windowMetaState = { meta: null };
+    const sizePresetOptions = new Set(['1280x720', '1600x900', '1600x960', '1920x1080', '2560x1440']);
     let shareSaveTimer = null;
     let unsubscribe = null;
     let lastState = null;
     let lastLaunchedUrl = null;
     let autoConnectInFlight = false;
+    let advancedVisible = false;
+    let shareDetailsVisible = false;
+    let inviteDetailsVisible = false;
 
     function setInviteStatus(text) {
       inviteStatusPill.textContent = text;
@@ -432,6 +639,42 @@
       return str.length > 48 ? `${str.slice(0, 45)}…` : str;
     }
 
+    function formatViewerHint(value) {
+      if (!value) {
+        return '—';
+      }
+      try {
+        const parsed = new URL(value);
+        const viewId = parsed.searchParams.get('view') || parsed.searchParams.get('id') || parsed.searchParams.get('push');
+        if (viewId) {
+          return `${parsed.hostname}/${viewId}`;
+        }
+        return parsed.hostname;
+      } catch (error) {
+        return formatValue(value);
+      }
+    }
+
+    function setShareDetailsVisibility(flag) {
+      shareDetailsVisible = !!flag;
+      if (shareDetailsSection) {
+        shareDetailsSection.hidden = !shareDetailsVisible;
+      }
+      if (shareDetailsToggleBtn) {
+        shareDetailsToggleBtn.textContent = shareDetailsVisible ? 'Hide details' : 'Edit details';
+      }
+    }
+
+    function setInviteDetailsVisibility(flag) {
+      inviteDetailsVisible = !!flag;
+      if (inviteDetailsSection) {
+        inviteDetailsSection.hidden = !inviteDetailsVisible;
+      }
+      if (inviteDetailsToggleBtn) {
+        inviteDetailsToggleBtn.textContent = inviteDetailsVisible ? 'Hide form' : 'Paste invite';
+      }
+    }
+
     function updateInviteUi(state) {
       lastState = state || null;
       if (!state) {
@@ -464,6 +707,22 @@
       } else {
         showError('');
       }
+      if ((state.pendingInviteUrl || state.lastError) && !inviteDetailsVisible) {
+        setInviteDetailsVisibility(true);
+      }
+    }
+
+    function setAdvancedVisibility(flag) {
+      advancedVisible = !!flag;
+      if (advancedOptions) {
+        advancedOptions.classList.toggle('visible', advancedVisible);
+      }
+      if (advancedVisible && !shareDetailsVisible) {
+        setShareDetailsVisibility(true);
+      }
+      if (advancedToggleBtn) {
+        advancedToggleBtn.textContent = advancedVisible ? 'Hide advanced options' : 'Advanced options';
+      }
     }
 
     function updateSharePanel(profile) {
@@ -476,7 +735,19 @@
         codecLabel.textContent = '—';
         shareGoLiveBtn.disabled = true;
         sharePrimaryBtn.disabled = true;
+        if (summaryCopyLinkBtn) {
+          summaryCopyLinkBtn.disabled = true;
+        }
+        if (summaryOpenLinkBtn) {
+          summaryOpenLinkBtn.disabled = true;
+        }
         setShareStatus('Generating stream ID…');
+        if (shareSummaryStreamId) {
+          shareSummaryStreamId.textContent = '—';
+        }
+        if (shareSummaryViewerHint) {
+          shareSummaryViewerHint.textContent = '—';
+        }
         return;
       }
 
@@ -488,27 +759,42 @@
       roomInput.value = shareInputs.roomCode;
       roomPasswordInput.value = shareInputs.roomPassword;
 
+      const hasViewerLink = Boolean(profile.shareLinks && profile.shareLinks.view);
       const qualitySummary = profile.qualitySummary || {};
       qualityPresetLabel.textContent = qualitySummary.preset || 'Versus HQ';
       const bitrateValue = qualitySummary.publishBitrateKbps || profile.advanced?.publishBitrateKbps;
       bitrateLabel.textContent = bitrateValue ? `${bitrateValue} kbps` : '—';
       codecLabel.textContent = qualitySummary.codec ? qualitySummary.codec.toUpperCase() : 'H264';
+      if (shareSummaryStreamId) {
+        shareSummaryStreamId.textContent = profile.streamId ? formatValue(profile.streamId) : '—';
+      }
+      if (shareSummaryViewerHint) {
+        const viewerUrl = (profile.shareLinks && profile.shareLinks.view) || '';
+        shareSummaryViewerHint.textContent = viewerUrl ? formatViewerHint(viewerUrl) : '—';
+      }
 
       shareGoLiveBtn.disabled = false;
       sharePrimaryBtn.disabled = false;
+      if (summaryCopyLinkBtn) {
+        summaryCopyLinkBtn.disabled = !hasViewerLink;
+      }
+      if (summaryOpenLinkBtn) {
+        summaryOpenLinkBtn.disabled = !hasViewerLink;
+      }
 
       if (lastState && lastState.activeInviteUrl && profile.shareLinks && lastState.activeInviteUrl === profile.shareLinks.publish) {
-        setShareStatus('Live! Share your viewer link with teammates.');
+        setShareStatus('Live • viewer link ready');
       } else if (lastState && lastState.activeInviteUrl) {
         setShareStatus('Another invite is active.');
       } else {
-        setShareStatus('Ready to share. Click “Share my game”.');
+        setShareStatus('Ready to share');
       }
     }
 
     function updateUi(state) {
       updateInviteUi(state);
       updateSharePanel(state && state.shareProfile);
+      updateWindowMeta(state && state.windowMeta);
     }
 
     function launchInviteToUrl(targetUrl, metadata = {}, options = {}) {
@@ -597,6 +883,9 @@
     }
 
     async function handleQuickShareLaunch() {
+      if (!shareDetailsVisible) {
+        setShareDetailsVisibility(true);
+      }
       if (!shareState.profile || !shareState.profile.shareLinks || !shareState.profile.shareLinks.publish) {
         showShareError('No share link available yet. Please try again.');
         return;
@@ -616,7 +905,7 @@
           metadata,
           { buttons: [shareGoLiveBtn, sharePrimaryBtn] }
         );
-        setShareStatus('Live! Share your viewer link with teammates.');
+        setShareStatus('Live • viewer link ready');
       } catch (error) {
         console.error('Quick-share launch failed:', error);
         showShareError(error && error.message ? error.message : 'Failed to launch capture.');
@@ -674,6 +963,62 @@
       });
     }
 
+    function updateWindowMeta(meta) {
+      windowMetaState.meta = meta || null;
+      const controls = [windowMinBtn, windowPinBtn, windowCloseBtn, windowSizeSelect];
+      controls.forEach((el) => {
+        if (el) {
+          el.disabled = !meta;
+        }
+      });
+      if (!meta) {
+        if (windowPinBtn) {
+          windowPinBtn.classList.remove('active');
+        }
+        if (windowSizeSelect) {
+          windowSizeSelect.value = 'custom';
+        }
+        return;
+      }
+      if (windowPinBtn) {
+        windowPinBtn.classList.toggle('active', !!meta.isAlwaysOnTop);
+      }
+      if (windowSizeSelect) {
+        const presetKey = meta.width && meta.height ? `${meta.width}x${meta.height}` : null;
+        if (presetKey && sizePresetOptions.has(presetKey)) {
+          windowSizeSelect.value = presetKey;
+        } else {
+          windowSizeSelect.value = 'custom';
+        }
+      }
+    }
+
+    function requestWindowAction(action, extra = {}) {
+      if (!bridge || typeof bridge.windowAction !== 'function') {
+        return;
+      }
+      bridge.windowAction({ action, ...extra }).then((result) => {
+        if (result && result.state) {
+          updateWindowMeta(result.state);
+        }
+      }).catch((error) => {
+        console.error('Window action failed:', error);
+      });
+    }
+
+    function requestWindowResize(width, height) {
+      if (!bridge || typeof bridge.resizeWindow !== 'function') {
+        return;
+      }
+      bridge.resizeWindow({ width, height }).then((result) => {
+        if (result && result.state) {
+          updateWindowMeta(result.state);
+        }
+      }).catch((error) => {
+        console.error('Resize failed:', error);
+      });
+    }
+
     function subscribeToUpdates() {
       if (!bridge || typeof bridge.onUpdate !== 'function') {
         return;
@@ -702,6 +1047,37 @@
 
     sharePrimaryBtn.addEventListener('click', handleQuickShareLaunch);
     shareGoLiveBtn.addEventListener('click', handleQuickShareLaunch);
+    if (shareDetailsToggleBtn) {
+      shareDetailsToggleBtn.addEventListener('click', () => {
+        if (shareDetailsVisible) {
+          setShareDetailsVisibility(false);
+        } else {
+          setShareDetailsVisibility(true);
+          if (shareDetailsSection) {
+            shareDetailsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }
+      });
+    }
+    if (inviteDetailsToggleBtn) {
+      inviteDetailsToggleBtn.addEventListener('click', () => {
+        const next = !inviteDetailsVisible;
+        setInviteDetailsVisibility(next);
+        if (next && inviteInput) {
+          inviteInput.focus();
+        }
+      });
+    }
+    if (openInvitePanelBtn) {
+      openInvitePanelBtn.addEventListener('click', () => {
+        if (!inviteDetailsVisible) {
+          setInviteDetailsVisibility(true);
+        }
+        if (inviteInput) {
+          inviteInput.focus();
+        }
+      });
+    }
     copyStreamIdBtn.addEventListener('click', () => {
       copyToClipboard(streamIdField.value).then(() => {
         setShareStatus('Stream ID copied to clipboard.');
@@ -710,26 +1086,42 @@
         showShareError('Unable to copy stream ID.');
       });
     });
-    copyViewerLinkBtn.addEventListener('click', () => {
+    const handleViewerLinkCopy = () => {
+      if (!viewerLinkField.value) {
+        showShareError('Viewer link is empty.');
+        return;
+      }
       copyToClipboard(viewerLinkField.value).then(() => {
         setShareStatus('Viewer link copied.');
+        showShareError('');
       }).catch((error) => {
         console.error('Copy viewer link failed:', error);
         showShareError('Unable to copy viewer link.');
       });
-    });
-    openViewerLinkBtn.addEventListener('click', () => {
+    };
+
+    const handleViewerLinkOpen = () => {
       if (!viewerLinkField.value) {
         showShareError('Viewer link is empty.');
         return;
       }
       try {
         window.open(viewerLinkField.value, '_blank', 'noopener');
+        showShareError('');
       } catch (error) {
         console.error('Failed to open viewer link:', error);
         showShareError('Unable to open viewer link.');
       }
-    });
+    };
+
+    copyViewerLinkBtn.addEventListener('click', handleViewerLinkCopy);
+    openViewerLinkBtn.addEventListener('click', handleViewerLinkOpen);
+    if (summaryCopyLinkBtn) {
+      summaryCopyLinkBtn.addEventListener('click', handleViewerLinkCopy);
+    }
+    if (summaryOpenLinkBtn) {
+      summaryOpenLinkBtn.addEventListener('click', handleViewerLinkOpen);
+    }
     regenStreamIdBtn.addEventListener('click', () => {
       if (!bridge || typeof bridge.regenerateStreamId !== 'function') {
         showShareError('Bridge unavailable.');
@@ -753,6 +1145,54 @@
     });
     fallbackBtn.addEventListener('click', () => handleManualLaunch(FALLBACK_URL));
     openClassicBtn.addEventListener('click', () => handleManualLaunch(FALLBACK_URL));
+    if (windowMinBtn) {
+      windowMinBtn.addEventListener('click', () => requestWindowAction('minimize'));
+    }
+    if (windowPinBtn) {
+      windowPinBtn.addEventListener('click', () => {
+        const targetState = !(windowMetaState.meta && windowMetaState.meta.isAlwaysOnTop);
+        requestWindowAction('toggle-pin', { target: targetState });
+      });
+    }
+    if (windowCloseBtn) {
+      windowCloseBtn.addEventListener('click', () => requestWindowAction('close'));
+    }
+    if (advancedToggleBtn) {
+      advancedToggleBtn.addEventListener('click', () => {
+        setAdvancedVisibility(!advancedVisible);
+      });
+    }
+    if (windowSizeSelect) {
+      windowSizeSelect.addEventListener('change', () => {
+        const value = windowSizeSelect.value;
+        if (value === 'custom') {
+          const current = windowMetaState.meta;
+          const seed = current && current.width && current.height ? `${current.width}x${current.height}` : '1600x900';
+          const manual = window.prompt('Enter width x height (e.g., 1600x900):', seed);
+          if (!manual) {
+            updateWindowMeta(windowMetaState.meta);
+            return;
+          }
+          const parts = manual.toLowerCase().split('x');
+          if (parts.length !== 2) {
+            updateWindowMeta(windowMetaState.meta);
+            return;
+          }
+          const width = parseInt(parts[0], 10);
+          const height = parseInt(parts[1], 10);
+          if (Number.isFinite(width) && Number.isFinite(height)) {
+            requestWindowResize(width, height);
+          } else {
+            updateWindowMeta(windowMetaState.meta);
+          }
+          return;
+        }
+        const [w, h] = value.split('x').map((token) => parseInt(token, 10));
+        if (Number.isFinite(w) && Number.isFinite(h)) {
+          requestWindowResize(w, h);
+        }
+      });
+    }
 
     window.addEventListener('beforeunload', () => {
       if (typeof unsubscribe === 'function') {
@@ -769,6 +1209,7 @@
         setInviteStatus('Bridge unavailable');
         return;
       }
+      setAdvancedVisibility(false);
       subscribeToUpdates();
       await refreshContext();
     })();

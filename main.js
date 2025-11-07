@@ -9,6 +9,9 @@ const {app, BrowserWindow, BrowserView, webFrameMain, desktopCapturer, ipcMain, 
 const contextMenu = require('electron-context-menu');
 const Yargs = require('yargs')
 const isDev = require('electron-is-dev');
+const { pathToFileURL } = require('url');
+const crypto = require('crypto');
+const os = require('os');
 
 ipcMain.on('getSources', async function(eventRet, args) {
 	try{
@@ -23,8 +26,10 @@ const { fetch: undiciFetch } = require('undici');
 const activeStreams = new Map();
 const https = require('https');
 const { execSync } = require('child_process');
+const STREAM_ID_WORDS = require('./assets/stream-id-words.json');
 
 let windowAudioCapture = null;
+let windowAudioCaptureAvailable = false;
 const WINDOW_AUDIO_EVENT_CHANNEL = 'windowAudioStreamData';
 let activeWindowAudioSession = null;
 let cachedElevationState;
@@ -781,8 +786,55 @@ try {
   console.error('Error loading window-audio-capture module:', err);
 }
 
+if (windowAudioCapture && typeof windowAudioCapture === 'object') {
+  try {
+    if (typeof windowAudioCapture.getWindowList === 'function' ||
+        (windowAudioCapture.captureInstance && typeof windowAudioCapture.captureInstance.getWindowList === 'function')) {
+      windowAudioCaptureAvailable = true;
+    } else if (typeof windowAudioCapture.startStreamCapture === 'function') {
+      windowAudioCaptureAvailable = true;
+    }
+  } catch (availabilityError) {
+    console.warn('Failed to evaluate window audio availability:', availabilityError);
+    windowAudioCaptureAvailable = false;
+  }
+}
+
 var ver = app.getVersion();
 const DEFAULT_URL = `https://vdo.ninja/electron?version=${ver}`;
+const GAME_CAPTURE_SHELL_URL = pathToFileURL(path.join(__dirname, 'gamecapture.html')).href;
+const DEFAULT_MODE = 'game';
+const APP_AUDIO_PARAM_KEYS = ['appaudio', 'appAudio', 'appAudioTarget'];
+const STREAM_ID_MIN_WORDS = 1;
+const STREAM_ID_MAX_WORDS = 3;
+const SHARE_PROFILE_FILENAME = 'gamecapture-profile.json';
+const SHARE_PROFILE_VERSION = 1;
+const STREAM_ID_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+const STREAM_ID_ALPHABET_WITH_UNDERSCORE = `${STREAM_ID_ALPHABET}_`;
+const DEFAULT_VDO_BASE_URL = 'https://dev.versus.cam/gamecapture/';
+const DEFAULT_SHARE_PROFILE = {
+  version: SHARE_PROFILE_VERSION,
+  streamIdMode: 'words',
+  streamIdWordCount: 2,
+  streamId: null,
+  streamIdGeneratedAt: null,
+  roomCode: '',
+  roomPassword: '',
+  advanced: {
+    baseHost: DEFAULT_VDO_BASE_URL,
+    qualityPreset: 'versus-hq',
+    publishBitrateKbps: 9000,
+    viewBitrateKbps: 8500,
+    audioBitrateKbps: 192,
+    codec: 'h264',
+    stereo: true,
+    preferWhipRelay: false,
+    hideCursor: true
+  }
+};
+const shareProfileCache = {
+  profile: null
+};
 
 function createYargs(){
   var argv = Yargs.usage('Usage: $0 -w=num -h=num -u="string" -p')
@@ -795,14 +847,14 @@ function createYargs(){
     describe: "The width of the window in pixel.",
     type: "number",
     nargs: 1,
-	default: 1280
+	default: 1600
   })
   .option("h", {
     alias: "height",
     describe: "The height of the window in pixels.",
     type: "number",
     nargs: 1,
-	default: 720
+	default: 960
   })
   .option("monitor", {
 	  alias: "m",
@@ -816,6 +868,12 @@ function createYargs(){
 	default: DEFAULT_URL,
     type: "string"
 
+  })
+  .option("mode", {
+    describe: "Launch mode (game|classic)",
+    type: "string",
+    nargs: 1,
+	default: DEFAULT_MODE
   })
   .option("t", {
     alias: "title",
@@ -853,7 +911,7 @@ function createYargs(){
 	alias: "n",
     describe: "Enables node-integration, allowing for screen capture, global hotkeys, prompts, and more.",
     type: "boolean",
-	default: false
+	default: true
   })
   .option("minimized", {
 	alias: "min",
@@ -1490,7 +1548,69 @@ function parseDeepLink(deepLinkUrl) {
 				: [href];
 		};
 
-		const params = new URLSearchParams(url.search);
+	const params = new URLSearchParams(url.search);
+
+	const normalizedMode = normalizeModeValue(params.get('mode'));
+	const baseModeFromArgs = normalizeModeValue(newArgs.mode);
+	if (normalizedMode) {
+		newArgs.mode = normalizedMode;
+		sanitizedUrl.searchParams.delete('mode');
+	} else if (baseModeFromArgs && newArgs.mode !== baseModeFromArgs) {
+		newArgs.mode = baseModeFromArgs;
+	}
+
+	const resolvedMode = normalizedMode || baseModeFromArgs || normalizeModeValue(DEFAULT_MODE) || DEFAULT_MODE;
+	const shouldStripCaptureParams = resolvedMode !== 'classic';
+
+	const slotParamKey = ['slotId', 'slot'].find((key) => params.has(key));
+	if (slotParamKey) {
+		const slotValue = params.get(slotParamKey);
+		if (slotValue && slotValue.trim().length) {
+			newArgs.slotId = slotValue.trim();
+		}
+		if (shouldStripCaptureParams) {
+			sanitizedUrl.searchParams.delete(slotParamKey);
+		}
+	}
+
+	const presetValue = params.get('preset');
+	if (presetValue && presetValue.trim().length) {
+		newArgs.preset = presetValue.trim();
+		if (shouldStripCaptureParams) {
+			sanitizedUrl.searchParams.delete('preset');
+		}
+	}
+
+	const cursorValue = params.get('cursor');
+	if (cursorValue && cursorValue.trim().length) {
+		newArgs.cursor = cursorValue.trim();
+		if (shouldStripCaptureParams) {
+			sanitizedUrl.searchParams.delete('cursor');
+		}
+	}
+
+	if (params.has('whipout')) {
+		const parsedWhipout = parseBooleanValue(params.get('whipout'));
+		if (typeof parsedWhipout === 'boolean') {
+			newArgs.whipout = parsedWhipout;
+		}
+		if (shouldStripCaptureParams) {
+			sanitizedUrl.searchParams.delete('whipout');
+		}
+	}
+
+	for (const key of APP_AUDIO_PARAM_KEYS) {
+		if (params.has(key)) {
+			const rawAppAudio = params.get(key);
+			if (rawAppAudio && rawAppAudio.trim().length) {
+				newArgs.appaudio = rawAppAudio.trim();
+			}
+			if (shouldStripCaptureParams) {
+				sanitizedUrl.searchParams.delete(key);
+			}
+			break;
+		}
+	}
 
 		const width = parseIntegerValue(params.get('w'));
 		if (typeof width === 'number') {
@@ -1607,6 +1727,10 @@ function parseDeepLink(deepLinkUrl) {
 		const effectiveBitrate = Number(newArgs.webrtcMaxBitrate);
 		const sanitizedBitrate = Number.isFinite(effectiveBitrate) && effectiveBitrate > 0 ? Math.floor(effectiveBitrate) : 0;
 		assignWithAlias('webrtcMaxBitrate', 'webrtcBr', sanitizedBitrate);
+
+		if (typeof newArgs.__originalUrl !== 'string' || !newArgs.__originalUrl.length) {
+			newArgs.__originalUrl = sanitizedUrl.href;
+		}
 
 		updateUrlArgs(sanitizedUrl.href);
 
@@ -1828,6 +1952,976 @@ function formatURL(inputURL) {
 }
 
 
+function normalizeModeValue(value) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  const token = String(value).trim().toLowerCase();
+  if (!token.length) {
+    return null;
+  }
+  if (['game', 'gamecapture', 'versus', 'esports'].includes(token)) {
+    return 'game';
+  }
+  if (['classic', 'default', 'standard', 'browser'].includes(token)) {
+    return 'classic';
+  }
+  return token;
+}
+
+function sanitizeInviteUrl(rawValue) {
+  if (typeof rawValue !== 'string') {
+    return null;
+  }
+  let trimmed = rawValue.trim();
+  if (!trimmed.length) {
+    return null;
+  }
+  if (trimmed.startsWith('electroncapture://')) {
+    trimmed = trimmed.replace(/^electroncapture:\/\//i, 'https://');
+  }
+  if (!/^https?:/i.test(trimmed)) {
+    trimmed = `https://${trimmed}`;
+  }
+  return trimmed;
+}
+
+function isDefaultVdoElectronUrl(targetUrl) {
+  if (typeof targetUrl !== 'string' || !targetUrl.trim().length) {
+    return false;
+  }
+  try {
+    const normalizedTarget = targetUrl.trim();
+    const defaultNormalized = DEFAULT_URL.trim();
+    if (normalizedTarget.toLowerCase() === defaultNormalized.toLowerCase()) {
+      return true;
+    }
+    const parsed = new URL(normalizedTarget);
+    const host = (parsed.hostname || '').toLowerCase();
+    const path = (parsed.pathname || '').toLowerCase();
+    if (!host.includes('vdo.ninja') || !path.includes('electron')) {
+      return false;
+    }
+    const search = (parsed.search || '').replace(/^\?/, '').trim();
+    // Treat as default only when no additional query params beyond version exist.
+    if (!search.length) {
+      return true;
+    }
+    const params = new URLSearchParams(parsed.search);
+    const keys = Array.from(params.keys());
+    if (keys.length === 1 && keys[0] === 'version') {
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.warn('Failed to evaluate default vdo electron URL:', error);
+    return false;
+  }
+}
+
+function shouldTreatUrlAsInviteCandidate(targetUrl) {
+  if (typeof targetUrl !== 'string') {
+    return false;
+  }
+  if (!/^https?:/i.test(targetUrl)) {
+    return false;
+  }
+  return !isDefaultVdoElectronUrl(targetUrl);
+}
+
+function ensureGameCaptureState(windowInstance) {
+  if (!windowInstance || typeof windowInstance !== 'object') {
+    return null;
+  }
+  if (!windowInstance.__gameCaptureState) {
+    windowInstance.__gameCaptureState = {
+      mode: null,
+      landingUrl: GAME_CAPTURE_SHELL_URL,
+      pendingInviteUrl: null,
+      activeInviteUrl: null,
+      lastInviteUrl: null,
+      slotId: null,
+      preset: null,
+      cursorPreference: null,
+      appAudioTarget: null,
+      transportPreference: null,
+      lastError: null,
+      shareProfile: null
+    };
+  }
+  return windowInstance.__gameCaptureState;
+}
+
+function buildGameCaptureContext(windowInstance) {
+  const state = ensureGameCaptureState(windowInstance);
+  if (!state) {
+    return null;
+  }
+  const meta = buildWindowMetaSnapshot(windowInstance);
+  return {
+    mode: state.mode,
+    landingUrl: state.landingUrl,
+    pendingInviteUrl: state.pendingInviteUrl,
+    activeInviteUrl: state.activeInviteUrl,
+    lastInviteUrl: state.lastInviteUrl,
+    slotId: state.slotId,
+    preset: state.preset,
+    cursorPreference: state.cursorPreference,
+    appAudioTarget: state.appAudioTarget,
+    transportPreference: state.transportPreference,
+    lastError: state.lastError,
+    shareProfile: state.shareProfile,
+    windowId: windowInstance ? windowInstance.id : null,
+    windowMeta: meta
+  };
+}
+
+function updateGameCaptureState(windowInstance, updates = {}) {
+  const state = ensureGameCaptureState(windowInstance);
+  if (!state) {
+    return null;
+  }
+  Object.assign(state, updates);
+  return buildGameCaptureContext(windowInstance);
+}
+
+function pushGameCaptureUpdate(windowInstance, reason = 'state-changed') {
+  if (!windowInstance || windowInstance.isDestroyed()) {
+    return;
+  }
+  const payload = {
+    reason,
+    state: buildGameCaptureContext(windowInstance)
+  };
+  try {
+    windowInstance.webContents.send('gamecapture:update', payload);
+  } catch (error) {
+    console.warn('Unable to push gamecapture update to renderer:', error);
+  }
+}
+
+function getPrimaryGameCaptureWindow(options = {}) {
+  const windows = BrowserWindow.getAllWindows().filter((win) => win && !win.isDestroyed());
+  if (!windows.length) {
+    return null;
+  }
+  const prioritized = windows.find((win) => {
+    const state = win.__gameCaptureState;
+    return state && state.mode === 'game';
+  });
+  if (options && options.requireGameMode) {
+    return prioritized || null;
+  }
+  return prioritized || windows[0];
+}
+
+function applyInviteToWindow(windowInstance, invitePayload = {}) {
+  if (!windowInstance || windowInstance.isDestroyed()) {
+    return false;
+  }
+  const normalizedUrl = sanitizeInviteUrl(invitePayload.inviteUrl);
+  if (!normalizedUrl) {
+    return false;
+  }
+  const updates = {
+    pendingInviteUrl: normalizedUrl,
+    lastInviteUrl: normalizedUrl,
+    activeInviteUrl: null,
+    lastError: null
+  };
+  if (invitePayload.slotId) {
+    updates.slotId = invitePayload.slotId;
+  }
+  if (invitePayload.preset) {
+    updates.preset = invitePayload.preset;
+  }
+  if (invitePayload.cursorPreference) {
+    updates.cursorPreference = invitePayload.cursorPreference;
+  }
+  if (invitePayload.appAudioTarget) {
+    updates.appAudioTarget = invitePayload.appAudioTarget;
+  }
+  if (typeof invitePayload.transportPreference !== 'undefined') {
+    updates.transportPreference = invitePayload.transportPreference;
+  }
+  updateGameCaptureState(windowInstance, updates);
+  pushGameCaptureUpdate(windowInstance, invitePayload.reason || 'incoming-invite');
+  if (windowInstance.isMinimized && windowInstance.isMinimized()) {
+    try {
+      windowInstance.restore();
+    } catch (error) {
+      console.warn('Failed to restore window after invite:', error);
+    }
+  }
+  try {
+    windowInstance.focus();
+  } catch (error) {
+    console.warn('Failed to focus window after invite:', error);
+  }
+  return true;
+}
+
+function launchInviteInWindow(windowInstance, inviteUrl, metadata = {}) {
+  if (!windowInstance || windowInstance.isDestroyed()) {
+    return { success: false, error: 'missing-window' };
+  }
+  const normalizedUrl = sanitizeInviteUrl(inviteUrl);
+  if (!normalizedUrl) {
+    return { success: false, error: 'invalid-url' };
+  }
+  const state = ensureGameCaptureState(windowInstance) || {};
+  const decorationOptions = {
+    slotId: metadata.slotId || state.slotId,
+    preset: metadata.preset || state.preset,
+    cursorPreference: metadata.cursorPreference || state.cursorPreference,
+    appAudioTarget: metadata.appAudioTarget || state.appAudioTarget,
+    transportPreference: typeof metadata.transportPreference !== 'undefined'
+      ? metadata.transportPreference
+      : state.transportPreference
+  };
+  const targetUrl = state.mode === 'game'
+    ? decorateInviteForGameMode(normalizedUrl, decorationOptions)
+    : normalizedUrl;
+  updateGameCaptureState(windowInstance, {
+    pendingInviteUrl: null,
+    activeInviteUrl: targetUrl,
+    lastInviteUrl: normalizedUrl,
+    lastError: null
+  });
+  if (metadata.slotId) {
+    updateGameCaptureState(windowInstance, { slotId: metadata.slotId });
+  }
+  if (metadata.preset) {
+    updateGameCaptureState(windowInstance, { preset: metadata.preset });
+  }
+  if (metadata.cursorPreference) {
+    updateGameCaptureState(windowInstance, { cursorPreference: metadata.cursorPreference });
+  }
+  if (metadata.appAudioTarget) {
+    updateGameCaptureState(windowInstance, { appAudioTarget: metadata.appAudioTarget });
+  }
+  if (typeof metadata.transportPreference !== 'undefined') {
+    updateGameCaptureState(windowInstance, { transportPreference: metadata.transportPreference });
+  }
+  try {
+    windowInstance.args = windowInstance.args || {};
+    windowInstance.args.url = targetUrl;
+    windowInstance.loadURL(targetUrl);
+    pushGameCaptureUpdate(windowInstance, 'invite-launched');
+    return { success: true, url: targetUrl };
+  } catch (error) {
+    updateGameCaptureState(windowInstance, { lastError: error.message });
+    pushGameCaptureUpdate(windowInstance, 'launch-error');
+    return { success: false, error: error.message };
+  }
+}
+
+function returnWindowToShell(windowInstance) {
+  if (!windowInstance || windowInstance.isDestroyed()) {
+    return { success: false, error: 'missing-window' };
+  }
+  try {
+    windowInstance.args = windowInstance.args || {};
+    windowInstance.args.url = GAME_CAPTURE_SHELL_URL;
+    updateGameCaptureState(windowInstance, {
+      activeInviteUrl: null,
+      lastError: null
+    });
+    windowInstance.loadURL(GAME_CAPTURE_SHELL_URL);
+    pushGameCaptureUpdate(windowInstance, 'returned-to-shell');
+    return { success: true, url: GAME_CAPTURE_SHELL_URL };
+  } catch (error) {
+    updateGameCaptureState(windowInstance, { lastError: error.message });
+    return { success: false, error: error.message };
+  }
+}
+
+function decorateInviteForGameMode(baseUrl, metadata = {}) {
+  if (!baseUrl || typeof baseUrl !== 'string') {
+    return baseUrl;
+  }
+  try {
+    const parsed = new URL(baseUrl);
+    parsed.searchParams.set('gamecapture', '1');
+    parsed.searchParams.set('gc_mode', 'game');
+    if (metadata.slotId) {
+      parsed.searchParams.set('gc_slot', metadata.slotId);
+    }
+    if (metadata.preset) {
+      parsed.searchParams.set('gc_preset', metadata.preset);
+    }
+    if (metadata.cursorPreference) {
+      parsed.searchParams.set('gc_cursor', metadata.cursorPreference);
+    }
+    if (metadata.appAudioTarget) {
+      parsed.searchParams.set('appAudio', metadata.appAudioTarget);
+    }
+    if (typeof metadata.transportPreference !== 'undefined') {
+      if (metadata.transportPreference === true || metadata.transportPreference === 'whipout') {
+        parsed.searchParams.set('whipout', '1');
+      } else if (metadata.transportPreference === false || metadata.transportPreference === 'p2p') {
+        parsed.searchParams.delete('whipout');
+      }
+    }
+    return parsed.toString();
+  } catch (error) {
+    console.warn('Failed to decorate invite URL for game capture:', error);
+    return baseUrl;
+  }
+}
+
+function buildWindowMetaSnapshot(windowInstance) {
+  if (!windowInstance || windowInstance.isDestroyed()) {
+    return null;
+  }
+  let bounds = null;
+  try {
+    bounds = windowInstance.getBounds();
+  } catch (error) {
+    bounds = null;
+  }
+  return {
+    isAlwaysOnTop: safeIsAlwaysOnTop(windowInstance),
+    isMinimized: safeIsMinimized(windowInstance),
+    isVisible: safeIsVisible(windowInstance),
+    isFullScreen: safeIsFullScreen(windowInstance),
+    width: bounds ? bounds.width : null,
+    height: bounds ? bounds.height : null,
+    zoomFactor: safeGetZoomFactor(windowInstance),
+    maximized: safeIsMaximized(windowInstance),
+    windowId: windowInstance.id
+  };
+}
+
+function safeIsAlwaysOnTop(windowInstance) {
+  try {
+    return windowInstance.isAlwaysOnTop();
+  } catch (error) {
+    return false;
+  }
+}
+
+function safeIsMinimized(windowInstance) {
+  try {
+    return windowInstance.isMinimized();
+  } catch (error) {
+    return false;
+  }
+}
+
+function safeIsVisible(windowInstance) {
+  try {
+    return windowInstance.isVisible();
+  } catch (error) {
+    return false;
+  }
+}
+
+function safeIsFullScreen(windowInstance) {
+  try {
+    return windowInstance.isFullScreen();
+  } catch (error) {
+    return false;
+  }
+}
+
+function safeIsMaximized(windowInstance) {
+  try {
+    return windowInstance.isMaximized();
+  } catch (error) {
+    return false;
+  }
+}
+
+function safeGetZoomFactor(windowInstance) {
+  try {
+    return windowInstance.webContents.getZoomFactor();
+  } catch (error) {
+    return 1;
+  }
+}
+
+function setWindowPinnedState(windowInstance, shouldPin) {
+  if (!windowInstance || windowInstance.isDestroyed()) {
+    return false;
+  }
+  try {
+    if (shouldPin) {
+      if (process.platform === 'darwin') {
+        windowInstance.setAlwaysOnTop(true, 'floating', 1);
+      } else {
+        windowInstance.setAlwaysOnTop(true, 'level');
+      }
+      windowInstance.setVisibleOnAllWorkspaces(true);
+    } else {
+      windowInstance.setAlwaysOnTop(false);
+      windowInstance.setVisibleOnAllWorkspaces(false);
+    }
+    if (windowInstance.args) {
+      windowInstance.args.pin = !!shouldPin;
+    }
+    return true;
+  } catch (error) {
+    console.warn('Unable to toggle pin state:', error);
+    return false;
+  }
+}
+
+function handleGameCaptureDeepLink(args, source = 'deeplink') {
+  const normalizedMode = normalizeModeValue(args && args.mode);
+  if (normalizedMode !== 'game') {
+    return false;
+  }
+  const inviteUrl = sanitizeInviteUrl(
+    (args && (args.__originalUrl || args.url)) || ''
+  );
+  if (!inviteUrl) {
+    return false;
+  }
+  const targetWindow = getPrimaryGameCaptureWindow({ requireGameMode: true });
+  if (!targetWindow) {
+    return false;
+  }
+  return applyInviteToWindow(targetWindow, {
+    inviteUrl,
+    slotId: args && (args.slotId || args.slot),
+    preset: args && args.preset,
+    cursorPreference: args && args.cursor,
+    transportPreference: typeof (args && args.whipout) !== 'undefined' ? args.whipout : undefined,
+    appAudioTarget: args && args.appaudio,
+    reason: source
+  });
+}
+
+const STREAM_ID_DICTIONARY = (Array.isArray(STREAM_ID_WORDS) ? STREAM_ID_WORDS : []).filter((entry) => typeof entry === 'string' && entry.trim().length);
+
+function getShareProfilePath() {
+  try {
+    return path.join(app.getPath('userData'), SHARE_PROFILE_FILENAME);
+  } catch (error) {
+    const prefix = app && app.name ? app.name : 'electroncapture';
+    return path.join(os.tmpdir(), `${prefix}-${SHARE_PROFILE_FILENAME}`);
+  }
+}
+
+function normalizeShareProfileStructure(profile) {
+  const normalized = {
+    ...DEFAULT_SHARE_PROFILE,
+    ...(profile || {})
+  };
+  normalized.advanced = {
+    ...DEFAULT_SHARE_PROFILE.advanced,
+    ...(profile && profile.advanced ? profile.advanced : {})
+  };
+  normalized.version = SHARE_PROFILE_VERSION;
+  return normalized;
+}
+
+function readShareProfileFromDisk() {
+  try {
+    const profilePath = getShareProfilePath();
+    if (!fs.existsSync(profilePath)) {
+      return null;
+    }
+    const raw = fs.readFileSync(profilePath, 'utf8');
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw);
+    return normalizeShareProfileStructure(parsed);
+  } catch (error) {
+    console.warn('Unable to load share profile from disk:', error);
+    return null;
+  }
+}
+
+function persistShareProfile(profile) {
+  if (!profile) {
+    return;
+  }
+  try {
+    const profilePath = getShareProfilePath();
+    fs.mkdirSync(path.dirname(profilePath), { recursive: true });
+    fs.writeFileSync(profilePath, JSON.stringify(profile, null, 2), 'utf8');
+  } catch (error) {
+    console.warn('Unable to persist share profile:', error);
+  }
+}
+
+function ensureShareProfileLoaded() {
+  if (shareProfileCache.profile) {
+    return shareProfileCache.profile;
+  }
+  let normalized = readShareProfileFromDisk();
+  let mutated = false;
+  if (!normalized) {
+    normalized = normalizeShareProfileStructure(null);
+    mutated = true;
+  }
+  if (!normalized.streamId) {
+    const generated = generateStreamIdValue({
+      mode: normalized.streamIdMode,
+      wordCount: normalized.streamIdWordCount
+    });
+    normalized.streamId = generated.value;
+    normalized.streamIdMode = generated.mode;
+    normalized.streamIdWordCount = generated.wordCount;
+    normalized.streamIdGeneratedAt = Date.now();
+    mutated = true;
+  }
+  shareProfileCache.profile = normalized;
+  if (mutated) {
+    persistShareProfile(normalized);
+  }
+  return normalized;
+}
+
+function secureRandomInt(max) {
+  if (!Number.isFinite(max) || max <= 0) {
+    return 0;
+  }
+  const rand = crypto.randomBytes(4).readUInt32BE(0);
+  return rand % max;
+}
+
+function pickStreamDictionaryWord() {
+  if (STREAM_ID_DICTIONARY.length === 0) {
+    const fallbacks = ['versus', 'ninja', 'capture', 'vector', 'ember', 'orbit'];
+    return fallbacks[secureRandomInt(fallbacks.length)];
+  }
+  return STREAM_ID_DICTIONARY[secureRandomInt(STREAM_ID_DICTIONARY.length)];
+}
+
+function formatStreamWordToken(word) {
+  if (!word || typeof word !== 'string') {
+    return '';
+  }
+  const cleaned = word.replace(/[^A-Za-z]/g, '');
+  if (!cleaned.length) {
+    return '';
+  }
+  const lower = cleaned.toLowerCase();
+  if (secureRandomInt(100) < 60) {
+    return lower.charAt(0).toUpperCase() + lower.slice(1);
+  }
+  if (secureRandomInt(100) < 30) {
+    return lower.toUpperCase();
+  }
+  return lower;
+}
+
+function generateAlphanumericId(length = 10, preferUppercase = true) {
+  const chars = STREAM_ID_ALPHABET_WITH_UNDERSCORE;
+  let result = '';
+  for (let i = 0; i < Math.max(1, length); i++) {
+    const idx = secureRandomInt(chars.length);
+    let char = chars.charAt(idx);
+    if (preferUppercase && /[a-z]/.test(char) && secureRandomInt(100) < 60) {
+      char = char.toUpperCase();
+    }
+    result += char;
+  }
+  if (!/[0-9]/.test(result)) {
+    const insertIndex = secureRandomInt(result.length);
+    const digit = secureRandomInt(10).toString();
+    result = result.slice(0, insertIndex) + digit + result.slice(insertIndex + (result.length > 1 ? 1 : 0));
+  }
+  if (!/_/.test(result) && secureRandomInt(100) < 40) {
+    const insertIndex = secureRandomInt(result.length + 1);
+    result = result.slice(0, insertIndex) + '_' + result.slice(insertIndex);
+  }
+  return result;
+}
+
+function generateWordStyleIdPayload(preferredCount) {
+  let count = Number.isFinite(preferredCount) ? Math.trunc(preferredCount) : null;
+  if (!count || count < STREAM_ID_MIN_WORDS || count > STREAM_ID_MAX_WORDS) {
+    count = STREAM_ID_MIN_WORDS + secureRandomInt(STREAM_ID_MAX_WORDS);
+    count = Math.max(STREAM_ID_MIN_WORDS, Math.min(STREAM_ID_MAX_WORDS, count));
+  }
+  const words = [];
+  for (let i = 0; i < count; i++) {
+    const token = formatStreamWordToken(pickStreamDictionaryWord());
+    if (token) {
+      words.push(token);
+    }
+  }
+  if (!words.length) {
+    words.push('Versus');
+  }
+  const joinWithUnderscore = count > 1 && secureRandomInt(100) < 50;
+  let base = joinWithUnderscore ? words.join('_') : words.join('');
+  if (!base.length) {
+    base = generateAlphanumericId(6);
+  }
+  if (!base.includes('_') && secureRandomInt(100) < 35) {
+    base += '_';
+  }
+  const suffix = `${generateAlphanumericId(1, true)}${secureRandomInt(10)}${generateAlphanumericId(1, false)}`;
+  let finalValue = `${base}${suffix}`;
+  if (finalValue.length < 12) {
+    finalValue += generateAlphanumericId(12 - finalValue.length, false);
+  } else if (finalValue.length > 20) {
+    finalValue = finalValue.slice(0, 20);
+  }
+  return {
+    value: finalValue,
+    wordCount: count
+  };
+}
+
+function normalizeStreamIdModePreference(value) {
+  const token = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  if (['alpha', 'alphanumeric', 'random', 'plain'].includes(token)) {
+    return 'alphanumeric';
+  }
+  return 'words';
+}
+
+function generateStreamIdValue(options = {}) {
+  const normalizedMode = normalizeStreamIdModePreference(options.mode);
+  if (normalizedMode === 'alphanumeric') {
+    const targetLength = Number.isFinite(options.length)
+      ? Math.max(6, Math.min(24, Math.trunc(options.length)))
+      : (secureRandomInt(100) < 50 ? 9 : 10);
+    return {
+      value: generateAlphanumericId(targetLength, true),
+      wordCount: 0,
+      mode: 'alphanumeric'
+    };
+  }
+  const payload = generateWordStyleIdPayload(options.wordCount);
+  return {
+    value: payload.value,
+    wordCount: payload.wordCount,
+    mode: 'words'
+  };
+}
+
+function mutateShareProfile(mutator) {
+  const current = ensureShareProfileLoaded();
+  const draft = JSON.parse(JSON.stringify(current));
+  if (typeof mutator === 'function') {
+    mutator(draft);
+  }
+  draft.version = SHARE_PROFILE_VERSION;
+  draft.updatedAt = Date.now();
+  draft.advanced = {
+    ...DEFAULT_SHARE_PROFILE.advanced,
+    ...(draft.advanced || {})
+  };
+  shareProfileCache.profile = draft;
+  persistShareProfile(draft);
+  return draft;
+}
+
+function regenerateShareStreamId(options = {}) {
+  mutateShareProfile((draft) => {
+    const generated = generateStreamIdValue(options);
+    draft.streamId = generated.value;
+    draft.streamIdMode = generated.mode;
+    draft.streamIdWordCount = generated.wordCount;
+    draft.streamIdGeneratedAt = Date.now();
+  });
+}
+
+function normalizeShareRoomCode(value) {
+  if (typeof value !== 'string') {
+    return '';
+  }
+  const sanitized = value.trim().replace(/[^A-Za-z0-9_-]/g, '');
+  return sanitized.slice(0, 48);
+}
+
+function normalizeSharePassword(value) {
+  if (typeof value !== 'string') {
+    return '';
+  }
+  return value.trim().slice(0, 64);
+}
+
+function clampNumber(value, min, max, fallback) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return fallback;
+  }
+  let result = numeric;
+  if (typeof min === 'number' && result < min) {
+    result = min;
+  }
+  if (typeof max === 'number' && result > max) {
+    result = max;
+  }
+  return result;
+}
+
+function resolveShareBaseUrl(value, fallback = DEFAULT_VDO_BASE_URL) {
+  if (typeof value !== 'string' || !value.trim().length) {
+    return fallback;
+  }
+  const trimmed = value.trim();
+  try {
+    const candidate = new URL(trimmed);
+    candidate.search = '';
+    candidate.hash = '';
+    if (!candidate.pathname || candidate.pathname === '') {
+      candidate.pathname = '/';
+    }
+    if (!candidate.pathname.endsWith('/')) {
+      candidate.pathname += '/';
+    }
+    return candidate.toString();
+  } catch (error) {
+    try {
+      const fallbackUrl = new URL(trimmed, fallback);
+      fallbackUrl.search = '';
+      fallbackUrl.hash = '';
+      if (!fallbackUrl.pathname.endsWith('/')) {
+        fallbackUrl.pathname += '/';
+      }
+      return fallbackUrl.toString();
+    } catch (fallbackError) {
+      console.warn('Unable to normalize share base URL:', fallbackError);
+      return fallback;
+    }
+  }
+}
+
+function buildVdoUrl(base, params) {
+  const normalizedBase = resolveShareBaseUrl(base, DEFAULT_VDO_BASE_URL);
+  let target;
+  try {
+    target = new URL(normalizedBase);
+  } catch (error) {
+    console.warn('Invalid VDO base URL, falling back to default:', error);
+    target = new URL(DEFAULT_VDO_BASE_URL);
+  }
+  target.search = '';
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value === null || value === undefined || value === '' || (typeof value === 'number' && !Number.isFinite(value))) {
+      return;
+    }
+    target.searchParams.set(key, String(value));
+  });
+  return target.toString();
+}
+
+function buildPublishParams(profile, advanced) {
+  const publishBitrate = clampNumber(
+    advanced.publishBitrateKbps,
+    500,
+    20000,
+    DEFAULT_SHARE_PROFILE.advanced.publishBitrateKbps
+  );
+  const audioBitrate = clampNumber(
+    advanced.audioBitrateKbps,
+    48,
+    512,
+    DEFAULT_SHARE_PROFILE.advanced.audioBitrateKbps
+  );
+  const params = {
+    push: profile.streamId,
+    screenshare: 1,
+    bitrate: Math.round(publishBitrate) * 1000,
+    ab: Math.round(audioBitrate),
+    stereo: advanced.stereo ? 1 : undefined,
+    room: profile.roomCode || undefined,
+    password: profile.roomPassword || undefined,
+    scene: 0,
+    autostart: 1,
+    cleanoutput: 2,
+    label: 'VersusGameCapture'
+  };
+  if (advanced.codec === 'h264') {
+    params.h264 = 1;
+  } else if (advanced.codec === 'vp9') {
+    params.vp9 = 1;
+  } else if (advanced.codec === 'av1') {
+    params.av1 = 1;
+  }
+  if (advanced.preferWhipRelay) {
+    params.whipout = 1;
+  }
+  return params;
+}
+
+function buildViewParams(profile, advanced) {
+  const viewBitrate = clampNumber(
+    advanced.viewBitrateKbps,
+    500,
+    20000,
+    DEFAULT_SHARE_PROFILE.advanced.viewBitrateKbps
+  );
+  const audioBitrate = clampNumber(
+    advanced.audioBitrateKbps,
+    48,
+    512,
+    DEFAULT_SHARE_PROFILE.advanced.audioBitrateKbps
+  );
+  const params = {
+    view: profile.streamId,
+    cleanoutput: 2,
+    stats: 1,
+    quality: 0,
+    scene: 0,
+    bitrate: Math.round(viewBitrate) * 1000,
+    ab: Math.round(audioBitrate),
+    stereo: advanced.stereo ? 1 : undefined,
+    room: profile.roomCode || undefined,
+    password: profile.roomPassword || undefined,
+    label: 'VersusGameCapture'
+  };
+  if (advanced.codec === 'h264') {
+    params.h264 = 1;
+  } else if (advanced.codec === 'vp9') {
+    params.vp9 = 1;
+  } else if (advanced.codec === 'av1') {
+    params.av1 = 1;
+  }
+  return params;
+}
+
+function buildShareLinksFromProfile(profile, advanced) {
+  const baseHost = resolveShareBaseUrl(advanced.baseHost, DEFAULT_VDO_BASE_URL);
+  const publishParams = buildPublishParams(profile, advanced);
+  const viewParams = buildViewParams(profile, advanced);
+  return {
+    publish: buildVdoUrl(baseHost, publishParams),
+    view: buildVdoUrl(baseHost, viewParams),
+    publishParams,
+    viewParams,
+    baseHost
+  };
+}
+
+function buildShareProfilePayload() {
+  const profile = ensureShareProfileLoaded();
+  const advanced = {
+    ...DEFAULT_SHARE_PROFILE.advanced,
+    ...(profile.advanced || {})
+  };
+  const shareLinks = buildShareLinksFromProfile(profile, advanced);
+  return {
+    streamId: profile.streamId,
+    streamIdMode: profile.streamIdMode || 'words',
+    streamIdWordCount: profile.streamIdWordCount || 0,
+    streamIdGeneratedAt: profile.streamIdGeneratedAt || null,
+    roomCode: profile.roomCode || '',
+    roomPassword: profile.roomPassword || '',
+    advanced,
+    shareLinks,
+    qualitySummary: {
+      preset: advanced.qualityPreset,
+      publishBitrateKbps: advanced.publishBitrateKbps,
+      viewBitrateKbps: advanced.viewBitrateKbps,
+      codec: advanced.codec,
+      stereo: !!advanced.stereo,
+      preferWhipRelay: !!advanced.preferWhipRelay
+    }
+  };
+}
+
+function attachShareProfileToWindow(windowInstance) {
+  if (!windowInstance || windowInstance.isDestroyed()) {
+    return null;
+  }
+  const payload = buildShareProfilePayload();
+  updateGameCaptureState(windowInstance, { shareProfile: payload });
+  return payload;
+}
+
+function broadcastShareProfileUpdate(reason = 'share-profile-updated') {
+  const payload = buildShareProfilePayload();
+  BrowserWindow.getAllWindows().forEach((win) => {
+    if (!win || win.isDestroyed()) {
+      return;
+    }
+    updateGameCaptureState(win, { shareProfile: payload });
+    pushGameCaptureUpdate(win, reason);
+  });
+  return payload;
+}
+
+function updateStoredShareProfile(payload = {}) {
+  mutateShareProfile((draft) => {
+    if (Object.prototype.hasOwnProperty.call(payload, 'roomCode')) {
+      draft.roomCode = normalizeShareRoomCode(payload.roomCode);
+    }
+    if (Object.prototype.hasOwnProperty.call(payload, 'roomPassword')) {
+      draft.roomPassword = normalizeSharePassword(payload.roomPassword);
+    }
+    if (payload.streamId && typeof payload.streamId === 'string') {
+      const trimmed = payload.streamId.trim();
+      if (/^[A-Za-z0-9_]{4,40}$/.test(trimmed)) {
+        draft.streamId = trimmed;
+        draft.streamIdGeneratedAt = Date.now();
+        draft.streamIdMode = 'manual';
+        draft.streamIdWordCount = 0;
+      }
+    }
+    if (payload.advanced && typeof payload.advanced === 'object') {
+      draft.advanced = draft.advanced || {};
+      if (Object.prototype.hasOwnProperty.call(payload.advanced, 'baseHost')) {
+        draft.advanced.baseHost = resolveShareBaseUrl(
+          payload.advanced.baseHost,
+          draft.advanced.baseHost || DEFAULT_VDO_BASE_URL
+        );
+      }
+      if (Object.prototype.hasOwnProperty.call(payload.advanced, 'publishBitrateKbps')) {
+        draft.advanced.publishBitrateKbps = clampNumber(
+          payload.advanced.publishBitrateKbps,
+          500,
+          20000,
+          draft.advanced.publishBitrateKbps
+        );
+      }
+      if (Object.prototype.hasOwnProperty.call(payload.advanced, 'viewBitrateKbps')) {
+        draft.advanced.viewBitrateKbps = clampNumber(
+          payload.advanced.viewBitrateKbps,
+          500,
+          20000,
+          draft.advanced.viewBitrateKbps
+        );
+      }
+      if (Object.prototype.hasOwnProperty.call(payload.advanced, 'audioBitrateKbps')) {
+        draft.advanced.audioBitrateKbps = clampNumber(
+          payload.advanced.audioBitrateKbps,
+          48,
+          512,
+          draft.advanced.audioBitrateKbps
+        );
+      }
+      if (Object.prototype.hasOwnProperty.call(payload.advanced, 'codec')) {
+        const codecToken = typeof payload.advanced.codec === 'string'
+          ? payload.advanced.codec.trim().toLowerCase()
+          : '';
+        if (['h264', 'vp9', 'av1'].includes(codecToken)) {
+          draft.advanced.codec = codecToken;
+        }
+      }
+      if (Object.prototype.hasOwnProperty.call(payload.advanced, 'stereo')) {
+        draft.advanced.stereo = !!payload.advanced.stereo;
+      }
+      if (Object.prototype.hasOwnProperty.call(payload.advanced, 'preferWhipRelay')) {
+        draft.advanced.preferWhipRelay = !!payload.advanced.preferWhipRelay;
+      }
+      if (Object.prototype.hasOwnProperty.call(payload.advanced, 'hideCursor')) {
+        draft.advanced.hideCursor = !!payload.advanced.hideCursor;
+      }
+      if (Object.prototype.hasOwnProperty.call(payload.advanced, 'qualityPreset')) {
+        const presetToken = typeof payload.advanced.qualityPreset === 'string'
+          ? payload.advanced.qualityPreset.trim()
+          : '';
+        if (presetToken.length) {
+          draft.advanced.qualityPreset = presetToken;
+        }
+      }
+    }
+  });
+  return buildShareProfilePayload();
+}
+
+
 ipcMain.handle('noCORSFetch', async (event, args) => {
   const streamId = Date.now().toString();
   
@@ -1882,6 +2976,157 @@ ipcMain.handle('noCORSFetch', async (event, args) => {
       ok: false,
       error: error.message
     };
+  }
+});
+
+ipcMain.handle('gamecapture:get-context', (event) => {
+  try {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    return buildGameCaptureContext(win);
+  } catch (error) {
+    console.warn('gamecapture:get-context failed:', error);
+    return null;
+  }
+});
+
+ipcMain.handle('gamecapture:launch-invite', (event, payload) => {
+  try {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) {
+      return { success: false, error: 'missing-window' };
+    }
+    const targetUrl = typeof payload === 'string'
+      ? payload
+      : (payload && (payload.url || payload.inviteUrl));
+    if (!targetUrl || !String(targetUrl).trim().length) {
+      return { success: false, error: 'invalid-url' };
+    }
+    const meta = {
+      slotId: payload && (payload.slotId || payload.slot),
+      preset: payload && payload.preset,
+      cursorPreference: payload && (payload.cursorPreference || payload.cursor),
+      appAudioTarget: payload && (payload.appAudioTarget || payload.appaudio || payload.appAudio),
+      transportPreference: typeof (payload && payload.transportPreference) !== 'undefined'
+        ? payload.transportPreference
+        : (typeof (payload && payload.whipout) !== 'undefined' ? payload.whipout : undefined)
+    };
+    return launchInviteInWindow(win, targetUrl, meta);
+  } catch (error) {
+    console.warn('gamecapture:launch-invite failed:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('gamecapture:return-to-shell', (event) => {
+  try {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    return returnWindowToShell(win);
+  } catch (error) {
+    console.warn('gamecapture:return-to-shell failed:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('gamecapture:get-share-profile', () => {
+  try {
+    return buildShareProfilePayload();
+  } catch (error) {
+    console.warn('gamecapture:get-share-profile failed:', error);
+    return null;
+  }
+});
+
+ipcMain.handle('gamecapture:update-share-profile', (_event, payload) => {
+  try {
+    updateStoredShareProfile(payload || {});
+    return broadcastShareProfileUpdate('share-profile-updated');
+  } catch (error) {
+    console.warn('gamecapture:update-share-profile failed:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('gamecapture:regenerate-stream-id', (_event, payload) => {
+  try {
+    regenerateShareStreamId(payload || {});
+    return broadcastShareProfileUpdate('share-id-regenerated');
+  } catch (error) {
+    console.warn('gamecapture:regenerate-stream-id failed:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('gamecapture:window-action', (event, payload = {}) => {
+  try {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) {
+      return { success: false, error: 'missing-window' };
+    }
+    const action = typeof payload.action === 'string' ? payload.action : '';
+    switch (action) {
+      case 'minimize':
+        win.minimize();
+        break;
+      case 'restore':
+        if (win.isMinimized()) {
+          win.restore();
+        } else {
+          win.focus();
+        }
+        break;
+      case 'close':
+        win.close();
+        break;
+      case 'toggle-pin': {
+        const desired = typeof payload.target === 'boolean' ? payload.target : !safeIsAlwaysOnTop(win);
+        setWindowPinnedState(win, desired);
+        break;
+      }
+      case 'toggle-fullscreen':
+        win.setFullScreen(!win.isFullScreen());
+        break;
+      default:
+        console.warn('Unsupported window action requested:', action);
+        return { success: false, error: 'unsupported-action' };
+    }
+    pushGameCaptureUpdate(win, 'window-action');
+    return {
+      success: true,
+      state: buildWindowMetaSnapshot(win)
+    };
+  } catch (error) {
+    console.warn('gamecapture:window-action failed:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('gamecapture:window-resize', (event, payload = {}) => {
+  try {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) {
+      return { success: false, error: 'missing-window' };
+    }
+    const rawWidth = Number(payload.width);
+    const rawHeight = Number(payload.height);
+    if (!Number.isFinite(rawWidth) || !Number.isFinite(rawHeight)) {
+      return { success: false, error: 'invalid-dimensions' };
+    }
+    const width = Math.max(400, Math.round(rawWidth));
+    const height = Math.max(300, Math.round(rawHeight));
+    if (win.args) {
+      win.args.width = width;
+      win.args.height = height;
+    }
+    win.setFullScreen(false);
+    win.setBounds({ ...win.getBounds(), width, height }, false);
+    pushGameCaptureUpdate(win, 'window-resized');
+    return {
+      success: true,
+      state: buildWindowMetaSnapshot(win)
+    };
+  } catch (error) {
+    console.warn('gamecapture:window-resize failed:', error);
+    return { success: false, error: error.message };
   }
 });
 
@@ -2026,7 +3271,8 @@ function forwardWindowAudioData(webContents, clientId, baseSampleRate, baseChann
 }
 
 ipcMain.handle('windowAudio:getTargets', async () => {
-	if (!windowAudioCapture) {
+	const available = windowAudioCaptureAvailable && !!windowAudioCapture;
+	if (!available) {
 		return { success: false, error: 'window-audio-capture module unavailable' };
 	}
 	try {
@@ -2040,7 +3286,8 @@ ipcMain.handle('windowAudio:getTargets', async () => {
 });
 
 ipcMain.handle('windowAudio:getSessions', async () => {
-	if (!windowAudioCapture || typeof windowAudioCapture.getAudioSessions !== 'function') {
+	const available = windowAudioCaptureAvailable && !!windowAudioCapture;
+	if (!available || typeof windowAudioCapture.getAudioSessions !== 'function') {
 		return { success: false, error: 'window-audio-capture module unavailable' };
 	}
 	try {
@@ -2053,7 +3300,8 @@ ipcMain.handle('windowAudio:getSessions', async () => {
 });
 
 ipcMain.handle('windowAudio:startStreamCapture', async (event, rawTarget) => {
-	if (!windowAudioCapture || typeof windowAudioCapture.startStreamCapture !== 'function') {
+	const available = windowAudioCaptureAvailable && !!windowAudioCapture;
+	if (!available || typeof windowAudioCapture.startStreamCapture !== 'function') {
 		return { success: false, error: 'window-audio-capture module unavailable' };
 	}
 
@@ -2118,7 +3366,8 @@ ipcMain.handle('windowAudio:startStreamCapture', async (event, rawTarget) => {
 });
 
 ipcMain.handle('windowAudio:stopStreamCapture', async (event) => {
-	if (!windowAudioCapture || typeof windowAudioCapture.stopStreamCapture !== 'function') {
+	const available = windowAudioCaptureAvailable && !!windowAudioCapture;
+	if (!available || typeof windowAudioCapture.stopStreamCapture !== 'function') {
 		return { success: false, error: 'window-audio-capture module unavailable' };
 	}
 
@@ -2189,7 +3438,7 @@ async function createWindow(args, reuse=false) {
   };
 
   if (typeof NODE !== 'boolean') {
-    assignNodeIntegration(false, false);
+    assignNodeIntegration(true, false);
   }
 
 	if (typeof URL === 'string') {
@@ -2204,10 +3453,28 @@ async function createWindow(args, reuse=false) {
 
 	args.url = URL;
 
-	if (!nodeExplicitFlag && typeof URL === 'string') {
+	const normalizedModeForWindow = normalizeModeValue(args.mode) || normalizeModeValue(Argv && Argv.mode) || normalizeModeValue(DEFAULT_MODE);
+	if (normalizedModeForWindow) {
+		args.mode = normalizedModeForWindow;
+	}
+	const originalUrlForWindow = typeof args.__originalUrl === 'string' ? args.__originalUrl : URL;
+	let pendingInviteUrl = null;
+      let launchingGameShell = false;
+      if (normalizedModeForWindow === 'game') {
+              if (shouldTreatUrlAsInviteCandidate(originalUrlForWindow)) {
+                      pendingInviteUrl = originalUrlForWindow;
+              }
+              URL = GAME_CAPTURE_SHELL_URL;
+              args.url = URL;
+              launchingGameShell = true;
+      }
+
+	const urlForNodePreference = launchingGameShell && typeof originalUrlForWindow === 'string' ? originalUrlForWindow : URL;
+
+	if (!nodeExplicitFlag && typeof urlForNodePreference === 'string') {
 		let preferenceResolved = false;
     try {
-      const parsedUrl = new URL(URL);
+		const parsedUrl = new URL(urlForNodePreference);
       const nodeParamKeys = ['node', 'nodeintegration', 'nodeIntegration', 'enableNode'];
       for (const key of nodeParamKeys) {
         if (!parsedUrl.searchParams.has(key)) {
@@ -2239,7 +3506,7 @@ async function createWindow(args, reuse=false) {
     }
 
     if (!preferenceResolved) {
-      const loweredUrl = URL.toLowerCase();
+		const loweredUrl = urlForNodePreference.toLowerCase();
       if (loweredUrl.includes('screenshare') || loweredUrl.includes('appaudio')) {
         assignNodeIntegration(true);
         preferenceResolved = true;
@@ -2253,7 +3520,13 @@ async function createWindow(args, reuse=false) {
 
   args.__nodeExplicit = nodeExplicitFlag;
 
-  const desiredImmutableWebPreferences = {
+      const slotIdValue = args.slotId || args.slot || null;
+      const presetValue = args.preset || null;
+      const cursorPreferenceValue = args.cursor || null;
+      const appAudioTargetValue = args.appaudio || args.appAudio || null;
+      const transportPreferenceValue = typeof args.whipout !== 'undefined' ? args.whipout : null;
+
+	const desiredImmutableWebPreferences = {
   	nodeIntegration: !!NODE,
   	nodeIntegrationInSubFrames: !!NODE,
   	contextIsolation: !NODE
@@ -2269,6 +3542,22 @@ async function createWindow(args, reuse=false) {
 			} else {
 				console.log(`Reusing existing window named "${requestedWindowName}".`);
 				if (applyArgsToExistingWindow(existingWindow, args)) {
+					updateGameCaptureState(existingWindow, {
+						mode: normalizedModeForWindow || null,
+						landingUrl: GAME_CAPTURE_SHELL_URL,
+						pendingInviteUrl: pendingInviteUrl || null,
+						activeInviteUrl: normalizedModeForWindow === 'game' ? null : originalUrlForWindow,
+						lastInviteUrl: pendingInviteUrl || null,
+						slotId: slotIdValue || null,
+						preset: presetValue || null,
+						cursorPreference: cursorPreferenceValue || null,
+						appAudioTarget: appAudioTargetValue || null,
+						transportPreference: transportPreferenceValue
+					});
+					attachShareProfileToWindow(existingWindow);
+					if (normalizedModeForWindow === 'game') {
+						pushGameCaptureUpdate(existingWindow, 'window-reused');
+					}
 					return existingWindow;
 				}
 				console.warn(`Failed to reuse window "${requestedWindowName}" cleanly; creating a new window instead.`);
@@ -2339,7 +3628,9 @@ async function createWindow(args, reuse=false) {
   
   try {
     if (URL.startsWith("file:")){
-      webSecurity = false;
+      if (!launchingGameShell) {
+        webSecurity = false;
+      }
     } else if (!(URL.startsWith("http"))){
       URL = "https://"+URL.toString();
     }
@@ -2406,6 +3697,22 @@ async function createWindow(args, reuse=false) {
 	});
 	mainWindow.__immutableWebPreferences = desiredImmutableWebPreferences;
 	mainWindow.__lastDisplayId = initialDisplay ? initialDisplay.id : null;
+	updateGameCaptureState(mainWindow, {
+		mode: normalizedModeForWindow || null,
+		landingUrl: GAME_CAPTURE_SHELL_URL,
+              pendingInviteUrl: pendingInviteUrl || null,
+              activeInviteUrl: normalizedModeForWindow === 'game' ? null : originalUrlForWindow,
+              lastInviteUrl: pendingInviteUrl || null,
+              slotId: slotIdValue || null,
+              preset: presetValue || null,
+              cursorPreference: cursorPreferenceValue || null,
+              appAudioTarget: appAudioTargetValue || null,
+              transportPreference: transportPreferenceValue
+      });
+	attachShareProfileToWindow(mainWindow);
+	if (normalizedModeForWindow === 'game') {
+		pushGameCaptureUpdate(mainWindow, 'window-created');
+	}
 	
 	mainWindow.webContents.session.webRequest.onHeadersReceived({ urls: [ "*://*/*" ] },
 		(d, c)=>{
@@ -2714,6 +4021,15 @@ async function createWindow(args, reuse=false) {
 			} catch(e){
 				console.log(e);
 			}
+		}
+
+		try {
+			const currentUrl = mainWindow.webContents.getURL();
+			if (currentUrl && currentUrl.startsWith('file://') && currentUrl.includes('gamecapture.html')) {
+				pushGameCaptureUpdate(mainWindow, 'shell-loaded');
+			}
+		} catch (stateError) {
+			console.warn('Unable to emit gamecapture state after navigation:', stateError);
 		}
 		
 		//
@@ -3877,6 +5193,9 @@ app.on('second-instance', (event, commandLine, workingDirectory, argv2) => {
         console.log('Processing deep link:', deepLinkUrl);
         const args = parseDeepLink(deepLinkUrl);
         if (args) {
+            if (handleGameCaptureDeepLink(args, 'second-instance')) {
+                return;
+            }
             createWindow(args);
             return;
         }
@@ -3902,6 +5221,9 @@ app.on('open-url', (event, url) => {
     if (url.startsWith('electroncapture://')) {
         const args = parseDeepLink(url);
         if (args) {
+            if (handleGameCaptureDeepLink(args, 'open-url')) {
+                return;
+            }
             // Ensure app is ready before creating window
             if (app.isReady()) {
                 console.log('Creating window from deep link with args:', args);
@@ -4113,3 +5435,10 @@ electron.powerMonitor.on('on-battery', () => {
 		});
 	notification.show();
 })
+ipcMain.handle('windowAudio:isAvailable', () => {
+	return { available: windowAudioCaptureAvailable && !!windowAudioCapture };
+});
+
+ipcMain.on('windowAudio:availability-sync', (event) => {
+	event.returnValue = { available: windowAudioCaptureAvailable && !!windowAudioCapture };
+});
