@@ -1,0 +1,777 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Versus Game Capture</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #050505;
+      color: #f5f5f5;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2.5rem 1.5rem 3.5rem;
+      background: radial-gradient(circle at top, rgba(108,99,255,0.18), transparent 60%), #03030a;
+      position: relative;
+    }
+    body::after {
+      content: "";
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      border-radius: 26px;
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow:
+        0 0 0 1px rgba(7,7,12,0.65),
+        0 25px 80px rgba(0,0,0,0.55),
+        inset 0 0 40px rgba(255,255,255,0.02);
+      pointer-events: none;
+    }
+    .shell {
+      width: min(1040px, 100%);
+      background: rgba(7, 7, 12, 0.88);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 22px;
+      padding: 2.5rem;
+      box-shadow: 0 30px 70px rgba(0,0,0,0.65);
+      backdrop-filter: blur(20px);
+    }
+    header.page-header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 2rem;
+    }
+    .page-header h1 {
+      margin: 0 0 0.5rem;
+      font-size: clamp(1.75rem, 2.5vw, 2.35rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .page-header .lede {
+      margin: 0;
+      color: rgba(255,255,255,0.75);
+      max-width: 48ch;
+      line-height: 1.45;
+    }
+    .header-actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .panels {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+    .panel {
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 18px;
+      padding: 1.5rem;
+      background: rgba(255,255,255,0.02);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+    .panel h2 {
+      margin: 0;
+      font-size: 1.3rem;
+    }
+    .panel p {
+      margin: 0;
+      color: rgba(255,255,255,0.72);
+    }
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    label {
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+    input[type="text"],
+    input[type="url"],
+    input[type="password"] {
+      width: 100%;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      padding: 0.85rem 1rem;
+      background: rgba(255,255,255,0.05);
+      color: inherit;
+      font-size: 1rem;
+    }
+    input:focus {
+      outline: 2px solid rgba(108,99,255,0.7);
+      border-color: transparent;
+    }
+    .input-row {
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    button {
+      border: none;
+      border-radius: 12px;
+      padding: 0.8rem 1.1rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease, opacity 0.2s ease;
+    }
+    button.primary {
+      background: linear-gradient(120deg, #6c63ff, #2acbff);
+      color: #fff;
+    }
+    button.secondary {
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+    }
+    button.ghost {
+      background: rgba(255,255,255,0.07);
+      color: rgba(255,255,255,0.9);
+    }
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+    .status-pill {
+      padding: 0.35rem 0.9rem;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.75);
+    }
+    .share-status {
+      font-size: 0.95rem;
+      color: rgba(255,255,255,0.85);
+    }
+    .share-meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 0.75rem;
+      margin: 0;
+    }
+    .share-meta div {
+      padding: 0.75rem 0.9rem;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.04);
+    }
+    .share-meta dt {
+      margin: 0;
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.6);
+    }
+    .share-meta dd {
+      margin: 0.2rem 0 0;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 0.75rem;
+    }
+    .status-card {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.75rem;
+      margin: 0;
+      padding: 0.9rem 0.2rem 0.2rem;
+    }
+    .status-card dt {
+      font-size: 0.8rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 0.2rem;
+    }
+    .status-card dd {
+      margin: 0;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+    .hint {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.65);
+    }
+    .error {
+      color: #ff89a9;
+      font-size: 0.9rem;
+    }
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    @media (max-width: 720px) {
+      .shell {
+        padding: 1.75rem;
+      }
+      header.page-header {
+        flex-direction: column;
+      }
+      .panel {
+        padding: 1.2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="page-header">
+      <div>
+        <p class="status-pill">Versus Game Capture</p>
+        <h1>Share or join in seconds</h1>
+        <p class="lede">Pick a game or paste the invite your producer sent. We’ll handle the high-quality VDO link, cursor defaults, and audio so you can focus on playing.</p>
+      </div>
+      <div class="header-actions">
+        <button class="ghost" id="openClassicBtn" type="button">Open classic interface</button>
+        <button class="primary" id="sharePrimaryBtn" type="button">Share my game</button>
+      </div>
+    </header>
+
+    <div class="panels">
+      <section class="panel share-panel" id="sharePanel">
+        <div class="panel-head">
+          <div>
+            <h2>Quick-share stream</h2>
+            <p>Your stream ID is saved locally so you can relaunch in one tap.</p>
+          </div>
+          <button class="primary" id="shareGoLiveBtn" type="button">Share my game</button>
+        </div>
+        <p class="share-status" id="shareStatusMessage">Generating stream ID…</p>
+        <div class="field-group">
+          <label for="streamIdField">Stream ID</label>
+          <div class="input-row">
+            <input id="streamIdField" type="text" readonly value="">
+            <button class="ghost" id="copyStreamIdBtn" type="button">Copy</button>
+            <button class="ghost" id="regenStreamIdBtn" type="button">Regenerate</button>
+          </div>
+          <small class="hint">Memorable IDs mix words, numbers, and underscores so friends can type them easily.</small>
+        </div>
+        <div class="field-group">
+          <label for="viewerLinkField">Viewer link</label>
+          <div class="input-row">
+            <input id="viewerLinkField" type="text" readonly value="">
+            <button class="ghost" id="copyViewerLinkBtn" type="button">Copy link</button>
+            <button class="ghost" id="openViewerLinkBtn" type="button">Open</button>
+          </div>
+        </div>
+        <div class="field-grid">
+          <div class="field-group">
+            <label for="roomInput">Room (optional)</label>
+            <input id="roomInput" type="text" placeholder="versusLobby">
+          </div>
+          <div class="field-group">
+            <label for="roomPasswordInput">Password (optional)</label>
+            <input id="roomPasswordInput" type="text" placeholder="secret123">
+          </div>
+        </div>
+        <dl class="share-meta">
+          <div>
+            <dt>Quality preset</dt>
+            <dd id="qualityPresetLabel">—</dd>
+          </div>
+          <div>
+            <dt>Video bitrate</dt>
+            <dd id="bitrateLabel">—</dd>
+          </div>
+          <div>
+            <dt>Codec</dt>
+            <dd id="codecLabel">—</dd>
+          </div>
+        </dl>
+        <div class="error" id="shareErrorMessage" hidden></div>
+      </section>
+
+      <section class="panel invite-panel">
+        <div class="panel-head">
+          <div>
+            <h2>Join with an invite</h2>
+            <p>Deep links from Versus or electroncapture:// will auto-fill here.</p>
+          </div>
+          <span class="status-pill" id="inviteStatusPill">Waiting for invite</span>
+        </div>
+        <dl class="status-card">
+          <div>
+            <dt>Pending invite</dt>
+            <dd id="pendingInviteLabel">—</dd>
+          </div>
+          <div>
+            <dt>Slot</dt>
+            <dd id="slotLabel">—</dd>
+          </div>
+          <div>
+            <dt>Preset</dt>
+            <dd id="presetLabel">—</dd>
+          </div>
+        </dl>
+        <form id="inviteForm" autocomplete="off">
+          <div class="field-group">
+            <label for="inviteInput">Paste invite or VDO link</label>
+            <input id="inviteInput" type="url" name="invite" placeholder="https://versus.cam/invite/abc123" spellcheck="false" autocomplete="off">
+          </div>
+          <div class="actions">
+            <button class="primary" id="connectBtn" type="submit">Connect to invite</button>
+            <button class="secondary" type="button" id="fallbackBtn">Open classic VDO.Ninja</button>
+          </div>
+          <small class="hint">Need to return to this dashboard? Use the Versus invite again or click “Share my game.”</small>
+          <div class="error" id="errorMessage" hidden></div>
+        </form>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const bridge = window.electronGameCapture || null;
+    const FALLBACK_URL = 'https://vdo.ninja/electron';
+
+    const sharePrimaryBtn = document.getElementById('sharePrimaryBtn');
+    const shareGoLiveBtn = document.getElementById('shareGoLiveBtn');
+    const shareStatusEl = document.getElementById('shareStatusMessage');
+    const shareErrorEl = document.getElementById('shareErrorMessage');
+    const streamIdField = document.getElementById('streamIdField');
+    const viewerLinkField = document.getElementById('viewerLinkField');
+    const copyStreamIdBtn = document.getElementById('copyStreamIdBtn');
+    const copyViewerLinkBtn = document.getElementById('copyViewerLinkBtn');
+    const openViewerLinkBtn = document.getElementById('openViewerLinkBtn');
+    const regenStreamIdBtn = document.getElementById('regenStreamIdBtn');
+    const roomInput = document.getElementById('roomInput');
+    const roomPasswordInput = document.getElementById('roomPasswordInput');
+    const openClassicBtn = document.getElementById('openClassicBtn');
+
+    const qualityPresetLabel = document.getElementById('qualityPresetLabel');
+    const bitrateLabel = document.getElementById('bitrateLabel');
+    const codecLabel = document.getElementById('codecLabel');
+
+    const inviteStatusPill = document.getElementById('inviteStatusPill');
+    const pendingEl = document.getElementById('pendingInviteLabel');
+    const slotEl = document.getElementById('slotLabel');
+    const presetEl = document.getElementById('presetLabel');
+    const inviteInput = document.getElementById('inviteInput');
+    const inviteForm = document.getElementById('inviteForm');
+    const connectBtn = document.getElementById('connectBtn');
+    const fallbackBtn = document.getElementById('fallbackBtn');
+    const errorEl = document.getElementById('errorMessage');
+
+    const shareState = {
+      profile: null
+    };
+    const shareInputs = {
+      roomCode: '',
+      roomPassword: ''
+    };
+    let shareSaveTimer = null;
+    let unsubscribe = null;
+    let lastState = null;
+    let lastLaunchedUrl = null;
+    let autoConnectInFlight = false;
+
+    function setInviteStatus(text) {
+      inviteStatusPill.textContent = text;
+    }
+
+    function setShareStatus(text) {
+      shareStatusEl.textContent = text;
+    }
+
+    function showError(message) {
+      if (!message) {
+        errorEl.hidden = true;
+        errorEl.textContent = '';
+        return;
+      }
+      errorEl.hidden = false;
+      errorEl.textContent = message;
+    }
+
+    function showShareError(message) {
+      if (!message) {
+        shareErrorEl.hidden = true;
+        shareErrorEl.textContent = '';
+        return;
+      }
+      shareErrorEl.hidden = false;
+      shareErrorEl.textContent = message;
+    }
+
+    function formatValue(value) {
+      if (!value) {
+        return '—';
+      }
+      const str = String(value);
+      return str.length > 48 ? `${str.slice(0, 45)}…` : str;
+    }
+
+    function updateInviteUi(state) {
+      lastState = state || null;
+      if (!state) {
+        setInviteStatus('Waiting for invite');
+        pendingEl.textContent = '—';
+        slotEl.textContent = '—';
+        presetEl.textContent = '—';
+        showError('');
+        return;
+      }
+      if (state.pendingInviteUrl) {
+        pendingEl.textContent = formatValue(state.pendingInviteUrl);
+        inviteInput.value = state.pendingInviteUrl;
+      } else {
+        pendingEl.textContent = '—';
+      }
+      slotEl.textContent = formatValue(state.slotId);
+      presetEl.textContent = formatValue(state.preset);
+
+      if (state.activeInviteUrl) {
+        setInviteStatus('Streaming interface active');
+      } else if (state.pendingInviteUrl) {
+        setInviteStatus('Invite ready – auto connecting');
+      } else {
+        setInviteStatus('Waiting for invite');
+      }
+
+      if (state.lastError) {
+        showError(state.lastError);
+      } else {
+        showError('');
+      }
+    }
+
+    function updateSharePanel(profile) {
+      shareState.profile = profile || null;
+      if (!profile) {
+        streamIdField.value = '';
+        viewerLinkField.value = '';
+        qualityPresetLabel.textContent = '—';
+        bitrateLabel.textContent = '—';
+        codecLabel.textContent = '—';
+        shareGoLiveBtn.disabled = true;
+        sharePrimaryBtn.disabled = true;
+        setShareStatus('Generating stream ID…');
+        return;
+      }
+
+      shareInputs.roomCode = profile.roomCode || '';
+      shareInputs.roomPassword = profile.roomPassword || '';
+
+      streamIdField.value = profile.streamId || '';
+      viewerLinkField.value = (profile.shareLinks && profile.shareLinks.view) || '';
+      roomInput.value = shareInputs.roomCode;
+      roomPasswordInput.value = shareInputs.roomPassword;
+
+      const qualitySummary = profile.qualitySummary || {};
+      qualityPresetLabel.textContent = qualitySummary.preset || 'Versus HQ';
+      const bitrateValue = qualitySummary.publishBitrateKbps || profile.advanced?.publishBitrateKbps;
+      bitrateLabel.textContent = bitrateValue ? `${bitrateValue} kbps` : '—';
+      codecLabel.textContent = qualitySummary.codec ? qualitySummary.codec.toUpperCase() : 'H264';
+
+      shareGoLiveBtn.disabled = false;
+      sharePrimaryBtn.disabled = false;
+
+      if (lastState && lastState.activeInviteUrl && profile.shareLinks && lastState.activeInviteUrl === profile.shareLinks.publish) {
+        setShareStatus('Live! Share your viewer link with teammates.');
+      } else if (lastState && lastState.activeInviteUrl) {
+        setShareStatus('Another invite is active.');
+      } else {
+        setShareStatus('Ready to share. Click “Share my game”.');
+      }
+    }
+
+    function updateUi(state) {
+      updateInviteUi(state);
+      updateSharePanel(state && state.shareProfile);
+    }
+
+    function launchInviteToUrl(targetUrl, metadata = {}, options = {}) {
+      if (!bridge || typeof bridge.launchInvite !== 'function') {
+        return Promise.reject(new Error('Bridge unavailable.'));
+      }
+      const buttons = Array.isArray(options.buttons) ? options.buttons.filter(Boolean) : [];
+      buttons.forEach((btn) => {
+        btn.disabled = true;
+      });
+      return bridge.launchInvite({
+        url: targetUrl,
+        ...metadata
+      }).then((result) => {
+        if (!result || result.success === false) {
+          const error = new Error(result && result.error ? result.error : 'Failed to launch invite.');
+          throw error;
+        }
+        lastLaunchedUrl = result.url || targetUrl;
+        return result;
+      }).catch((error) => {
+        if (options.resetLastOnError) {
+          lastLaunchedUrl = null;
+        }
+        throw error;
+      }).finally(() => {
+        buttons.forEach((btn) => {
+          btn.disabled = false;
+        });
+      });
+    }
+
+    function maybeAutoLaunch(state) {
+      if (!state || !state.pendingInviteUrl) {
+        return;
+      }
+      if (state.pendingInviteUrl === lastLaunchedUrl && !state.lastError) {
+        return;
+      }
+      if (autoConnectInFlight || !bridge) {
+        return;
+      }
+      autoConnectInFlight = true;
+      setInviteStatus('Connecting to invite…');
+      showError('');
+      launchInviteToUrl(
+        state.pendingInviteUrl,
+        {
+          slotId: state.slotId,
+          preset: state.preset,
+          cursorPreference: state.cursorPreference,
+          appAudioTarget: state.appAudioTarget,
+          transportPreference: state.transportPreference
+        },
+        { resetLastOnError: true }
+      ).catch((error) => {
+        console.error('Automatic invite launch failed:', error);
+        showError(error && error.message ? error.message : 'Unable to launch invite automatically. Use the Connect button.');
+      }).finally(() => {
+        autoConnectInFlight = false;
+      });
+    }
+
+    function handleShareFieldInput() {
+      shareInputs.roomCode = roomInput.value;
+      shareInputs.roomPassword = roomPasswordInput.value;
+      if (!bridge || typeof bridge.updateShareProfile !== 'function') {
+        return;
+      }
+      if (shareSaveTimer) {
+        clearTimeout(shareSaveTimer);
+      }
+      shareSaveTimer = setTimeout(() => {
+        bridge.updateShareProfile({
+          roomCode: shareInputs.roomCode,
+          roomPassword: shareInputs.roomPassword
+        }).then(() => {
+          showShareError('');
+        }).catch((error) => {
+          console.error('Failed to save share profile:', error);
+          showShareError('Unable to save room settings right now.');
+        }).finally(() => {
+          shareSaveTimer = null;
+        });
+      }, 400);
+    }
+
+    async function handleQuickShareLaunch() {
+      if (!shareState.profile || !shareState.profile.shareLinks || !shareState.profile.shareLinks.publish) {
+        showShareError('No share link available yet. Please try again.');
+        return;
+      }
+      showShareError('');
+      setShareStatus('Launching Versus capture wizard…');
+      const metadata = {};
+      if (shareState.profile.advanced?.hideCursor) {
+        metadata.cursorPreference = 'hide';
+      }
+      if (typeof shareState.profile.advanced?.preferWhipRelay !== 'undefined') {
+        metadata.transportPreference = shareState.profile.advanced.preferWhipRelay;
+      }
+      try {
+        await launchInviteToUrl(
+          shareState.profile.shareLinks.publish,
+          metadata,
+          { buttons: [shareGoLiveBtn, sharePrimaryBtn] }
+        );
+        setShareStatus('Live! Share your viewer link with teammates.');
+      } catch (error) {
+        console.error('Quick-share launch failed:', error);
+        showShareError(error && error.message ? error.message : 'Failed to launch capture.');
+        setShareStatus('Unable to launch capture.');
+      }
+    }
+
+    function handleManualLaunch(targetUrl) {
+      const trimmed = (targetUrl || '').trim();
+      if (!trimmed) {
+        showError('Please paste an invite or VDO link.');
+        return;
+      }
+      showError('');
+      setInviteStatus('Launching invite…');
+      launchInviteToUrl(trimmed, {
+        slotId: lastState && lastState.slotId,
+        preset: lastState && lastState.preset,
+        cursorPreference: lastState && lastState.cursorPreference,
+        transportPreference: lastState && lastState.transportPreference,
+        appAudioTarget: lastState && lastState.appAudioTarget
+      }, { buttons: [connectBtn] }).catch((error) => {
+        console.error('Manual invite launch failed:', error);
+        showError(error && error.message ? error.message : 'Failed to launch invite.');
+        setInviteStatus('Waiting for invite');
+      });
+    }
+
+    function copyToClipboard(value) {
+      if (!value) {
+        return Promise.reject(new Error('Nothing to copy.'));
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(value);
+      }
+      return new Promise((resolve, reject) => {
+        try {
+          const temp = document.createElement('textarea');
+          temp.value = value;
+          temp.style.position = 'fixed';
+          temp.style.opacity = '0';
+          document.body.appendChild(temp);
+          temp.focus();
+          temp.select();
+          const success = document.execCommand('copy');
+          document.body.removeChild(temp);
+          if (success) {
+            resolve();
+          } else {
+            reject(new Error('Copy failed.'));
+          }
+        } catch (error) {
+          reject(error);
+        }
+      });
+    }
+
+    function subscribeToUpdates() {
+      if (!bridge || typeof bridge.onUpdate !== 'function') {
+        return;
+      }
+      unsubscribe = bridge.onUpdate((message) => {
+        if (message && message.state) {
+          updateUi(message.state);
+          maybeAutoLaunch(message.state);
+        }
+      });
+    }
+
+    async function refreshContext() {
+      if (!bridge || typeof bridge.getContext !== 'function') {
+        setInviteStatus('Bridge unavailable. Please reinstall the app.');
+        return;
+      }
+      const context = await bridge.getContext();
+      updateUi(context);
+      if ((!context || !context.shareProfile) && bridge.getShareProfile) {
+        const profile = await bridge.getShareProfile();
+        updateSharePanel(profile);
+      }
+      maybeAutoLaunch(context);
+    }
+
+    sharePrimaryBtn.addEventListener('click', handleQuickShareLaunch);
+    shareGoLiveBtn.addEventListener('click', handleQuickShareLaunch);
+    copyStreamIdBtn.addEventListener('click', () => {
+      copyToClipboard(streamIdField.value).then(() => {
+        setShareStatus('Stream ID copied to clipboard.');
+      }).catch((error) => {
+        console.error('Copy stream ID failed:', error);
+        showShareError('Unable to copy stream ID.');
+      });
+    });
+    copyViewerLinkBtn.addEventListener('click', () => {
+      copyToClipboard(viewerLinkField.value).then(() => {
+        setShareStatus('Viewer link copied.');
+      }).catch((error) => {
+        console.error('Copy viewer link failed:', error);
+        showShareError('Unable to copy viewer link.');
+      });
+    });
+    openViewerLinkBtn.addEventListener('click', () => {
+      if (!viewerLinkField.value) {
+        showShareError('Viewer link is empty.');
+        return;
+      }
+      try {
+        window.open(viewerLinkField.value, '_blank', 'noopener');
+      } catch (error) {
+        console.error('Failed to open viewer link:', error);
+        showShareError('Unable to open viewer link.');
+      }
+    });
+    regenStreamIdBtn.addEventListener('click', () => {
+      if (!bridge || typeof bridge.regenerateStreamId !== 'function') {
+        showShareError('Bridge unavailable.');
+        return;
+      }
+      setShareStatus('Generating new stream ID…');
+      bridge.regenerateStreamId({ mode: 'words' }).then((profile) => {
+        updateSharePanel(profile);
+        setShareStatus('New stream ID ready.');
+      }).catch((error) => {
+        console.error('Failed to regenerate stream ID:', error);
+        showShareError('Unable to regenerate stream ID.');
+      });
+    });
+    roomInput.addEventListener('input', handleShareFieldInput);
+    roomPasswordInput.addEventListener('input', handleShareFieldInput);
+
+    inviteForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      handleManualLaunch(inviteInput.value);
+    });
+    fallbackBtn.addEventListener('click', () => handleManualLaunch(FALLBACK_URL));
+    openClassicBtn.addEventListener('click', () => handleManualLaunch(FALLBACK_URL));
+
+    window.addEventListener('beforeunload', () => {
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+      if (shareSaveTimer) {
+        clearTimeout(shareSaveTimer);
+      }
+    });
+
+    (async function init() {
+      if (!bridge) {
+        setShareStatus('Electron bridge unavailable. Update the app to continue.');
+        setInviteStatus('Bridge unavailable');
+        return;
+      }
+      subscribeToUpdates();
+      await refreshContext();
+    })();
+  </script>
+</body>
+</html>
