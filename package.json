@@ -1,6 +1,6 @@
 {
   "name": "VDON.Electron.Capture.App",
-  "version": "2.21.3",
+  "version": "2.21.4",
   "description": "A simple tool to aid with frameless window video capture and VDO.Ninja publishing",
   "author": "Steve Seguin <steve@seguin.email>",
   "main": "main.js",
@@ -46,12 +46,62 @@
       ]
     },
     "files": [
-      "**/*",
-      "build/Release/*",
-      "assets/icons/*.*",
-      "assets/icons/mac/*.*",
-      "assets/icons/png/*.*",
-      "assets/icons/win/*.*"
+      {
+        "from": ".",
+        "filter": [
+          "**/*",
+          "!.DS_Store",
+          "!.git",
+          "!.git/**",
+          "!.github",
+          "!.github/**",
+          "!.gitignore",
+          "!.gitmodules",
+          "!.last_enhance_run",
+          "!.npmrc",
+          "!_config.yml",
+          "!BENEFITS.md",
+          "!CNAME",
+          "!PRIVACY.md",
+          "!README.md",
+          "!afterPack.js",
+          "!afterPackHook.js",
+          "!afterSign.js",
+          "!ci.yml",
+          "!dist",
+          "!dist/**",
+          "!example.jpg",
+          "!forcekill.bat",
+          "!installer.nsh",
+          "!main_old.js",
+          "!npx",
+          "!native-modules",
+          "!native-modules/**",
+          "!scripts",
+          "!scripts/**",
+          "!setFuses.js",
+          "!test-window-reuse.html",
+          "!test.css",
+          "!test.js",
+          "!testFuses.js"
+        ]
+      },
+      {
+        "from": "native-modules/window-audio-capture",
+        "to": "native-modules/window-audio-capture",
+        "filter": [
+          "index.js",
+          "package.json",
+          "LICENSE.txt"
+        ]
+      },
+      {
+        "from": "native-modules/window-audio-capture/build/Release",
+        "to": "native-modules/window-audio-capture/build/Release",
+        "filter": [
+          "window_audio_capture.node"
+        ]
+      }
     ],
     "mac": {
       "category": "public.build.automation",
