@@ -1,6 +1,5 @@
 const fs = require('fs');
 const path = require('path');
-var electron_notarize = require('electron-notarize');
 
 module.exports = async function (params) {
     console.log('afterSign hook triggered', params);
@@ -8,6 +7,14 @@ module.exports = async function (params) {
     // Only notarize the app on Mac OS only.
     if (params.electronPlatformName !== 'darwin') {
         console.log('Skipping notarization - not macOS');
+        return;
+    }
+
+    let electronNotarize;
+    try {
+        electronNotarize = require('electron-notarize');
+    } catch (error) {
+        console.warn('electron-notarize not available; skipping notarization.');
         return;
     }
 
@@ -22,7 +29,7 @@ module.exports = async function (params) {
     console.log(`Notarizing ${appId} found at ${appPath}`);
 
     try {
-        await electron_notarize.notarize({
+        await electronNotarize.notarize({
             appBundleId: appId,
             appPath: appPath,
             appleId: process.env.appleId,
