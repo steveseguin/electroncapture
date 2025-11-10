@@ -596,6 +596,9 @@ function applyArgsToExistingWindow(windowInstance, args) {
 			...args
 		};
 		windowInstance.args = mergedArgs;
+		if (typeof mergedArgs.defaultDragRegion === 'boolean') {
+			windowInstance.__defaultDragRegionEnabled = mergedArgs.defaultDragRegion;
+		}
 		console.log('applyArgsToExistingWindow: merged args', {
 			windowName: windowInstance.windowName || windowInstance.__namedWindowKey,
 			width: mergedArgs.width,
@@ -866,6 +869,12 @@ function createYargs(){
     describe: "Enables full-screen mode for the first window on its load.",
     type: "boolean",
     default: false
+  })
+  .option("defaultDragRegion", {
+    alias: "dragbar",
+    describe: "Inject a transparent draggable strip when the page does not provide its own -webkit-app-region: drag.",
+    type: "boolean",
+    default: true
   })
   .option("multiinstance", {
     alias: ["standalone"],
@@ -1417,6 +1426,18 @@ ipcMain.handle('hardware-encoding:open-gpu-diagnostics', () => {
 	return openGpuDiagnosticsWindow();
 });
 
+ipcMain.handle('drag-region:get-default-preference', (event) => {
+	try {
+		const targetWindow = BrowserWindow.fromWebContents(event.sender);
+		if (targetWindow && typeof targetWindow.__defaultDragRegionEnabled === 'boolean') {
+			return targetWindow.__defaultDragRegionEnabled;
+		}
+	} catch (error) {
+		console.warn('Unable to resolve drag-region preference for renderer:', error);
+	}
+	return true;
+});
+
 if (Argv.help) {
   Argv.showHelp();
   process.exit(0); // Exit the script after showing help.
@@ -1585,7 +1606,8 @@ function parseDeepLink(deepLinkUrl) {
 				{ keys: ['respectgpub', 'respectGpuBlocklist'], target: 'respectGpuBlocklist', alias: 'respectgpub' },
 				{ keys: ['gpuinfo', 'gpudiag'], target: 'gpuinfo', alias: 'gpudiag' },
 				{ keys: ['h264keytrial', 'webrtcH264KeyframeTrial'], target: 'webrtcH264KeyframeTrial', alias: 'h264keytrial' },
-				{ keys: ['wgc', 'usewgc'], target: 'usewgc', alias: 'wgc' }
+				{ keys: ['wgc', 'usewgc'], target: 'usewgc', alias: 'wgc' },
+				{ keys: ['dragbar', 'defaultDragRegion'], target: 'defaultDragRegion', alias: 'dragbar' }
 			];
 
 		booleanParamMappings.forEach(({ keys, target, alias }) => {
@@ -2172,7 +2194,17 @@ async function createWindow(args, reuse=false) {
   }
   
   var URL = args.url, NODE = args.node, WIDTH = args.width, HEIGHT = args.height, TITLE = args.title, PIN = args.pin, X = args.x, Y = args.y, FULLSCREEN = args.fullscreen, UNCLICKABLE = args.uc, MINIMIZED = args.min, CSS = args.css, BGCOLOR = args.chroma, JS = args.js;
-
+  const defaultDragRegionEnabled = (() => {
+    if (typeof args.defaultDragRegion === 'boolean') {
+      return args.defaultDragRegion;
+    }
+    if (typeof args.dragbar === 'boolean') {
+      return args.dragbar;
+    }
+    return true;
+  })();
+  args.defaultDragRegion = defaultDragRegionEnabled;
+  args.dragbar = defaultDragRegionEnabled;
 
   let nodeExplicitFlag = args.__nodeExplicit === true;
 
@@ -2405,6 +2437,7 @@ async function createWindow(args, reuse=false) {
 		title: currentTitle
 	});
 	mainWindow.__immutableWebPreferences = desiredImmutableWebPreferences;
+	mainWindow.__defaultDragRegionEnabled = defaultDragRegionEnabled;
 	mainWindow.__lastDisplayId = initialDisplay ? initialDisplay.id : null;
 	
 	mainWindow.webContents.session.webRequest.onHeadersReceived({ urls: [ "*://*/*" ] },
