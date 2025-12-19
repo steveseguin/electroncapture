@@ -3724,55 +3724,67 @@ contextMenu({
 			label: '🚿 Clean Video Output',
 			type: 'checkbox',
 			visible: (!browserWindow.webContents.getURL().includes('vdo.ninja') && !browserWindow.webContents.getURL().includes('invite.cam')),
-			checked: false,
+			checked: browserWindow.__cleanOutputEnabled || false,
 			click: () => {
-				var css = " \
-					.html5-video-player {\
-						z-index:unset!important;\
-					}\
-					.html5-video-container {	\
-						z-index:unset!important;\
-					}\
-					video { \
-						width: 100vw!important;height: 100vh!important;  \
-						left: 0px!important;    \
-						object-fit: cover!important;\
-						top: 0px!important;\
-						overflow:hidden;\
-						z-index: 2147483647!important;\
-						position: fixed!important;\
-					}\
-					body {\
-						overflow: hidden!important;\
-					}";
-				browserWindow.webContents.insertCSS(css, {cssOrigin: 'user'});
-				browserWindow.webContents.executeJavaScript('(function () {\
-					var videos = document.querySelectorAll("video");\
-					if (videos.length>1){\
-						var video = videos[0];\
-						for (var i=1;i<videos.length;i++){\
-							if (!video.videoWidth){\
-								video = videos[i];\
-							} else if (videos[i].videoWidth && (videos[i].videoWidth>video.videoWidth)){\
-								video = videos[i];\
-							}\
+				// Toggle clean output mode
+				if (browserWindow.__cleanOutputEnabled) {
+					// Disable clean output mode by reloading the page
+					console.log('Disabling clean output mode - reloading page');
+					browserWindow.__cleanOutputEnabled = false;
+					browserWindow.webContents.reload();
+				} else {
+					// Enable clean output mode
+					console.log('Enabling clean output mode');
+					browserWindow.__cleanOutputEnabled = true;
+
+					var css = " \
+						.html5-video-player {\
+							z-index:unset!important;\
 						}\
-						document.body.appendChild(video);\
-					} else if (videos.length){\
-						document.body.appendChild(videos[0]);\
-					}\
-				})();');
-				
-				if (browserWindow.webContents.getURL().includes('youtube.com')){
+						.html5-video-container {	\
+							z-index:unset!important;\
+						}\
+						video { \
+							width: 100vw!important;height: 100vh!important;  \
+							left: 0px!important;    \
+							object-fit: cover!important;\
+							top: 0px!important;\
+							overflow:hidden;\
+							z-index: 2147483647!important;\
+							position: fixed!important;\
+						}\
+						body {\
+							overflow: hidden!important;\
+						}";
+					browserWindow.webContents.insertCSS(css, {cssOrigin: 'user'});
 					browserWindow.webContents.executeJavaScript('(function () {\
-						if (!xxxxxx){\
-							var xxxxxx = setInterval(function(){\
-							if (document.querySelector(".ytp-ad-skip-button")){\
-								document.querySelector(".ytp-ad-skip-button").click();\
+						var videos = document.querySelectorAll("video");\
+						if (videos.length>1){\
+							var video = videos[0];\
+							for (var i=1;i<videos.length;i++){\
+								if (!video.videoWidth){\
+									video = videos[i];\
+								} else if (videos[i].videoWidth && (videos[i].videoWidth>video.videoWidth)){\
+									video = videos[i];\
+								}\
 							}\
-							},500);\
+							document.body.appendChild(video);\
+						} else if (videos.length){\
+							document.body.appendChild(videos[0]);\
 						}\
 					})();');
+
+					if (browserWindow.webContents.getURL().includes('youtube.com')){
+						browserWindow.webContents.executeJavaScript('(function () {\
+							if (!xxxxxx){\
+								var xxxxxx = setInterval(function(){\
+								if (document.querySelector(".ytp-ad-skip-button")){\
+									document.querySelector(".ytp-ad-skip-button").click();\
+								}\
+								},500);\
+							}\
+						})();');
+					}
 				}
 			}
 		},
@@ -3957,7 +3969,15 @@ app.on('window-all-closed', () => {
   }
   console.log("'window-all-closed': All windows are closed. Unregistering all shortcuts and quitting.");
   globalShortcut.unregisterAll();
-  app.quit();
+
+  // macOS-specific: use app.exit(0) to ensure helper processes are killed
+  // Windows/Linux: use app.quit() to maintain existing behavior
+  if (process.platform === 'darwin') {
+    console.log("'window-all-closed': macOS - using app.exit(0) to force quit and kill helper processes.");
+    app.exit(0);
+  } else {
+    app.quit();
+  }
 });
 
 var closing = 0;
