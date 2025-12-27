@@ -1,21 +1,30 @@
 {
   "name": "VDON.Electron.Capture.App",
-  "version": "2.20.1",
+  "version": "2.21.5",
   "description": "A simple tool to aid with frameless window video capture and VDO.Ninja publishing",
   "author": "Steve Seguin <steve@seguin.email>",
   "main": "main.js",
   "scripts": {
+    "prestart": "node ./scripts/install-window-audio-capture.js",
     "start": "electron .",
     "build": "run-os",
+    "prebuild": "node ./scripts/install-window-audio-capture.js",
     "build:win32": "electron-builder --win",
-    "build:darwin": "electron-builder --mac --universal",
+    "prebuild:win32": "node ./scripts/install-window-audio-capture.js",
+    "build:darwin": "electron-builder --mac --universal --config.electronVersion=39.2.7 --config.electronDownload.mirror=https://github.com/electron/electron/releases/download/ --config.electronDownload.customDir=v39.2.7",
+    "prebuild:darwin": "node ./scripts/install-window-audio-capture.js",
     "build:linux": "electron-builder --linux",
+    "prebuild:linux": "node ./scripts/install-window-audio-capture.js",
     "build:rpideb": "USE_SYSTEM_FPM=true electron-builder --armv7l --linux deb",
+    "prebuild:rpideb": "node ./scripts/install-window-audio-capture.js",
     "build:rpi": "electron-builder --armv7l --linux  AppImage",
+    "prebuild:rpi": "node ./scripts/install-window-audio-capture.js",
     "build:arm64": "electron-builder --arm64 --linux deb rpm AppImage",
+    "prebuild:arm64": "node ./scripts/install-window-audio-capture.js",
     "clean": "rimraf ./dist",
     "release": "electron-builder --publish always",
-    "postinstall": "node ./scripts/install-custom-electron.js"
+    "native-modules:rebuild": "node ./scripts/install-window-audio-capture.js --force",
+    "postinstall": "node ./scripts/install-custom-electron.js && node ./scripts/install-window-audio-capture.js"
   },
   "repository": {
     "type": "git",
@@ -24,11 +33,10 @@
   "build": {
     "appId": "capture.electron",
     "productName": "elecap",
-    "electronVersion": "36.9.5-qp20",
-    "electronDist": "node_modules/electron/dist",
+    "electronVersion": "39.2.7-qp20",
     "electronDownload": {
       "mirror": "https://github.com/steveseguin/electron/releases/download/",
-      "customDir": "v36.9.5-qp20"
+      "customDir": "v39.2.7-qp20"
     },
     "protocols": {
       "name": "electroncapture",
@@ -37,12 +45,62 @@
       ]
     },
     "files": [
-      "**/*",
-      "build/Release/*",
-      "assets/icons/*.*",
-      "assets/icons/mac/*.*",
-      "assets/icons/png/*.*",
-      "assets/icons/win/*.*"
+      {
+        "from": ".",
+        "filter": [
+          "**/*",
+          "!.DS_Store",
+          "!.git",
+          "!.git/**",
+          "!.github",
+          "!.github/**",
+          "!.gitignore",
+          "!.gitmodules",
+          "!.last_enhance_run",
+          "!.npmrc",
+          "!_config.yml",
+          "!BENEFITS.md",
+          "!CNAME",
+          "!PRIVACY.md",
+          "!README.md",
+          "!afterPack.js",
+          "!afterPackHook.js",
+          "!afterSign.js",
+          "!ci.yml",
+          "!dist",
+          "!dist/**",
+          "!example.jpg",
+          "!forcekill.bat",
+          "!installer.nsh",
+          "!main_old.js",
+          "!npx",
+          "!native-modules",
+          "!native-modules/**",
+          "!scripts",
+          "!scripts/**",
+          "!setFuses.js",
+          "!test-window-reuse.html",
+          "!test.css",
+          "!test.js",
+          "!testFuses.js"
+        ]
+      },
+      {
+        "from": "native-modules/window-audio-capture",
+        "to": "native-modules/window-audio-capture",
+        "filter": [
+          "index.js",
+          "package.json",
+          "LICENSE.txt"
+        ]
+      },
+      {
+        "from": "native-modules/window-audio-capture/build/Release",
+        "to": "native-modules/window-audio-capture/build/Release",
+        "filter": [
+          "window_audio_capture.node"
+        ]
+      }
     ],
     "mac": {
       "category": "public.build.automation",
@@ -143,7 +201,7 @@
   },
   "devDependencies": {
     "@electron/fuses": "^2.0.0",
-    "electron": "36.9.5",
+    "electron": "39.2.7",
     "electron-builder": "^24.13.3",
     "electron-notarize": "git://github.com/electron/notarize.git",
     "rimraf": "^5.0.5",
