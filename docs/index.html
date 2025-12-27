@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Electron Capture - Professional WebRTC Streaming Tool</title>
+  <meta name="description" content="Professional-grade screen capture and WebRTC streaming for esports, content creators, and broadcasters. Optimized for VDO.Ninja with lower CPU usage and better quality than OBS Browser Source.">
+  <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/steveseguin/electroncapture/master/assets/icons/png/64x64.png">
+  <style>
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-card: #1a1a25;
+      --accent: #6366f1;
+      --accent-hover: #818cf8;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --success: #22c55e;
+      --border: #2a2a3a;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* Header */
+    header {
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: rgba(10, 10, 15, 0.95);
+      backdrop-filter: blur(10px);
+      z-index: 100;
+    }
+
+    nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-decoration: none;
+    }
+
+    .logo img {
+      width: 40px;
+      height: 40px;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 30px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: var(--accent);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+      cursor: pointer;
+      border: none;
+      font-size: 1rem;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Hero */
+    .hero {
+      padding: 100px 0;
+      text-align: center;
+      background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+    }
+
+    .hero h1 {
+      font-size: 3.5rem;
+      font-weight: 800;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero .subtitle {
+      font-size: 1.4rem;
+      color: var(--text-secondary);
+      max-width: 700px;
+      margin: 0 auto 40px;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 6px 12px;
+      background: rgba(99, 102, 241, 0.15);
+      color: var(--accent);
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+
+    /* Features */
+    .features {
+      padding: 80px 0;
+    }
+
+    .section-title {
+      text-align: center;
+      font-size: 2.5rem;
+      margin-bottom: 60px;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 24px;
+    }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--accent);
+    }
+
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      background: rgba(99, 102, 241, 0.15);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      font-size: 1.5rem;
+    }
+
+    .feature-card h3 {
+      font-size: 1.3rem;
+      margin-bottom: 12px;
+    }
+
+    .feature-card p {
+      color: var(--text-secondary);
+    }
+
+    /* Comparison */
+    .comparison {
+      padding: 80px 0;
+      background: var(--bg-secondary);
+    }
+
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 40px;
+    }
+
+    .comparison-table th,
+    .comparison-table td {
+      padding: 16px 24px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .comparison-table th {
+      background: var(--bg-card);
+      font-weight: 600;
+    }
+
+    .comparison-table td:first-child {
+      color: var(--text-secondary);
+    }
+
+    .check {
+      color: var(--success);
+      font-size: 1.2rem;
+    }
+
+    .cross {
+      color: #ef4444;
+      font-size: 1.2rem;
+    }
+
+    /* Use Cases */
+    .use-cases {
+      padding: 80px 0;
+    }
+
+    .use-case-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+    }
+
+    .use-case {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .use-case-icon {
+      font-size: 2.5rem;
+      margin-bottom: 16px;
+    }
+
+    .use-case h4 {
+      margin-bottom: 8px;
+    }
+
+    .use-case p {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+    }
+
+    /* CTA */
+    .cta {
+      padding: 80px 0;
+      text-align: center;
+      background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+    }
+
+    .cta h2 {
+      font-size: 2.5rem;
+      margin-bottom: 20px;
+    }
+
+    .cta p {
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin: 0 auto 40px;
+      font-size: 1.1rem;
+    }
+
+    /* Footer */
+    footer {
+      padding: 40px 0;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      color: var(--text-secondary);
+    }
+
+    footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .hero h1 {
+        font-size: 2.5rem;
+      }
+
+      .nav-links {
+        display: none;
+      }
+
+      .feature-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .comparison-table {
+        font-size: 0.9rem;
+      }
+
+      .comparison-table th,
+      .comparison-table td {
+        padding: 12px 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <nav>
+        <a href="#" class="logo">
+          <img src="https://raw.githubusercontent.com/steveseguin/electroncapture/master/assets/icons/png/64x64.png" alt="Electron Capture">
+          Electron Capture
+        </a>
+        <ul class="nav-links">
+          <li><a href="#features">Features</a></li>
+          <li><a href="#comparison">Compare</a></li>
+          <li><a href="#use-cases">Use Cases</a></li>
+          <li><a href="https://github.com/steveseguin/electroncapture">GitHub</a></li>
+        </ul>
+        <a href="https://github.com/steveseguin/electroncapture/releases" class="btn btn-primary">Download</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container">
+        <span class="badge">Open Source & Free Forever</span>
+        <h1>Professional WebRTC Streaming</h1>
+        <p class="subtitle">
+          The ultimate screen capture and streaming tool for content creators, esports professionals, and broadcasters. Optimized for VDO.Ninja with superior quality and lower CPU usage.
+        </p>
+        <div class="hero-buttons">
+          <a href="https://github.com/steveseguin/electroncapture/releases" class="btn btn-primary">
+            Download for Windows
+          </a>
+          <a href="https://github.com/steveseguin/electroncapture" class="btn btn-secondary">
+            View on GitHub
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section class="features" id="features">
+      <div class="container">
+        <h2 class="section-title">Built for Professionals</h2>
+        <div class="feature-grid">
+          <div class="feature-card">
+            <div class="feature-icon">🎯</div>
+            <h3>Near-Lossless Quality</h3>
+            <p>Custom QP-cap patches ensure maximum encoding quality. Your screen shares stay crisp with readable text and pixel-perfect graphics - no compression artifacts.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">⚡</div>
+            <h3>Low CPU Usage</h3>
+            <p>NVENC hardware encoding offloads work to your GPU. Stream multiple sources without impacting game performance or system stability.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🎮</div>
+            <h3>HEVC/H.265 Support</h3>
+            <p>Full HEVC hardware encoding support - something OBS Browser Source lacks. Get better quality at lower bitrates for bandwidth-constrained scenarios.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🔒</div>
+            <h3>Locked Quality Mode</h3>
+            <p>Disable WebRTC's adaptive scaling to prevent automatic resolution or framerate drops. Your stream stays at the quality you set, period.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🛡️</div>
+            <h3>Regular Security Updates</h3>
+            <p>Based on the latest Chromium/Electron releases with security patches. Unlike frozen browser source versions, we keep you protected.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🌐</div>
+            <h3>VDO.Ninja Optimized</h3>
+            <p>Purpose-built for VDO.Ninja workflows. Seamless integration for remote guests, screen sharing, and multi-source productions.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="comparison" id="comparison">
+      <div class="container">
+        <h2 class="section-title">Why Electron Capture?</h2>
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>Feature</th>
+              <th>Electron Capture</th>
+              <th>OBS Browser Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>HEVC/H.265 Encoding</td>
+              <td><span class="check">✓</span> Full support</td>
+              <td><span class="cross">✗</span> Not supported</td>
+            </tr>
+            <tr>
+              <td>QP Quality Control</td>
+              <td><span class="check">✓</span> Capped at 20 (near-lossless)</td>
+              <td><span class="cross">✗</span> Default 51+ (lossy)</td>
+            </tr>
+            <tr>
+              <td>Adaptive Scaling Control</td>
+              <td><span class="check">✓</span> Can be disabled</td>
+              <td><span class="cross">✗</span> Always on</td>
+            </tr>
+            <tr>
+              <td>Hardware Encoding</td>
+              <td><span class="check">✓</span> NVENC enabled</td>
+              <td>Varies by OBS version</td>
+            </tr>
+            <tr>
+              <td>Chromium Version</td>
+              <td><span class="check">✓</span> Latest (v39.x)</td>
+              <td>Often outdated</td>
+            </tr>
+            <tr>
+              <td>Cursor Suppression</td>
+              <td><span class="check">✓</span> Built-in</td>
+              <td><span class="cross">✗</span> Not available</td>
+            </tr>
+            <tr>
+              <td>Extended Playout Delay</td>
+              <td><span class="check">✓</span> Up to 10 minutes</td>
+              <td><span class="cross">✗</span> 10 seconds max</td>
+            </tr>
+            <tr>
+              <td>Open Source</td>
+              <td><span class="check">✓</span> MIT License</td>
+              <td><span class="check">✓</span> GPL</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="use-cases" id="use-cases">
+      <div class="container">
+        <h2 class="section-title">Perfect For</h2>
+        <div class="use-case-grid">
+          <div class="use-case">
+            <div class="use-case-icon">🎮</div>
+            <h4>Esports & Gaming</h4>
+            <p>Low-latency screen sharing with locked quality for tournaments, coaching, and competitive streaming.</p>
+          </div>
+          <div class="use-case">
+            <div class="use-case-icon">🎬</div>
+            <h4>Live Production</h4>
+            <p>Bring in remote guests and screen shares with broadcast-quality encoding for professional shows.</p>
+          </div>
+          <div class="use-case">
+            <div class="use-case-icon">📺</div>
+            <h4>Content Creation</h4>
+            <p>Capture screens and windows with pixel-perfect quality for tutorials, reviews, and commentary.</p>
+          </div>
+          <div class="use-case">
+            <div class="use-case-icon">🎨</div>
+            <h4>Digital Art & Design</h4>
+            <p>Share your creative process without compression destroying gradients, text, or fine details.</p>
+          </div>
+          <div class="use-case">
+            <div class="use-case-icon">👨‍💻</div>
+            <h4>Code Streaming</h4>
+            <p>Keep code readable with crisp text rendering - no blurry fonts or illegible syntax highlighting.</p>
+          </div>
+          <div class="use-case">
+            <div class="use-case-icon">📊</div>
+            <h4>Presentations</h4>
+            <p>Share slides and dashboards with perfect clarity. Optional cursor hiding for clean recordings.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta">
+      <div class="container">
+        <h2>Ready to Level Up Your Stream?</h2>
+        <p>Join thousands of professional streamers and content creators who trust Electron Capture for their most demanding productions.</p>
+        <div class="hero-buttons">
+          <a href="https://github.com/steveseguin/electroncapture/releases" class="btn btn-primary">
+            Download Now - It's Free
+          </a>
+          <a href="https://github.com/steveseguin/electroncapture" class="btn btn-secondary">
+            Star on GitHub
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      <div class="footer-links">
+        <a href="https://github.com/steveseguin/electroncapture">GitHub</a>
+        <a href="https://github.com/steveseguin/electroncapture/releases">Releases</a>
+        <a href="https://github.com/steveseguin/electroncapture/issues">Support</a>
+        <a href="https://vdo.ninja">VDO.Ninja</a>
+        <a href="https://github.com/steveseguin/electroncapture/blob/master/LICENSE.md">License</a>
+      </div>
+      <p>Made with care by <a href="https://github.com/steveseguin">Steve Seguin</a> and the open source community.</p>
+      <p style="margin-top: 10px; font-size: 0.9rem;">Electron Capture is free and open source software under the MIT License.</p>
+    </div>
+  </footer>
+</body>
+</html>

@@ -54,6 +54,11 @@ Lastly, since playback is agnostic, you can window-capture the same video multip
 | --css             | -css      | Have local CSS script be auto-loaded into every page | "style.css"                 | Path to CSS file to inject                     |
 | --hidecursor      | -hc       | Hide the mouse pointer / cursor                 |                                   |                                                |
 | --monitor         | -m        | Monitor index to open on (0-based index)        | 0                                 | Select which monitor to display on             |
+| --disableAdaptiveScaling | --noScaling | Disable WebRTC adaptive scaling (lock resolution + framerate) |               | Custom Electron build only (v39.2.7+)          |
+| --lockResolution  | --lockRes | Lock WebRTC resolution only (framerate can adapt) |                              | Custom Electron build only (v39.2.7+)          |
+| --lockFramerate   | --lockFps | Lock WebRTC framerate only (resolution can adapt) |                              | Custom Electron build only (v39.2.7+)          |
+| --hideCursorCapture | --noCursor | Hide cursor in screen capture by default      |                                   | Custom Electron build only (v39.2.7+)          |
+| --playoutDelay    | --bufferDelay | Default playout delay for WebRTC receivers (seconds) | 0-600                    | Custom Electron build only (v39.2.7+)          |
 
 **Notes:**
 * Use the `--help` command to get the most recent available commands and options.
@@ -117,6 +122,8 @@ start elecap.exe -w 640 -h 360 -x 640 -y 360 -u="https://vdo.ninja/?scene&fakegu
 - If not using an equal sign (=) between the parameter and value, there may be issues with Windows command line
 - Please also note,the use ot timeout /T 1, as adding a delay between loading apps allows them to load correctly
 - x and y position is available in v1.5.2 and up; x or y values must be greater than 0.
+
+If you want each launch to operate as a completely separate process (instead of reusing the existing instance's windows), start it with the `--multiinstance` flag (alias: `--standalone`).
 
 <img src="https://user-images.githubusercontent.com/2575698/80891745-290d3000-8c94-11ea-85c4-ae0e7cd1ec19.png " alt="" data-canonical-src="https://user-images.githubusercontent.com/2575698/80891745-290d3000-8c94-11ea-85c4-ae0e7cd1ec19.png " style="display:inline-block" height="300" />
 
@@ -427,6 +434,158 @@ window.electronCaptureEncoder.openGpuDiagnostics();  // open chrome://gpu from w
 ```
 
 Use the preferred mode helper to toggle hardware acceleration without restarting the app, or check the GPU diagnostics window to confirm whether `mf_video_encode` (Media Foundation / NVENC) is active.
+
+
+### Custom Electron Build Features (v39.2.7+)
+
+> **⚠️ WINDOWS ONLY**: The Windows build uses a custom-patched Electron with enhanced WebRTC capabilities. These features are compiled into the Electron binary and **only work on the Windows custom build**. Mac and Linux use official Electron releases without these patches.
+
+#### 1. QP-Cap Patches (ON by Default - Windows Only)
+
+**✅ Enabled automatically** - no configuration needed.
+
+**What it does**: Limits the maximum quantizer parameter (QP) to 20 instead of the default 51-58. Lower QP = higher quality, less compression artifacts.
+
+**Why it's great for professional use**: Standard WebRTC was designed for video calls, not broadcast - it aggressively compresses video to save bandwidth, causing visible quality loss. This patch forces near-lossless encoding, which is essential for:
+- **Screen sharing** - text stays crisp and readable
+- **Pixel art / retro games** - no smearing or block artifacts
+- **Color-critical work** - gradients stay smooth, no banding
+- **Professional broadcasts** - broadcast-quality output over WebRTC
+
+**Affected codecs**: H.264, H.265/HEVC, VP8, VP9, AV1 (all benefit automatically)
+
+**How to verify**: Use `chrome://webrtc-internals` and look for `googQpSum` in the stats - values should stay low (under 25).
+
+#### 2. NVENC Hardware Encoding (ON by Default - Windows Only)
+
+**✅ Enabled automatically** - uses your NVIDIA GPU when available.
+
+**What it does**: Enables NVIDIA GPU hardware encoding through FFmpeg's NVENC support for H.264, H.265/HEVC, and AV1.
+
+**Why it's great for professional use**:
+- **Lower CPU usage** - encoding offloaded to GPU, freeing CPU for other tasks
+- **Better multi-stream performance** - encode multiple streams without CPU bottleneck
+- **Consistent quality** - hardware encoders maintain steady performance under load
+- **Cooler, quieter system** - less CPU heat during long streaming sessions
+
+**Requirements**: NVIDIA GPU with NVENC support (GTX 600 series or newer). The `nvEncodeAPI64.dll` is included in the release.
+
+**How to verify**: Check `chrome://gpu` for "Video Encode" acceleration status, or monitor GPU usage during encoding.
+
+> **💡 HEVC/H.265 Support**: Electron Capture supports HEVC/H.265 hardware encoding, which OBS Browser Source does not support as of December 2025. This gives Electron Capture an advantage for high-quality, low-bandwidth streaming scenarios where HEVC's superior compression is beneficial.
+
+#### 3. Adaptive Scaling Controls (Windows Only)
+
+**What it does**: Controls WebRTC's `DegradationPreference` which determines how video quality adapts under CPU/network stress.
+
+**Why it matters**: By default, WebRTC will automatically reduce resolution (1080p → 720p) or framerate (60fps → 30fps) when your system is under load. For professional streaming where quality is paramount, you may want to disable this behavior.
+
+**Available Modes**:
+
+| Mode | CLI Flag | Resolution | Framerate | Use Case |
+|------|----------|------------|-----------|----------|
+| BALANCED (default) | *(none)* | Can drop | Can drop | General use, adapts to conditions |
+| DISABLED | `--disableAdaptiveScaling` | Locked | Locked | Maximum quality, good hardware required |
+| MAINTAIN_RESOLUTION | `--lockResolution` | Locked | Can drop | Prioritize sharpness over smoothness |
+| MAINTAIN_FRAMERATE | `--lockFramerate` | Can drop | Locked | Prioritize smoothness over sharpness |
+
+**Examples**:
+```bash
+# DISABLED - Lock both resolution AND framerate (maximum quality)
+elecap.exe --disableAdaptiveScaling --url="https://vdo.ninja/..."
+
+# MAINTAIN_RESOLUTION - Keep resolution sharp, allow framerate to drop if needed
+elecap.exe --lockResolution --url="https://vdo.ninja/..."
+
+# MAINTAIN_FRAMERATE - Keep smooth motion, allow resolution to drop if needed
+elecap.exe --lockFramerate --url="https://vdo.ninja/..."
+```
+
+**Trade-offs**:
+- `--disableAdaptiveScaling`: May cause frame drops or stuttering if CPU/network can't keep up
+- `--lockResolution`: Video stays sharp but may stutter under load
+- `--lockFramerate`: Video stays smooth but may get blurry under load
+
+#### 4. Cursor Suppression (Windows Only)
+
+**What it does**: Hides the mouse cursor from screen capture streams.
+
+**Why it matters**: When sharing your screen for presentations or tutorials, you may want the cursor visible locally but hidden from viewers.
+
+**CLI Option**:
+```bash
+# Enable cursor suppression for all screen captures
+elecap.exe --hideCursorCapture --url="https://vdo.ninja/..."
+```
+
+**JavaScript API** (can be used even without the CLI flag):
+```js
+// Hide cursor in capture
+const stream = await navigator.mediaDevices.getDisplayMedia({
+  video: { cursor: 'never' }
+});
+
+// Other options: 'always' (default), 'motion' (hide when stationary)
+```
+
+#### 5. Extended Playout Delay (Windows Only)
+
+**What it does**: Increases maximum receiver buffer from 10 seconds to 10 minutes (600 seconds).
+
+**Why it matters**: For professional streaming over unreliable networks, a larger buffer allows better packet loss recovery - similar to how SRT or RTMP handle poor connections. Standard WebRTC is optimized for low-latency video calls, not high-latency broadcast scenarios.
+
+**Improvements in this patch**:
+- Frame buffer: 800 → 7,200 frames (2 min @ 60fps)
+- NACK history: 1 second → 2 minutes
+- Maximum delay: 10 seconds → 10 minutes
+
+**CLI Option**:
+```bash
+# Set default 30-second buffer for all incoming streams
+elecap.exe --playoutDelay=30 --url="https://vdo.ninja/..."
+
+# For longer buffers (e.g., satellite uplinks)
+elecap.exe --playoutDelay=120 --url="https://vdo.ninja/..."
+```
+
+**JavaScript API** (on the receiver side):
+```js
+// Set buffer directly on RTCRtpReceiver
+receiver.playoutDelayHint = 120; // 2 minute buffer
+
+// Or use the Electron helper
+window.electronApi.applyPlayoutDelay(receiver, 60); // 60 seconds
+```
+
+**Trade-off**: Higher playout delay = more latency. A 30-second buffer means 30 seconds of delay before video appears.
+
+#### JavaScript API Summary
+
+Access all capture preferences programmatically:
+
+```js
+// Get all preferences
+window.electronApi.getCapturePreferences();
+// Returns: { hideCursorCapture, playoutDelay, disableAdaptiveScaling, lockResolution, lockFramerate }
+
+// Individual checks
+window.electronApi.isCursorSuppressionEnabled();  // true/false
+window.electronApi.isAdaptiveScalingDisabled();   // true/false
+window.electronApi.getPlayoutDelay();             // number (seconds)
+
+// Apply playout delay to an RTCRtpReceiver
+window.electronApi.applyPlayoutDelay(rtcRtpReceiver, 30);
+```
+
+#### Feature Availability Summary
+
+| Feature | Windows | Mac | Linux | Requires CLI Flag |
+|---------|---------|-----|-------|-------------------|
+| QP-Cap (quality lock) | ✅ | ❌ | ❌ | No (automatic) |
+| NVENC encoding | ✅ | ❌ | ❌ | No (automatic) |
+| Adaptive scaling control | ✅ | ❌ | ❌ | Yes |
+| Cursor suppression | ✅ | ❌ | ❌ | Optional |
+| Extended playout delay | ✅ | ❌ | ❌ | Optional |
 
 
 ### Security considerations
