@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Advanced Features - Electron Capture</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/32x32.png">
+  <style>
+    :root {
+      --bg-primary: #0f1419;
+      --bg-secondary: #192734;
+      --bg-card: #22303c;
+      --accent: #1d9bf0;
+      --text-primary: #e7e9ea;
+      --text-secondary: #8b98a5;
+      --border: #38444d;
+      --warning: #f59e0b;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.7;
+    }
+    .container { max-width: 800px; margin: 0 auto; padding: 0 20px; }
+    header {
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+      background: rgba(15, 20, 25, 0.95);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    nav { display: flex; justify-content: space-between; align-items: center; }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-decoration: none;
+    }
+    .logo img { width: 32px; height: 32px; border-radius: 6px; }
+    .back-link { color: var(--accent); text-decoration: none; }
+    .back-link:hover { text-decoration: underline; }
+    main { padding: 60px 0; }
+    h1 { font-size: 2.5rem; margin-bottom: 16px; }
+    .subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 40px; }
+    h2 { font-size: 1.5rem; margin: 40px 0 16px; padding-top: 20px; border-top: 1px solid var(--border); }
+    h2:first-of-type { border-top: none; margin-top: 0; padding-top: 0; }
+    h3 { font-size: 1.2rem; margin: 24px 0 12px; color: var(--text-primary); }
+    p { margin-bottom: 16px; color: var(--text-secondary); }
+    ul, ol { margin: 16px 0 16px 24px; color: var(--text-secondary); }
+    li { margin-bottom: 8px; }
+    code {
+      background: var(--bg-card);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 0.9em;
+    }
+    pre {
+      background: var(--bg-card);
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 16px 0;
+      border: 1px solid var(--border);
+    }
+    pre code { padding: 0; background: none; }
+    a { color: var(--accent); }
+    .note {
+      background: rgba(29, 155, 240, 0.1);
+      border-left: 3px solid var(--accent);
+      padding: 16px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+    }
+    .note p { margin: 0; }
+    .warning {
+      background: rgba(245, 158, 11, 0.1);
+      border-left: 3px solid var(--warning);
+      padding: 16px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+    }
+    .warning p { margin: 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 0.9rem;
+    }
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    th { background: var(--bg-secondary); font-weight: 600; }
+    td { color: var(--text-secondary); }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      background: rgba(29, 155, 240, 0.2);
+      color: var(--accent);
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    footer {
+      padding: 40px 0;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      color: var(--text-secondary);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <nav>
+        <a href="index.html" class="logo">
+          <img src="assets/icons/32x32.png" alt="Electron Capture">
+          Electron Capture
+        </a>
+        <a href="index.html" class="back-link">&larr; Back to Home</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <h1>Advanced Features</h1>
+      <p class="subtitle">QP-cap patches, NVENC encoding, and adaptive scaling controls.</p>
+
+      <div class="warning">
+        <p><strong>Windows Only:</strong> These features are only available in the Windows custom build. Mac and Linux use official Electron releases.</p>
+      </div>
+
+      <h2>QP-Cap Patches</h2>
+      <span class="badge">Enabled by Default</span>
+      <p>The custom build limits the maximum quantizer parameter (QP) to 20 instead of the default 51-58. Lower QP means higher quality with less compression artifacts.</p>
+
+      <h3>Why This Matters</h3>
+      <p>Standard WebRTC was designed for video calls, not broadcast. It aggressively compresses video to save bandwidth, causing visible quality loss. This patch forces near-lossless encoding:</p>
+      <ul>
+        <li><strong>Screen sharing:</strong> Text stays crisp and readable</li>
+        <li><strong>Pixel art / retro games:</strong> No smearing or block artifacts</li>
+        <li><strong>Color-critical work:</strong> Gradients stay smooth, no banding</li>
+        <li><strong>Professional broadcasts:</strong> Broadcast-quality output over WebRTC</li>
+      </ul>
+
+      <h3>Affected Codecs</h3>
+      <p>H.264, H.265/HEVC, VP8, VP9, and AV1 all benefit automatically.</p>
+
+      <h3>How to Verify</h3>
+      <p>Open <code>chrome://webrtc-internals</code> and look for <code>googQpSum</code> in the stats. Values should stay low (under 25).</p>
+
+      <h2>NVENC Hardware Encoding</h2>
+      <span class="badge">Enabled by Default</span>
+      <p>Uses your NVIDIA GPU for video encoding, offloading work from the CPU.</p>
+
+      <h3>Benefits</h3>
+      <ul>
+        <li>Lower CPU usage - encoding offloaded to GPU</li>
+        <li>Better multi-stream performance</li>
+        <li>Consistent quality under load</li>
+        <li>Cooler, quieter system during long streams</li>
+      </ul>
+
+      <h3>Requirements</h3>
+      <p>NVIDIA GPU with NVENC support (GTX 600 series or newer).</p>
+
+      <h3>HEVC/H.265 Support</h3>
+      <p>Electron Capture supports HEVC/H.265 hardware encoding, which OBS Browser Source does not support. HEVC offers better quality at lower bitrates.</p>
+
+      <h2>Adaptive Scaling Controls</h2>
+      <p>Control how WebRTC adapts video quality under CPU/network stress.</p>
+
+      <table>
+        <thead>
+          <tr><th>Mode</th><th>CLI Flag</th><th>Resolution</th><th>Framerate</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>BALANCED (default)</td><td><em>none</em></td><td>Can drop</td><td>Can drop</td></tr>
+          <tr><td>DISABLED</td><td><code>--disableAdaptiveScaling</code></td><td>Locked</td><td>Locked</td></tr>
+          <tr><td>MAINTAIN_RESOLUTION</td><td><code>--lockResolution</code></td><td>Locked</td><td>Can drop</td></tr>
+          <tr><td>MAINTAIN_FRAMERATE</td><td><code>--lockFramerate</code></td><td>Can drop</td><td>Locked</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Examples</h3>
+      <pre><code># Maximum quality - lock both resolution AND framerate
+elecap.exe --disableAdaptiveScaling --url="https://vdo.ninja/..."
+
+# Keep resolution sharp, allow framerate to drop if needed
+elecap.exe --lockResolution --url="https://vdo.ninja/..."
+
+# Keep smooth motion, allow resolution to drop if needed
+elecap.exe --lockFramerate --url="https://vdo.ninja/..."</code></pre>
+
+      <div class="note">
+        <p><strong>Trade-off:</strong> Disabling adaptive scaling may cause frame drops if your CPU/network can't keep up. Use on capable hardware.</p>
+      </div>
+
+      <h2>Cursor Suppression</h2>
+      <p>Hide the mouse cursor from screen captures while keeping it visible locally.</p>
+
+      <pre><code># CLI option
+elecap.exe --hideCursorCapture --url="https://vdo.ninja/?ss=1"
+
+# JavaScript API
+const stream = await navigator.mediaDevices.getDisplayMedia({
+  video: { cursor: 'never' }
+});</code></pre>
+
+      <h2>Extended Playout Delay</h2>
+      <p>Increases maximum receiver buffer from 10 seconds to 10 minutes for better packet loss recovery over unreliable networks.</p>
+
+      <pre><code># Set 30-second buffer
+elecap.exe --playoutDelay=30 --url="https://vdo.ninja/..."
+
+# For satellite uplinks - 2 minute buffer
+elecap.exe --playoutDelay=120 --url="https://vdo.ninja/..."</code></pre>
+
+      <h3>JavaScript API</h3>
+      <pre><code>// Set buffer on RTCRtpReceiver
+receiver.playoutDelayHint = 120; // 2 minute buffer
+
+// Or use the Electron helper
+window.electronApi.applyPlayoutDelay(receiver, 60);</code></pre>
+
+      <h2>JavaScript API Summary</h2>
+      <pre><code>// Get all preferences
+window.electronApi.getCapturePreferences();
+
+// Individual checks
+window.electronApi.isCursorSuppressionEnabled();
+window.electronApi.isAdaptiveScalingDisabled();
+window.electronApi.getPlayoutDelay();</code></pre>
+
+      <h2>Feature Availability</h2>
+      <table>
+        <thead>
+          <tr><th>Feature</th><th>Windows</th><th>Mac</th><th>Linux</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>QP-Cap (quality lock)</td><td>Yes</td><td>No</td><td>No</td></tr>
+          <tr><td>NVENC encoding</td><td>Yes</td><td>No</td><td>No</td></tr>
+          <tr><td>Adaptive scaling control</td><td>Yes</td><td>No</td><td>No</td></tr>
+          <tr><td>Cursor suppression</td><td>Yes</td><td>No</td><td>No</td></tr>
+          <tr><td>Extended playout delay</td><td>Yes</td><td>No</td><td>No</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p><a href="https://github.com/steveseguin/electroncapture">GitHub</a> &middot; <a href="https://github.com/steveseguin/electroncapture#readme">Full Documentation</a></p>
+    </div>
+  </footer>
+</body>
+</html>

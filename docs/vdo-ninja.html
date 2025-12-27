@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VDO.Ninja Integration - Electron Capture</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/32x32.png">
+  <style>
+    :root {
+      --bg-primary: #0f1419;
+      --bg-secondary: #192734;
+      --bg-card: #22303c;
+      --accent: #1d9bf0;
+      --text-primary: #e7e9ea;
+      --text-secondary: #8b98a5;
+      --border: #38444d;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.7;
+    }
+    .container { max-width: 800px; margin: 0 auto; padding: 0 20px; }
+    header {
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+      background: rgba(15, 20, 25, 0.95);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    nav { display: flex; justify-content: space-between; align-items: center; }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-decoration: none;
+    }
+    .logo img { width: 32px; height: 32px; border-radius: 6px; }
+    .back-link { color: var(--accent); text-decoration: none; }
+    .back-link:hover { text-decoration: underline; }
+    main { padding: 60px 0; }
+    h1 { font-size: 2.5rem; margin-bottom: 16px; }
+    .subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 40px; }
+    h2 { font-size: 1.5rem; margin: 40px 0 16px; padding-top: 20px; border-top: 1px solid var(--border); }
+    h2:first-of-type { border-top: none; margin-top: 0; padding-top: 0; }
+    h3 { font-size: 1.2rem; margin: 24px 0 12px; color: var(--text-primary); }
+    p { margin-bottom: 16px; color: var(--text-secondary); }
+    ul, ol { margin: 16px 0 16px 24px; color: var(--text-secondary); }
+    li { margin-bottom: 8px; }
+    code {
+      background: var(--bg-card);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 0.9em;
+    }
+    pre {
+      background: var(--bg-card);
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 16px 0;
+      border: 1px solid var(--border);
+    }
+    pre code { padding: 0; background: none; }
+    a { color: var(--accent); }
+    .note {
+      background: rgba(29, 155, 240, 0.1);
+      border-left: 3px solid var(--accent);
+      padding: 16px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+    }
+    .note p { margin: 0; }
+    footer {
+      padding: 40px 0;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      color: var(--text-secondary);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <nav>
+        <a href="index.html" class="logo">
+          <img src="assets/icons/32x32.png" alt="Electron Capture">
+          Electron Capture
+        </a>
+        <a href="index.html" class="back-link">&larr; Back to Home</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <h1>VDO.Ninja Integration</h1>
+      <p class="subtitle">Optimize your VDO.Ninja streaming setup with Electron Capture.</p>
+
+      <h2>Why Use Electron Capture with VDO.Ninja?</h2>
+      <p>Electron Capture was originally built for VDO.Ninja and offers several advantages over OBS Browser Source:</p>
+      <ul>
+        <li>No video smearing or desync issues</li>
+        <li>Lower CPU usage with hardware encoding</li>
+        <li>Auto-select screens without user prompts</li>
+        <li>Global hotkeys for muting (CTRL+M)</li>
+        <li>Latest Chromium with cutting-edge WebRTC features</li>
+        <li>Won't crash if OBS crashes</li>
+      </ul>
+
+      <h2>Basic VDO.Ninja Setup</h2>
+      <h3>View a Guest</h3>
+      <pre><code>elecap.exe --width=1920 --height=1080 --url="https://vdo.ninja/?view=abc123&scene" --title="Guest 1"</code></pre>
+
+      <h3>View Multiple Guests</h3>
+      <pre><code># Scene link with all guests
+elecap.exe --url="https://vdo.ninja/?scene&room=myroom" --title="All Guests"
+
+# Individual guest windows
+elecap.exe -w 640 -h 360 -x 0 -y 0 --url="https://vdo.ninja/?view=guest1&room=myroom" -t="Guest 1"
+elecap.exe -w 640 -h 360 -x 640 -y 0 --url="https://vdo.ninja/?view=guest2&room=myroom" -t="Guest 2"</code></pre>
+
+      <h2>Screen Sharing with VDO.Ninja</h2>
+      <p>Auto-start screen sharing without user interaction:</p>
+      <pre><code># Share primary display
+elecap.exe --node 1 --url="https://vdo.ninja/?push=mystream&ss=1&autostart"
+
+# Share a specific window
+elecap.exe --node 1 --url="https://vdo.ninja/?push=mystream&ss=Discord&autostart"</code></pre>
+
+      <h2>Global Hotkeys</h2>
+      <p>With elevated privileges enabled, Electron Capture supports global hotkeys:</p>
+      <ul>
+        <li><strong>CTRL+M</strong> - Mute/unmute microphone</li>
+        <li>Custom hotkeys can be set in VDO.Ninja Settings &gt; User &gt; Global Hotkey</li>
+      </ul>
+
+      <h2>Clean Video Output</h2>
+      <p>For YouTube, Twitch, and other sites, Electron Capture can show just the video without overlays:</p>
+      <ol>
+        <li>Right-click on the page</li>
+        <li>Select <strong>Clean Video Output</strong></li>
+        <li>The video fills the entire window</li>
+      </ol>
+
+      <div class="note">
+        <p><strong>Bonus:</strong> YouTube videos get automatic ad-skipping!</p>
+      </div>
+
+      <h2>Recommended URL Parameters</h2>
+      <ul>
+        <li><code>&scene</code> - Optimized for OBS window capture</li>
+        <li><code>&codec=h264</code> - Force H.264 codec</li>
+        <li><code>&bitrate=6000</code> - Set target bitrate (kbps)</li>
+        <li><code>&quality=2</code> - Higher quality setting</li>
+        <li><code>&nocursor</code> - Hide cursor in browser</li>
+      </ul>
+
+      <h2>Automation Cheat Sheet</h2>
+      <p>For complete automation workflows with VDO.Ninja, see the <a href="https://github.com/steveseguin/vdo.ninja/blob/quickstart/automation/cheatsheet_obsn_automation.md">VDO.Ninja Automation Cheat Sheet</a>.</p>
+
+      <h2>Video Tutorial</h2>
+      <p>Watch the official video guide: <a href="https://youtu.be/mZ7X7WvRcRA">How to Use Electron Capture with VDO.Ninja</a></p>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p><a href="https://github.com/steveseguin/electroncapture">GitHub</a> &middot; <a href="https://vdo.ninja">VDO.Ninja</a></p>
+    </div>
+  </footer>
+</body>
+</html>

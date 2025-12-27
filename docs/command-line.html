@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Command Line Usage - Electron Capture</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/32x32.png">
+  <style>
+    :root {
+      --bg-primary: #0f1419;
+      --bg-secondary: #192734;
+      --bg-card: #22303c;
+      --accent: #1d9bf0;
+      --text-primary: #e7e9ea;
+      --text-secondary: #8b98a5;
+      --border: #38444d;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.7;
+    }
+    .container { max-width: 900px; margin: 0 auto; padding: 0 20px; }
+    header {
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+      background: rgba(15, 20, 25, 0.95);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    nav { display: flex; justify-content: space-between; align-items: center; }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-decoration: none;
+    }
+    .logo img { width: 32px; height: 32px; border-radius: 6px; }
+    .back-link { color: var(--accent); text-decoration: none; }
+    .back-link:hover { text-decoration: underline; }
+    main { padding: 60px 0; }
+    h1 { font-size: 2.5rem; margin-bottom: 16px; }
+    .subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 40px; }
+    h2 { font-size: 1.5rem; margin: 40px 0 16px; padding-top: 20px; border-top: 1px solid var(--border); }
+    h2:first-of-type { border-top: none; margin-top: 0; padding-top: 0; }
+    p { margin-bottom: 16px; color: var(--text-secondary); }
+    code {
+      background: var(--bg-card);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 0.9em;
+    }
+    pre {
+      background: var(--bg-card);
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 16px 0;
+      border: 1px solid var(--border);
+    }
+    pre code { padding: 0; background: none; }
+    a { color: var(--accent); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 0.9rem;
+    }
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    th { background: var(--bg-secondary); font-weight: 600; }
+    td { color: var(--text-secondary); }
+    td code { font-size: 0.85em; }
+    footer {
+      padding: 40px 0;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      color: var(--text-secondary);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <nav>
+        <a href="index.html" class="logo">
+          <img src="assets/icons/32x32.png" alt="Electron Capture">
+          Electron Capture
+        </a>
+        <a href="index.html" class="back-link">&larr; Back to Home</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <h1>Command Line Usage</h1>
+      <p class="subtitle">Master CLI parameters for automated workflows and batch scripts.</p>
+
+      <h2>Basic Syntax</h2>
+      <pre><code>elecap.exe --width=1280 --height=720 --url="https://vdo.ninja/electron" --title="My Window"</code></pre>
+      <p>Use the portable version (<code>elecap.exe</code>) for command-line usage. The installer version is better for GUI use.</p>
+
+      <h2>Common Parameters</h2>
+      <table>
+        <thead>
+          <tr><th>Parameter</th><th>Alias</th><th>Description</th><th>Example</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>--width</code></td><td><code>-w</code></td><td>Window width in pixels</td><td><code>1920</code></td></tr>
+          <tr><td><code>--height</code></td><td><code>-h</code></td><td>Window height in pixels</td><td><code>1080</code></td></tr>
+          <tr><td><code>--url</code></td><td><code>-u</code></td><td>URL to load</td><td><code>"https://vdo.ninja/"</code></td></tr>
+          <tr><td><code>--title</code></td><td><code>-t</code></td><td>Window title (for OBS)</td><td><code>"Guest 1"</code></td></tr>
+          <tr><td><code>--x</code></td><td></td><td>X position</td><td><code>100</code></td></tr>
+          <tr><td><code>--y</code></td><td></td><td>Y position</td><td><code>100</code></td></tr>
+          <tr><td><code>--pin</code></td><td><code>-p</code></td><td>Always on top</td><td></td></tr>
+          <tr><td><code>--node</code></td><td><code>-n</code></td><td>Enable elevated privileges</td><td><code>1</code></td></tr>
+          <tr><td><code>--fullscreen</code></td><td><code>-f</code></td><td>Start in fullscreen</td><td></td></tr>
+          <tr><td><code>--minimized</code></td><td><code>--min</code></td><td>Start minimized</td><td></td></tr>
+          <tr><td><code>--monitor</code></td><td><code>-m</code></td><td>Monitor index (0-based)</td><td><code>1</code></td></tr>
+        </tbody>
+      </table>
+
+      <h2>Appearance Parameters</h2>
+      <table>
+        <thead>
+          <tr><th>Parameter</th><th>Alias</th><th>Description</th><th>Example</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>--chroma</code></td><td><code>--color</code></td><td>Background color (hex)</td><td><code>"0F0"</code> or <code>"0000"</code></td></tr>
+          <tr><td><code>--hidecursor</code></td><td><code>-hc</code></td><td>Hide mouse cursor</td><td></td></tr>
+          <tr><td><code>--unclickable</code></td><td><code>--uc</code></td><td>Click-through mode</td><td></td></tr>
+          <tr><td><code>--hwa</code></td><td><code>-a</code></td><td>Hardware acceleration</td><td><code>0</code> to disable</td></tr>
+        </tbody>
+      </table>
+
+      <h2>Custom Build Parameters (Windows Only)</h2>
+      <table>
+        <thead>
+          <tr><th>Parameter</th><th>Alias</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>--disableAdaptiveScaling</code></td><td><code>--noScaling</code></td><td>Lock resolution + framerate</td></tr>
+          <tr><td><code>--lockResolution</code></td><td><code>--lockRes</code></td><td>Lock resolution only</td></tr>
+          <tr><td><code>--lockFramerate</code></td><td><code>--lockFps</code></td><td>Lock framerate only</td></tr>
+          <tr><td><code>--hideCursorCapture</code></td><td><code>--noCursor</code></td><td>Hide cursor in screen capture</td></tr>
+          <tr><td><code>--playoutDelay</code></td><td><code>--bufferDelay</code></td><td>Buffer delay in seconds (0-600)</td></tr>
+        </tbody>
+      </table>
+
+      <h2>Batch File Example</h2>
+      <p>Launch multiple instances for a multi-guest setup:</p>
+      <pre><code>start elecap.exe -w 640 -h 360 -x 0 -y 0 -u="https://vdo.ninja/?view=guest1&room=myroom" -t="Guest 1" -p
+timeout /T 1
+start elecap.exe -w 640 -h 360 -x 640 -y 0 -u="https://vdo.ninja/?view=guest2&room=myroom" -t="Guest 2" -p
+timeout /T 1
+start elecap.exe -w 640 -h 360 -x 0 -y 360 -u="https://vdo.ninja/?view=guest3&room=myroom" -t="Guest 3" -p
+timeout /T 1
+start elecap.exe -w 640 -h 360 -x 640 -y 360 -u="https://vdo.ninja/?view=guest4&room=myroom" -t="Guest 4" -p</code></pre>
+
+      <h2>Deep Linking</h2>
+      <p>You can launch Electron Capture from web links using the <code>electroncapture://</code> protocol:</p>
+      <pre><code>electroncapture://vdo.ninja/?view=abc123</code></pre>
+      <p>Visit <a href="https://vdo.ninja/electroncapture">vdo.ninja/electroncapture</a> to generate custom deep links with parameters.</p>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p><a href="https://github.com/steveseguin/electroncapture">GitHub</a> &middot; <a href="https://github.com/steveseguin/electroncapture#readme">Full Documentation</a></p>
+    </div>
+  </footer>
+</body>
+</html>
