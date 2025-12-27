@@ -25,6 +25,30 @@ const encoderPreferences = {
   maxBitrate: 0
 };
 
+// Custom Electron capture preferences (v39.2.7+)
+const capturePreferences = {
+  hideCursorCapture: false,
+  playoutDelay: 0,
+  disableAdaptiveScaling: false,
+  lockResolution: false,
+  lockFramerate: false
+};
+
+// Load capture preferences from main process
+ipcRenderer.invoke('capture:get-preferences').then((prefs) => {
+  if (prefs) {
+    Object.assign(capturePreferences, prefs);
+    if (capturePreferences.hideCursorCapture) {
+      console.log('[Electron Capture] Cursor suppression enabled for screen capture');
+    }
+    if (capturePreferences.playoutDelay > 0) {
+      console.log('[Electron Capture] Default playout delay:', capturePreferences.playoutDelay, 'seconds');
+    }
+  }
+}).catch((err) => {
+  console.warn('[Electron Capture] Failed to load capture preferences:', err);
+});
+
 function parseEncoderMode(rawValue) {
   if (typeof rawValue === 'boolean') {
     return rawValue ? 'hardware' : 'software';
@@ -580,6 +604,20 @@ function installDisplayMediaHook() {
   const originalGetDisplayMedia = navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices);
 
   navigator.mediaDevices.getDisplayMedia = async (...args) => {
+    // Apply cursor suppression if enabled and not already specified
+    if (capturePreferences.hideCursorCapture && args.length > 0 && args[0]) {
+      const constraints = args[0];
+      if (constraints.video && typeof constraints.video === 'object') {
+        if (typeof constraints.video.cursor === 'undefined') {
+          constraints.video.cursor = 'never';
+          console.log('[Electron Capture] Applied cursor suppression to getDisplayMedia');
+        }
+      } else if (constraints.video === true) {
+        constraints.video = { cursor: 'never' };
+        console.log('[Electron Capture] Applied cursor suppression to getDisplayMedia');
+      }
+    }
+
     const stream = await originalGetDisplayMedia(...args);
     if (appAudioTarget) {
       await attachApplicationAudio(stream);
@@ -662,7 +700,22 @@ function createElectronApi() {
       return { success: true, target: updated };
     },
     'getAppAudioTarget': () => appAudioTarget,
-    'isWindowAudioCaptureAvailable': () => Boolean(WindowAudioStream)
+    'isWindowAudioCaptureAvailable': () => Boolean(WindowAudioStream),
+    // Custom Electron capture preferences (v39.2.7+)
+    'getCapturePreferences': () => ({ ...capturePreferences }),
+    'getPlayoutDelay': () => capturePreferences.playoutDelay,
+    'isAdaptiveScalingDisabled': () => capturePreferences.disableAdaptiveScaling,
+    'isCursorSuppressionEnabled': () => capturePreferences.hideCursorCapture,
+    // Helper to apply playout delay to an RTCRtpReceiver
+    'applyPlayoutDelay': (receiver, delaySeconds) => {
+      const delay = typeof delaySeconds === 'number' ? delaySeconds : capturePreferences.playoutDelay;
+      if (receiver && typeof receiver.playoutDelayHint !== 'undefined' && delay > 0) {
+        receiver.playoutDelayHint = delay;
+        console.log('[Electron Capture] Applied playout delay:', delay, 'seconds');
+        return true;
+      }
+      return false;
+    }
   };
 }
 

@@ -11,7 +11,7 @@
     "prebuild": "node ./scripts/install-window-audio-capture.js",
     "build:win32": "electron-builder --win",
     "prebuild:win32": "node ./scripts/install-window-audio-capture.js",
-    "build:darwin": "electron-builder --mac --universal --config.electronVersion=36.9.5 --config.electronDownload.mirror=https://github.com/electron/electron/releases/download/ --config.electronDownload.customDir=v36.9.5",
+    "build:darwin": "electron-builder --mac --universal --config.electronVersion=39.2.7 --config.electronDownload.mirror=https://github.com/electron/electron/releases/download/ --config.electronDownload.customDir=v39.2.7",
     "prebuild:darwin": "node ./scripts/install-window-audio-capture.js",
     "build:linux": "electron-builder --linux",
     "prebuild:linux": "node ./scripts/install-window-audio-capture.js",
@@ -33,10 +33,10 @@
   "build": {
     "appId": "capture.electron",
     "productName": "elecap",
-    "electronVersion": "36.9.5-qp20",
+    "electronVersion": "39.2.7-qp20",
     "electronDownload": {
       "mirror": "https://github.com/steveseguin/electron/releases/download/",
-      "customDir": "v36.9.5-qp20"
+      "customDir": "v39.2.7-qp20"
     },
     "protocols": {
       "name": "electroncapture",
@@ -201,7 +201,7 @@
   },
   "devDependencies": {
     "@electron/fuses": "^2.0.0",
-    "electron": "36.9.5",
+    "electron": "39.2.7",
     "electron-builder": "^24.13.3",
     "electron-notarize": "git://github.com/electron/notarize.git",
     "rimraf": "^5.0.5",

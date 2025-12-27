@@ -10,28 +10,29 @@ const { Readable } = require('stream');
 const CHECKSUM_MANIFEST = 'SHASUMS256.txt';
 const PLATFORM_TARGETS = new Map([
   ['win32', {
-    version: '36.9.5-qp20',
-    releaseTag: 'v36.9.5-qp20',
+    version: '39.2.7-qp20',
+    releaseTag: 'v39.2.7-qp20',
     mirrorBase: 'https://github.com/steveseguin/electron/releases/download/',
     artifacts: new Map([
-      ['x64', 'electron-v36.9.5-qp20-win32-x64.zip']
+      ['x64', 'electron-v39.2.7-win32-x64.zip']
     ])
   }],
   ['linux', {
-    version: '36.9.5-qp20',
-    releaseTag: 'v36.9.5-qp20',
-    mirrorBase: 'https://github.com/steveseguin/electron/releases/download/',
+    version: '39.2.7',
+    releaseTag: 'v39.2.7',
+    mirrorBase: 'https://github.com/electron/electron/releases/download/',
     artifacts: new Map([
-      ['x64', 'electron-v36.9.5-qp20-linux-x64.zip']
+      ['x64', 'electron-v39.2.7-linux-x64.zip'],
+      ['arm64', 'electron-v39.2.7-linux-arm64.zip']
     ])
   }],
   ['darwin', {
-    version: '36.9.5',
-    releaseTag: 'v36.9.5',
+    version: '39.2.7',
+    releaseTag: 'v39.2.7',
     mirrorBase: 'https://github.com/electron/electron/releases/download/',
     artifacts: new Map([
-      ['x64', 'electron-v36.9.5-darwin-x64.zip'],
-      ['arm64', 'electron-v36.9.5-darwin-arm64.zip']
+      ['x64', 'electron-v39.2.7-darwin-x64.zip'],
+      ['arm64', 'electron-v39.2.7-darwin-arm64.zip']
     ])
   }]
 ]);
@@ -276,7 +277,7 @@ function getLocalDirCandidates () {
   if (process.env.CUSTOM_ELECTRON_LOCAL_DIR) {
     dirs.add(process.env.CUSTOM_ELECTRON_LOCAL_DIR);
   }
-  dirs.add(path.join(os.homedir(), 'electron-work-v36', 'src', 'out', 'Release'));
+  dirs.add(path.join(os.homedir(), 'electron-work-v36', 'src', 'out', 'Release-win'));
   return Array.from(dirs);
 }
 

@@ -988,6 +988,36 @@ function createYargs(){
     type: "boolean",
     default: false
   })
+  .option("disableAdaptiveScaling", {
+    alias: ["noScaling", "lockQuality"],
+    describe: "Disable WebRTC adaptive scaling - lock both resolution AND framerate (custom Electron only).",
+    type: "boolean",
+    default: false
+  })
+  .option("lockResolution", {
+    alias: "lockRes",
+    describe: "Lock WebRTC resolution only - framerate can still adapt (custom Electron only).",
+    type: "boolean",
+    default: false
+  })
+  .option("lockFramerate", {
+    alias: "lockFps",
+    describe: "Lock WebRTC framerate only - resolution can still adapt (custom Electron only).",
+    type: "boolean",
+    default: false
+  })
+  .option("hideCursorCapture", {
+    alias: ["noCursor", "suppressCursor"],
+    describe: "Hide cursor in screen capture by default (custom Electron only).",
+    type: "boolean",
+    default: false
+  })
+  .option("playoutDelay", {
+    alias: "bufferDelay",
+    describe: "Default playout delay hint in seconds for WebRTC receivers (0-600, custom Electron only).",
+    type: "number",
+    default: 0
+  })
   .describe("help", "Show help.") // Override --help usage message.
   .wrap(process.stdout.columns); 
   
@@ -1426,6 +1456,17 @@ ipcMain.handle('hardware-encoding:open-gpu-diagnostics', () => {
 	return openGpuDiagnosticsWindow();
 });
 
+// Custom Electron capture preferences (v39.2.7+)
+ipcMain.handle('capture:get-preferences', () => {
+	return {
+		hideCursorCapture: Argv.hideCursorCapture || false,
+		playoutDelay: Argv.playoutDelay || 0,
+		disableAdaptiveScaling: Argv.disableAdaptiveScaling || false,
+		lockResolution: Argv.lockResolution || false,
+		lockFramerate: Argv.lockFramerate || false
+	};
+});
+
 ipcMain.handle('drag-region:get-default-preference', (event) => {
 	try {
 		const targetWindow = BrowserWindow.fromWebContents(event.sender);
@@ -1762,9 +1803,24 @@ if (Argv.ignoreGpuBlocklist) {
 	app.commandLine.appendSwitch('ignore-gpu-blocklist');
 	console.log('Chromium GPU blocklist will be ignored for this session.');
 }
+// Build field trials list
+const fieldTrials = [];
 if (Argv.webrtcH264KeyframeTrial) {
-	app.commandLine.appendSwitch('force-fieldtrials', 'WebRTC-H264-SpsPpsIdrIsH264Keyframe/Enabled/');
+	fieldTrials.push('WebRTC-H264-SpsPpsIdrIsH264Keyframe/Enabled/');
 	console.log('WebRTC H264 SPS/PPS keyframe field trial enabled.');
+}
+if (Argv.disableAdaptiveScaling) {
+	fieldTrials.push('WebRTC-DisableAdaptiveScaling/Enabled/');
+	console.log('WebRTC adaptive scaling disabled (resolution + framerate locked).');
+} else if (Argv.lockResolution) {
+	fieldTrials.push('WebRTC-LockResolution/Enabled/');
+	console.log('WebRTC resolution locked (framerate can still adapt).');
+} else if (Argv.lockFramerate) {
+	fieldTrials.push('WebRTC-LockFramerate/Enabled/');
+	console.log('WebRTC framerate locked (resolution can still adapt).');
+}
+if (fieldTrials.length > 0) {
+	app.commandLine.appendSwitch('force-fieldtrials', fieldTrials.join(''));
 }
 app.commandLine.appendSwitch('webrtc-max-cpu-consumption-percentage', '100');
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
