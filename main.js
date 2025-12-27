@@ -1297,7 +1297,12 @@ function hydrateArgsFromRawProcessArgs(args) {
 }
 
 var Argv = hydrateArgsFromRawProcessArgs(createYargs());
-;
+
+// Handle --help before any app initialization (fix for issue #96)
+if (Argv.help) {
+  Argv.showHelp();
+  process.exit(0);
+}
 
 const VALID_ENCODER_MODES = new Set(['hardware', 'software', 'auto']);
 
@@ -1478,11 +1483,6 @@ ipcMain.handle('drag-region:get-default-preference', (event) => {
 	}
 	return true;
 });
-
-if (Argv.help) {
-  Argv.showHelp();
-  process.exit(0); // Exit the script after showing help.
-}
 
 if (!allowMultipleInstances) {
 	const gotInstanceLock = app.requestSingleInstanceLock(Argv);
