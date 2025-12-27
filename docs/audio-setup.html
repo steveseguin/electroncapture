@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Audio Setup - Electron Capture</title>
-  <meta name="description" content="Route audio from Electron Capture to OBS using VB-Cable or VoiceMeeter. Step-by-step guide for virtual audio cable setup.">
+  <meta name="description" content="Capture audio directly from any Windows application with Electron Capture. No virtual audio cables needed. Also supports VB-Cable and VoiceMeeter routing.">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://electroncapture.app/audio-setup.html">
   <meta property="og:title" content="Audio Setup - Electron Capture">
-  <meta property="og:description" content="Route audio to OBS using VB-Cable or VoiceMeeter virtual audio cables.">
+  <meta property="og:description" content="Capture audio directly from any Windows application. No virtual cables needed.">
   <meta property="og:url" content="https://electroncapture.app/audio-setup.html">
   <meta property="og:type" content="article">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/32x32.png">
@@ -109,10 +109,23 @@
   <main>
     <div class="container">
       <h1>Audio Setup</h1>
-      <p class="subtitle">Configure virtual audio cables and per-window output routing.</p>
+      <p class="subtitle">Capture application audio directly or route via virtual audio cables.</p>
 
-      <h2>Why Virtual Audio Cables?</h2>
-      <p>Virtual audio cables let you route audio from Electron Capture into OBS or other applications as a separate audio source. This gives you independent volume control and the ability to apply filters.</p>
+      <h2>Application Audio Capture (Windows)</h2>
+      <div class="note">
+        <p><strong>Recommended:</strong> Electron Capture can capture audio directly from any application - no virtual audio cables needed!</p>
+      </div>
+      <p>When screen sharing or window capturing with elevated privileges, Electron Capture can capture audio directly from the selected application. This is the simplest method and works without any additional software.</p>
+      <ol>
+        <li>Right-click and select <strong>Elevate Privileges</strong></li>
+        <li>Start a screen share or window capture via VDO.Ninja</li>
+        <li>Select the application you want to capture</li>
+        <li>Audio from that application is automatically included in the stream</li>
+      </ol>
+      <p>This uses Windows Audio Session API (WASAPI) loopback capture to grab audio from specific processes.</p>
+
+      <h2>Virtual Audio Cables (Alternative)</h2>
+      <p>If you need to route audio from Electron Capture into OBS or other applications as a separate audio source, virtual audio cables give you independent volume control and the ability to apply filters.</p>
 
       <h2>Recommended Software</h2>
 
