@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Screen Sharing - Electron Capture</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/32x32.png">
+  <style>
+    :root {
+      --bg-primary: #0f1419;
+      --bg-secondary: #192734;
+      --bg-card: #22303c;
+      --accent: #1d9bf0;
+      --text-primary: #e7e9ea;
+      --text-secondary: #8b98a5;
+      --border: #38444d;
+      --warning: #f59e0b;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.7;
+    }
+    .container { max-width: 800px; margin: 0 auto; padding: 0 20px; }
+    header {
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+      background: rgba(15, 20, 25, 0.95);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    nav { display: flex; justify-content: space-between; align-items: center; }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-decoration: none;
+    }
+    .logo img { width: 32px; height: 32px; border-radius: 6px; }
+    .back-link { color: var(--accent); text-decoration: none; }
+    .back-link:hover { text-decoration: underline; }
+    main { padding: 60px 0; }
+    h1 { font-size: 2.5rem; margin-bottom: 16px; }
+    .subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 40px; }
+    h2 { font-size: 1.5rem; margin: 40px 0 16px; padding-top: 20px; border-top: 1px solid var(--border); }
+    h2:first-of-type { border-top: none; margin-top: 0; padding-top: 0; }
+    p { margin-bottom: 16px; color: var(--text-secondary); }
+    ul, ol { margin: 16px 0 16px 24px; color: var(--text-secondary); }
+    li { margin-bottom: 8px; }
+    code {
+      background: var(--bg-card);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 0.9em;
+    }
+    pre {
+      background: var(--bg-card);
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 16px 0;
+      border: 1px solid var(--border);
+    }
+    pre code { padding: 0; background: none; }
+    a { color: var(--accent); }
+    .note {
+      background: rgba(29, 155, 240, 0.1);
+      border-left: 3px solid var(--accent);
+      padding: 16px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+    }
+    .note p { margin: 0; }
+    .warning {
+      background: rgba(245, 158, 11, 0.1);
+      border-left: 3px solid var(--warning);
+      padding: 16px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+    }
+    .warning p { margin: 0; }
+    footer {
+      padding: 40px 0;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      color: var(--text-secondary);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <nav>
+        <a href="index.html" class="logo">
+          <img src="assets/icons/32x32.png" alt="Electron Capture">
+          Electron Capture
+        </a>
+        <a href="index.html" class="back-link">&larr; Back to Home</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <h1>Screen Sharing</h1>
+      <p class="subtitle">Auto-select screens and windows without user prompts for automated workflows.</p>
+
+      <h2>Enabling Screen Share</h2>
+      <p>Screen sharing requires elevated privileges. Enable with:</p>
+      <pre><code>elecap.exe --node 1 --url="https://vdo.ninja/..."</code></pre>
+      <p>Or right-click in the app and select <strong>Elevate Privileges</strong> from the context menu.</p>
+
+      <div class="warning">
+        <p><strong>Security Note:</strong> Elevated privileges allow websites to access Node.js APIs. Only use with trusted sites like VDO.Ninja.</p>
+      </div>
+
+      <h2>Auto-Select Screens</h2>
+      <p>A unique feature of Electron Capture is auto-selecting screens without user interaction. Add <code>&ss=</code> to your VDO.Ninja URL:</p>
+
+      <h3>Select by Display Number</h3>
+      <pre><code># Select primary display
+elecap.exe --node 1 --url="https://vdo.ninja/?ss=1&autostart"
+
+# Select second display
+elecap.exe --node 1 --url="https://vdo.ninja/?ss=2&autostart"</code></pre>
+
+      <h3>Select by Window Name</h3>
+      <pre><code># Auto-select Discord window
+elecap.exe --node 1 --url="https://vdo.ninja/?ss=Discord&autostart"
+
+# Auto-select a game
+elecap.exe --node 1 --url="https://vdo.ninja/?ss=Minecraft&autostart"</code></pre>
+
+      <div class="note">
+        <p><strong>Tip:</strong> The window name matching is case-insensitive and matches partial names.</p>
+      </div>
+
+      <h2>Audio-Only Screen Share</h2>
+      <p>You can share only audio without video when screen sharing:</p>
+      <pre><code>elecap.exe --node 1 --url="https://vdo.ninja/?ss=1&autostart&novideo"</code></pre>
+
+      <h2>Cursor Suppression (Windows Custom Build)</h2>
+      <p>Hide the cursor from screen captures while keeping it visible locally:</p>
+      <pre><code>elecap.exe --node 1 --hideCursorCapture --url="https://vdo.ninja/?ss=1"</code></pre>
+      <p>Or use the JavaScript API:</p>
+      <pre><code>const stream = await navigator.mediaDevices.getDisplayMedia({
+  video: { cursor: 'never' }
+});</code></pre>
+
+      <h2>macOS Permissions</h2>
+      <p>On macOS 10.15 Catalina or later, you need to grant screen recording permission:</p>
+      <ol>
+        <li>Open <strong>System Preferences</strong> &gt; <strong>Security & Privacy</strong></li>
+        <li>Click the <strong>Privacy</strong> tab</li>
+        <li>Select <strong>Screen Recording</strong> in the left sidebar</li>
+        <li>Check the box next to <strong>Electron Capture</strong></li>
+      </ol>
+
+      <div class="note">
+        <p><strong>Note:</strong> Desktop audio capture is not supported on macOS due to Electron limitations.</p>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p><a href="https://github.com/steveseguin/electroncapture">GitHub</a> &middot; <a href="https://github.com/steveseguin/electroncapture#readme">Full Documentation</a></p>
+    </div>
+  </footer>
+</body>
+</html>

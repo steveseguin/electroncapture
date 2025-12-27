@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Getting Started - Electron Capture</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/32x32.png">
+  <style>
+    :root {
+      --bg-primary: #0f1419;
+      --bg-secondary: #192734;
+      --bg-card: #22303c;
+      --accent: #1d9bf0;
+      --text-primary: #e7e9ea;
+      --text-secondary: #8b98a5;
+      --border: #38444d;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.7;
+    }
+    .container { max-width: 800px; margin: 0 auto; padding: 0 20px; }
+    header {
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+      background: rgba(15, 20, 25, 0.95);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    nav { display: flex; justify-content: space-between; align-items: center; }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-decoration: none;
+    }
+    .logo img { width: 32px; height: 32px; border-radius: 6px; }
+    .back-link { color: var(--accent); text-decoration: none; }
+    .back-link:hover { text-decoration: underline; }
+    main { padding: 60px 0; }
+    h1 { font-size: 2.5rem; margin-bottom: 16px; }
+    .subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 40px; }
+    h2 { font-size: 1.5rem; margin: 40px 0 16px; padding-top: 20px; border-top: 1px solid var(--border); }
+    h2:first-of-type { border-top: none; margin-top: 0; padding-top: 0; }
+    p { margin-bottom: 16px; color: var(--text-secondary); }
+    ul, ol { margin: 16px 0 16px 24px; color: var(--text-secondary); }
+    li { margin-bottom: 8px; }
+    code {
+      background: var(--bg-card);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 0.9em;
+    }
+    pre {
+      background: var(--bg-card);
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 16px 0;
+      border: 1px solid var(--border);
+    }
+    pre code { padding: 0; background: none; }
+    a { color: var(--accent); }
+    .note {
+      background: rgba(29, 155, 240, 0.1);
+      border-left: 3px solid var(--accent);
+      padding: 16px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+    }
+    .note p { margin: 0; }
+    footer {
+      padding: 40px 0;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      color: var(--text-secondary);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <nav>
+        <a href="index.html" class="logo">
+          <img src="assets/icons/32x32.png" alt="Electron Capture">
+          Electron Capture
+        </a>
+        <a href="index.html" class="back-link">&larr; Back to Home</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <h1>Getting Started</h1>
+      <p class="subtitle">Download, install, and run your first capture session in minutes.</p>
+
+      <h2>Download</h2>
+      <p>Visit the <a href="https://github.com/steveseguin/electroncapture/releases">GitHub Releases page</a> to download the latest version for your platform:</p>
+      <ul>
+        <li><strong>Windows:</strong> Choose the installer (<code>.exe</code>) or portable version (<code>elecap.exe</code>)</li>
+        <li><strong>macOS:</strong> Download the <code>.dmg</code> file</li>
+        <li><strong>Linux:</strong> AppImage files are available, or build from source</li>
+      </ul>
+
+      <div class="note">
+        <p><strong>Tip:</strong> The portable Windows version is easier to use from the command line or batch files.</p>
+      </div>
+
+      <h2>First Launch</h2>
+      <p>When you first open Electron Capture, you'll see a minimal window with a URL bar. Here's how to get started:</p>
+      <ol>
+        <li>Enter a URL (e.g., <code>https://vdo.ninja/</code>) in the address bar</li>
+        <li>Press Enter to load the page</li>
+        <li>Right-click anywhere to access the context menu with options</li>
+      </ol>
+
+      <h2>Basic Controls</h2>
+      <p>Right-click anywhere in the window to access the context menu:</p>
+      <ul>
+        <li><strong>Pin on Top:</strong> Keep the window above other applications</li>
+        <li><strong>Change Resolution:</strong> Resize to common streaming resolutions</li>
+        <li><strong>Elevate Privileges:</strong> Enable advanced features like screen sharing</li>
+        <li><strong>Audio Output:</strong> Select which audio device to use</li>
+        <li><strong>Close:</strong> Exit the application</li>
+      </ul>
+
+      <h2>Window Capture with OBS</h2>
+      <p>To capture Electron Capture in OBS:</p>
+      <ol>
+        <li>Add a <strong>Window Capture</strong> source in OBS</li>
+        <li>Select the Electron Capture window from the dropdown</li>
+        <li>The window appears frameless - no browser chrome or address bar</li>
+      </ol>
+
+      <div class="note">
+        <p><strong>Pro Tip:</strong> Use <code>--title="My Stream"</code> to set a custom window title, making it easier to identify in OBS.</p>
+      </div>
+
+      <h2>Next Steps</h2>
+      <ul>
+        <li><a href="command-line.html">Command Line Usage</a> - Automate with CLI parameters</li>
+        <li><a href="screen-sharing.html">Screen Sharing</a> - Auto-select screens without prompts</li>
+        <li><a href="vdo-ninja.html">VDO.Ninja Integration</a> - Optimize for VDO.Ninja</li>
+      </ul>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p><a href="https://github.com/steveseguin/electroncapture">GitHub</a> &middot; <a href="https://github.com/steveseguin/electroncapture#readme">Full Documentation</a></p>
+    </div>
+  </footer>
+</body>
+</html>
