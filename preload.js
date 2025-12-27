@@ -25,6 +25,30 @@ const encoderPreferences = {
   maxBitrate: 0
 };
 
+// Custom Electron capture preferences (v39.2.7+)
+const capturePreferences = {
+  hideCursorCapture: false,
+  playoutDelay: 0,
+  disableAdaptiveScaling: false,
+  lockResolution: false,
+  lockFramerate: false
+};
+
+// Load capture preferences from main process
+ipcRenderer.invoke('capture:get-preferences').then((prefs) => {
+  if (prefs) {
+    Object.assign(capturePreferences, prefs);
+    if (capturePreferences.hideCursorCapture) {
+      console.log('[Electron Capture] Cursor suppression enabled for screen capture');
+    }
+    if (capturePreferences.playoutDelay > 0) {
+      console.log('[Electron Capture] Default playout delay:', capturePreferences.playoutDelay, 'seconds');
+    }
+  }
+}).catch((err) => {
+  console.warn('[Electron Capture] Failed to load capture preferences:', err);
+});
+
 function parseEncoderMode(rawValue) {
   if (typeof rawValue === 'boolean') {
     return rawValue ? 'hardware' : 'software';
@@ -90,6 +114,308 @@ ipcRenderer.on('hardware-encoding:mode-updated', (_event, mode) => {
   const normalized = parseEncoderMode(mode);
   encoderPreferences.preferredMode = normalized || encoderPreferences.defaultMode;
 });
+
+const DEFAULT_DRAG_REGION_PREF_CHANNEL = 'drag-region:get-default-preference';
+const DEFAULT_DRAG_REGION_CONFIG = {
+  elementId: '__electron_capture_default_drag_handle',
+  styleId: '__electron_capture_default_drag_handle_style',
+  datasetKey: 'electronCaptureDefaultDragRegion',
+  detectionDebounce: 250,
+  pollInterval: 4000
+};
+
+function initDefaultDragRegionFallback() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return;
+  }
+
+  const state = {
+    observer: null,
+    debounceHandle: null,
+    pollHandle: null,
+    hasCustomRegion: false,
+    fallbackVisible: false,
+    initialized: false
+  };
+
+  const ensureStyleElement = () => {
+    if (document.getElementById(DEFAULT_DRAG_REGION_CONFIG.styleId)) {
+      return;
+    }
+    const style = document.createElement('style');
+    style.id = DEFAULT_DRAG_REGION_CONFIG.styleId;
+    style.textContent = `
+      #${DEFAULT_DRAG_REGION_CONFIG.elementId} {
+        position: fixed;
+        top: env(safe-area-inset-top, 0px);
+        left: 0;
+        width: 100%;
+        height: 20px;
+        z-index: 2147483647;
+        background: transparent;
+        pointer-events: auto;
+        -webkit-app-region: drag;
+        -webkit-user-select: none;
+        user-select: none;
+        cursor: grab;
+      }
+
+      #${DEFAULT_DRAG_REGION_CONFIG.elementId}:active {
+        cursor: grabbing;
+      }
+    `;
+    (document.head || document.documentElement).appendChild(style);
+  };
+
+  const getFallbackElement = () => document.getElementById(DEFAULT_DRAG_REGION_CONFIG.elementId);
+
+  const ensureFallbackElement = () => {
+    if (!document.body) {
+      return null;
+    }
+    let element = getFallbackElement();
+    if (!element) {
+      element = document.createElement('div');
+      element.id = DEFAULT_DRAG_REGION_CONFIG.elementId;
+      element.dataset[DEFAULT_DRAG_REGION_CONFIG.datasetKey] = 'true';
+      element.setAttribute('role', 'presentation');
+      element.setAttribute('aria-hidden', 'true');
+      element.textContent = '';
+      document.body.appendChild(element);
+    } else if (!element.parentElement) {
+      document.body.appendChild(element);
+    }
+    state.fallbackVisible = true;
+    return element;
+  };
+
+  const removeFallbackElement = () => {
+    const element = getFallbackElement();
+    if (element && element.parentElement) {
+      element.parentElement.removeChild(element);
+    }
+    state.fallbackVisible = false;
+  };
+
+  const isDefaultFallbackElement = (node) => {
+    if (!node) {
+      return false;
+    }
+    if (node.dataset && node.dataset[DEFAULT_DRAG_REGION_CONFIG.datasetKey]) {
+      return true;
+    }
+    if (node.id && node.id === DEFAULT_DRAG_REGION_CONFIG.elementId) {
+      return true;
+    }
+    return false;
+  };
+
+  const elementHasUsableDragRegion = (node) => {
+    if (!node || isDefaultFallbackElement(node)) {
+      return false;
+    }
+    let style = null;
+    try {
+      style = window.getComputedStyle(node);
+    } catch (error) {
+      return false;
+    }
+    if (!style) {
+      return false;
+    }
+    const region = style.getPropertyValue('-webkit-app-region');
+    if (!region || region.trim() !== 'drag') {
+      return false;
+    }
+
+    if (style.getPropertyValue('pointer-events') === 'none') {
+      return false;
+    }
+    if (style.getPropertyValue('display') === 'none' || style.getPropertyValue('visibility') === 'hidden') {
+      return false;
+    }
+    const opacity = parseFloat(style.getPropertyValue('opacity') || '1');
+    if (Number.isFinite(opacity) && opacity === 0) {
+      return false;
+    }
+
+    if (node instanceof window.HTMLElement) {
+      if (node.offsetWidth > 0 && node.offsetHeight > 0) {
+        return true;
+      }
+    }
+
+    if (typeof node.getClientRects === 'function') {
+      const rects = node.getClientRects();
+      if (rects && rects.length) {
+        const rect = rects[0];
+        if (rect.width > 0 && rect.height > 0) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
+  const detectCustomDragRegion = () => {
+    if (!document.documentElement) {
+      return false;
+    }
+    const walker = document.createTreeWalker(
+      document.documentElement,
+      NodeFilter.SHOW_ELEMENT,
+      null,
+      false
+    );
+    let current = walker.currentNode;
+    if (current && elementHasUsableDragRegion(current)) {
+      return true;
+    }
+    while (walker.nextNode()) {
+      current = walker.currentNode;
+      if (elementHasUsableDragRegion(current)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const applyDragRegionState = (hasCustomRegion) => {
+    if (hasCustomRegion) {
+      if (state.fallbackVisible) {
+        removeFallbackElement();
+      }
+    } else {
+      ensureStyleElement();
+      ensureFallbackElement();
+    }
+  };
+
+  const evaluateDragRegionState = () => {
+    try {
+      const hasCustomRegion = detectCustomDragRegion();
+      if (hasCustomRegion === state.hasCustomRegion) {
+        return;
+      }
+      state.hasCustomRegion = hasCustomRegion;
+      applyDragRegionState(hasCustomRegion);
+    } catch (error) {
+      console.warn('Electron Capture drag region detection failed:', error);
+    }
+  };
+
+  const scheduleEvaluation = () => {
+    if (state.debounceHandle) {
+      return;
+    }
+    state.debounceHandle = window.setTimeout(() => {
+      state.debounceHandle = null;
+      evaluateDragRegionState();
+    }, DEFAULT_DRAG_REGION_CONFIG.detectionDebounce);
+  };
+
+  const attachMutationObserver = () => {
+    if (state.observer || !document.documentElement) {
+      return;
+    }
+    state.observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.type === 'attributes' || mutation.type === 'childList') {
+          scheduleEvaluation();
+          break;
+        }
+      }
+    });
+    state.observer.observe(document.documentElement, {
+      subtree: true,
+      childList: true,
+      attributes: true
+    });
+  };
+
+  const cleanup = () => {
+    if (state.observer) {
+      state.observer.disconnect();
+      state.observer = null;
+    }
+    if (state.debounceHandle) {
+      window.clearTimeout(state.debounceHandle);
+      state.debounceHandle = null;
+    }
+    if (state.pollHandle) {
+      window.clearInterval(state.pollHandle);
+      state.pollHandle = null;
+    }
+    window.removeEventListener('beforeunload', cleanup);
+    window.removeEventListener('focus', scheduleEvaluation);
+    window.removeEventListener('resize', scheduleEvaluation);
+  };
+
+  const startPolling = () => {
+    if (state.pollHandle) {
+      return;
+    }
+    state.pollHandle = window.setInterval(() => {
+      evaluateDragRegionState();
+    }, DEFAULT_DRAG_REGION_CONFIG.pollInterval);
+  };
+
+  const start = () => {
+    if (state.initialized) {
+      return;
+    }
+    if (!document.body) {
+      window.setTimeout(start, 0);
+      return;
+    }
+    state.initialized = true;
+    ensureStyleElement();
+    ensureFallbackElement();
+    evaluateDragRegionState();
+    attachMutationObserver();
+    startPolling();
+    window.addEventListener('beforeunload', cleanup);
+    window.addEventListener('focus', scheduleEvaluation);
+    window.addEventListener('resize', scheduleEvaluation);
+  };
+
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    start();
+  } else {
+    document.addEventListener('DOMContentLoaded', start, { once: true });
+  }
+}
+
+function isDefaultDragRegionDisabledViaEnv() {
+  const envValue = (process?.env?.ELECTRON_CAPTURE_DISABLE_DEFAULT_DRAG_REGION || '').trim();
+  if (!envValue.length) {
+    return false;
+  }
+  return /^(1|true|yes|on)$/i.test(envValue);
+}
+
+function bootstrapDefaultDragRegionFallback() {
+  if (isDefaultDragRegionDisabledViaEnv()) {
+    return;
+  }
+  if (!ipcRenderer || typeof ipcRenderer.invoke !== 'function') {
+    initDefaultDragRegionFallback();
+    return;
+  }
+  ipcRenderer.invoke(DEFAULT_DRAG_REGION_PREF_CHANNEL)
+    .then((enabled) => {
+      if (enabled === false) {
+        return;
+      }
+      initDefaultDragRegionFallback();
+    })
+    .catch((error) => {
+      console.warn('Default drag-region preference unavailable; enabling fallback by default.', error);
+      initDefaultDragRegionFallback();
+    });
+}
+
+bootstrapDefaultDragRegionFallback();
 
 function openGpuDiagnosticsFromRenderer() {
   return ipcRenderer.invoke('hardware-encoding:open-gpu-diagnostics')
@@ -278,6 +604,20 @@ function installDisplayMediaHook() {
   const originalGetDisplayMedia = navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices);
 
   navigator.mediaDevices.getDisplayMedia = async (...args) => {
+    // Apply cursor suppression if enabled and not already specified
+    if (capturePreferences.hideCursorCapture && args.length > 0 && args[0]) {
+      const constraints = args[0];
+      if (constraints.video && typeof constraints.video === 'object') {
+        if (typeof constraints.video.cursor === 'undefined') {
+          constraints.video.cursor = 'never';
+          console.log('[Electron Capture] Applied cursor suppression to getDisplayMedia');
+        }
+      } else if (constraints.video === true) {
+        constraints.video = { cursor: 'never' };
+        console.log('[Electron Capture] Applied cursor suppression to getDisplayMedia');
+      }
+    }
+
     const stream = await originalGetDisplayMedia(...args);
     if (appAudioTarget) {
       await attachApplicationAudio(stream);
@@ -360,7 +700,22 @@ function createElectronApi() {
       return { success: true, target: updated };
     },
     'getAppAudioTarget': () => appAudioTarget,
-    'isWindowAudioCaptureAvailable': () => Boolean(WindowAudioStream)
+    'isWindowAudioCaptureAvailable': () => Boolean(WindowAudioStream),
+    // Custom Electron capture preferences (v39.2.7+)
+    'getCapturePreferences': () => ({ ...capturePreferences }),
+    'getPlayoutDelay': () => capturePreferences.playoutDelay,
+    'isAdaptiveScalingDisabled': () => capturePreferences.disableAdaptiveScaling,
+    'isCursorSuppressionEnabled': () => capturePreferences.hideCursorCapture,
+    // Helper to apply playout delay to an RTCRtpReceiver
+    'applyPlayoutDelay': (receiver, delaySeconds) => {
+      const delay = typeof delaySeconds === 'number' ? delaySeconds : capturePreferences.playoutDelay;
+      if (receiver && typeof receiver.playoutDelayHint !== 'undefined' && delay > 0) {
+        receiver.playoutDelayHint = delay;
+        console.log('[Electron Capture] Applied playout delay:', delay, 'seconds');
+        return true;
+      }
+      return false;
+    }
   };
 }
 

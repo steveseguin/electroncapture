@@ -1,5 +1,8 @@
+CLAUDE.md
 /build
 /dist
 /node_modules
-/native-modules
+/native-modules/*
+!/native-modules/window-audio-capture
 mac.sh
+/vdoninja

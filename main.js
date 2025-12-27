@@ -29,6 +29,696 @@ const WINDOW_AUDIO_EVENT_CHANNEL = 'windowAudioStreamData';
 let activeWindowAudioSession = null;
 let cachedElevationState;
 
+const namedWindowRegistry = new Map();
+
+function normalizeWindowName(value) {
+	if (typeof value !== 'string') {
+		return null;
+	}
+	const trimmed = value.trim();
+	return trimmed.length ? trimmed : null;
+}
+
+function getWindowRegistryKey(name) {
+	const normalized = normalizeWindowName(name);
+	return normalized ? normalized.toLowerCase() : null;
+}
+
+function getNamedWindowInstance(name) {
+	const key = getWindowRegistryKey(name);
+	if (!key) {
+		return null;
+	}
+	const instance = namedWindowRegistry.get(key);
+	if (instance && !instance.isDestroyed()) {
+		return instance;
+	}
+	if (namedWindowRegistry.has(key)) {
+		namedWindowRegistry.delete(key);
+	}
+	return null;
+}
+
+function registerNamedWindowInstance(windowInstance, name) {
+	const key = getWindowRegistryKey(name);
+	if (!key || !windowInstance) {
+		return;
+	}
+	namedWindowRegistry.set(key, windowInstance);
+	windowInstance.__namedWindowKey = key;
+	windowInstance.once('closed', () => {
+		if (namedWindowRegistry.get(key) === windowInstance) {
+			namedWindowRegistry.delete(key);
+		}
+	});
+}
+
+function clearWindowCloseTimers(windowInstance) {
+	if (!windowInstance) {
+		return;
+	}
+	if (windowInstance.__pendingHangupTimeout) {
+		clearTimeout(windowInstance.__pendingHangupTimeout);
+		windowInstance.__pendingHangupTimeout = null;
+	}
+	if (windowInstance.__pendingDestroyTimeout) {
+		clearTimeout(windowInstance.__pendingDestroyTimeout);
+		windowInstance.__pendingDestroyTimeout = null;
+	}
+	windowInstance.__pendingCloseRequested = false;
+}
+
+function prepareWindowForReuse(windowInstance, options = {}) {
+	if (!windowInstance || windowInstance.isDestroyed()) {
+		return;
+	}
+
+	const shouldShow = options.show !== false;
+	const initialState = {};
+	try {
+		initialState.isVisible = windowInstance.isVisible();
+		initialState.isMinimized = windowInstance.isMinimized();
+		initialState.bounds = windowInstance.getBounds();
+	} catch (error) {
+		console.warn('Unable to capture initial window state for reuse:', error);
+	}
+	console.log('Preparing window for reuse. Initial state:', initialState);
+
+	try {
+		if (windowInstance.isMinimized()) {
+			windowInstance.restore();
+			console.log('Restored minimized window prior to reuse.');
+		}
+	} catch (error) {
+		console.warn('Failed to restore window prior to reuse:', error);
+	}
+
+	if (shouldShow) {
+		try {
+			if (!windowInstance.isVisible()) {
+				windowInstance.showInactive();
+				console.log('Window was hidden; showInactive() invoked prior to reuse.');
+			}
+		} catch (error) {
+			console.warn('Failed to show window prior to reuse:', error);
+		}
+	}
+}
+
+function getImmutablePreferencesForWindow(windowInstance) {
+	if (!windowInstance || typeof windowInstance !== 'object') {
+		return null;
+	}
+	if (windowInstance.__immutableWebPreferences && typeof windowInstance.__immutableWebPreferences === 'object') {
+		return windowInstance.__immutableWebPreferences;
+	}
+	if (typeof windowInstance.node === 'boolean') {
+		const nodeEnabled = !!windowInstance.node;
+		return {
+			nodeIntegration: nodeEnabled,
+			nodeIntegrationInSubFrames: nodeEnabled,
+			contextIsolation: !nodeEnabled
+		};
+	}
+	return null;
+}
+
+function immutablePreferencesMatch(existingWindow, requestedPreferences) {
+	if (!requestedPreferences || typeof requestedPreferences !== 'object') {
+		return true;
+	}
+	const existingPreferences = getImmutablePreferencesForWindow(existingWindow);
+	if (!existingPreferences) {
+		return false;
+	}
+	return Object.keys(requestedPreferences).every((key) => existingPreferences[key] === requestedPreferences[key]);
+}
+
+function getScaleFactorForWindow(targetWindow) {
+	const fallbackScale = () => {
+		const primary = getPrimaryDisplaySafe();
+		return (primary && primary.scaleFactor) || 1;
+	};
+
+	if (!targetWindow || targetWindow.isDestroyed()) {
+		return fallbackScale();
+	}
+
+	const boundsUsable = (rect) =>
+		rect &&
+		Number.isFinite(rect.width) &&
+		Number.isFinite(rect.height) &&
+		rect.width > 10 &&
+		rect.height > 10;
+
+	let display = null;
+	let bounds = null;
+
+	try {
+		bounds = targetWindow.getBounds();
+	} catch (error) {
+		console.warn('Failed to read window bounds while resolving scale factor:', error);
+	}
+
+	if (boundsUsable(bounds)) {
+		try {
+			display = screen.getDisplayMatching(bounds);
+		} catch (error) {
+			console.warn('screen.getDisplayMatching failed for active bounds:', error);
+		}
+	}
+
+	if (!display && typeof targetWindow.getNormalBounds === 'function') {
+		try {
+			const normalBounds = targetWindow.getNormalBounds();
+			if (boundsUsable(normalBounds)) {
+				display = screen.getDisplayMatching(normalBounds);
+			}
+		} catch (error) {
+			console.warn('Unable to resolve display from normal bounds:', error);
+		}
+	}
+
+	if (!display && targetWindow.__lastDisplayId) {
+		const match = getAllDisplaysSorted().find((d) => d.id === targetWindow.__lastDisplayId);
+		if (match) {
+			display = match;
+		}
+	}
+
+	if (!display) {
+		display = getPrimaryDisplaySafe();
+	}
+
+	return (display && display.scaleFactor) || fallbackScale();
+}
+
+function getPrimaryDisplaySafe() {
+	try {
+		return screen.getPrimaryDisplay();
+	} catch (error) {
+		return null;
+	}
+}
+
+function getAllDisplaysSorted() {
+	const displays = screen.getAllDisplays();
+	if (!Array.isArray(displays)) {
+		return [];
+	}
+	return [...displays].sort((a, b) => a.id - b.id);
+}
+
+function getPhysicalBoundsForDisplay(display) {
+	if (!display || !display.bounds) {
+		return null;
+	}
+	const scaleFactor = display.scaleFactor || 1;
+	return {
+		x: Math.round(display.bounds.x * scaleFactor),
+		y: Math.round(display.bounds.y * scaleFactor),
+		width: Math.round(display.bounds.width * scaleFactor),
+		height: Math.round(display.bounds.height * scaleFactor)
+	};
+}
+
+function isUsableRect(rect) {
+	return (
+		rect &&
+		Number.isFinite(rect.x) &&
+		Number.isFinite(rect.y) &&
+		Number.isFinite(rect.width) &&
+		Number.isFinite(rect.height) &&
+		rect.width > 10 &&
+		rect.height > 10
+	);
+}
+
+function getUsableWindowBounds(windowInstance, options = {}) {
+	if (!windowInstance || windowInstance.isDestroyed()) {
+		return null;
+	}
+	const preferNormal = options.preferNormal === true;
+	const attempts = [];
+	if (!preferNormal) {
+		attempts.push(() => {
+			try {
+				return windowInstance.getBounds();
+			} catch (error) {
+				console.warn('Failed to read window bounds:', error);
+				return null;
+			}
+		});
+	}
+	if (typeof windowInstance.getNormalBounds === 'function') {
+		attempts.push(() => {
+			try {
+				return windowInstance.getNormalBounds();
+			} catch (error) {
+				console.warn('Failed to read normal window bounds:', error);
+				return null;
+			}
+		});
+	}
+	if (preferNormal) {
+		attempts.push(() => {
+			try {
+				return windowInstance.getBounds();
+			} catch (error) {
+				console.warn('Failed to read window bounds (fallback):', error);
+				return null;
+			}
+		});
+	}
+	for (const readBounds of attempts) {
+		const rect = readBounds();
+		if (isUsableRect(rect)) {
+			return rect;
+		}
+	}
+	return null;
+}
+
+function rectanglesOverlap(a, b) {
+	if (!a || !b) {
+		return false;
+	}
+	return (
+		a.x < b.x + b.width &&
+		a.x + a.width > b.x &&
+		a.y < b.y + b.height &&
+		a.y + a.height > b.y
+	);
+}
+
+function getDisplayWorkArea(display) {
+	if (!display) {
+		return null;
+	}
+	if (display.workArea && typeof display.workArea === 'object') {
+		return display.workArea;
+	}
+	if (display.bounds && typeof display.bounds === 'object') {
+		return display.bounds;
+	}
+	return null;
+}
+
+function findDisplayByPhysicalPoint(point) {
+	if (!point) {
+		return null;
+	}
+	const displays = getAllDisplaysSorted();
+	for (const display of displays) {
+		const bounds = getPhysicalBoundsForDisplay(display);
+		if (!bounds) {
+			continue;
+		}
+		if (
+			point.x >= bounds.x &&
+			point.x < bounds.x + bounds.width &&
+			point.y >= bounds.y &&
+			point.y < bounds.y + bounds.height
+		) {
+			return display;
+		}
+	}
+	return null;
+}
+
+function resolveDisplayForArgs(args) {
+	const displays = getAllDisplaysSorted();
+	if (!displays.length) {
+		return getPrimaryDisplaySafe();
+	}
+
+	if (typeof args.monitor === 'number' && !Number.isNaN(args.monitor) && args.monitor >= 0) {
+		const index = Math.min(displays.length - 1, Math.floor(args.monitor));
+		return displays[index];
+	}
+
+	const hasExplicitX = typeof args.x === 'number' && args.x !== -1;
+	const hasExplicitY = typeof args.y === 'number' && args.y !== -1;
+	if (hasExplicitX || hasExplicitY) {
+		try {
+			const physicalPoint = {
+				x: hasExplicitX ? args.x : 0,
+				y: hasExplicitY ? args.y : 0
+			};
+			const display = findDisplayByPhysicalPoint(physicalPoint);
+			if (display) {
+				return display;
+			}
+			const primaryScale = getPrimaryDisplaySafe()?.scaleFactor || 1;
+			const dipPoint = {
+				x: Math.round(physicalPoint.x / primaryScale),
+				y: Math.round(physicalPoint.y / primaryScale)
+			};
+			const fallbackDisplay = screen.getDisplayNearestPoint(dipPoint);
+			if (fallbackDisplay) {
+				return fallbackDisplay;
+			}
+		} catch (error) {
+			console.warn('Failed to resolve display from coordinates, falling back to primary:', error);
+		}
+	}
+
+	return displays.find((display) => display.id === getPrimaryDisplaySafe()?.id) || displays[0];
+}
+
+function clampPhysicalSizeToDisplay(display, requestedWidth, requestedHeight) {
+	const safeDisplay = display || getPrimaryDisplaySafe();
+	const scaleFactor = (safeDisplay && safeDisplay.scaleFactor) || 1;
+	const workArea = (safeDisplay && safeDisplay.workAreaSize) || (safeDisplay && safeDisplay.size);
+	if (!workArea) {
+		return {
+			width: requestedWidth,
+			height: requestedHeight
+		};
+	}
+
+	const maxPhysicalWidth = Math.max(1, Math.round(workArea.width * scaleFactor));
+	const maxPhysicalHeight = Math.max(1, Math.round(workArea.height * scaleFactor));
+	let width = requestedWidth;
+	let height = requestedHeight;
+
+	if (typeof width === 'number' && typeof height === 'number') {
+		if (width > maxPhysicalWidth) {
+			height = Math.round(height * maxPhysicalWidth / width);
+			width = maxPhysicalWidth;
+		}
+		if (height > maxPhysicalHeight) {
+			width = Math.round(width * maxPhysicalHeight / height);
+			height = maxPhysicalHeight;
+		}
+	} else if (typeof width === 'number' && width > maxPhysicalWidth) {
+		width = maxPhysicalWidth;
+	} else if (typeof height === 'number' && height > maxPhysicalHeight) {
+		height = maxPhysicalHeight;
+	}
+
+	return { width, height };
+}
+
+function applyRequestedWindowSize(windowInstance, options = {}) {
+	if (!windowInstance || windowInstance.isDestroyed()) {
+		return;
+	}
+	const clampToWorkArea = !!options.clampToWorkArea;
+	if (windowInstance.isDestroyed()) {
+		return;
+	}
+	if (windowInstance.isFullScreen()) {
+		return;
+	}
+	const requestedWidth = typeof windowInstance.args?.width === 'number' ? windowInstance.args.width : null;
+	const requestedHeight = typeof windowInstance.args?.height === 'number' ? windowInstance.args.height : null;
+	if (requestedWidth === null && requestedHeight === null) {
+		console.log('applyRequestedWindowSize: no explicit width/height provided; skipping resize.');
+		return;
+	}
+
+	const usableBounds = getUsableWindowBounds(windowInstance);
+	let display;
+	try {
+		if (usableBounds) {
+			display = screen.getDisplayMatching(usableBounds);
+		} else {
+			display = screen.getDisplayMatching(windowInstance.getBounds());
+		}
+	} catch (error) {
+		display = getPrimaryDisplaySafe();
+	}
+	const scaleFactor = (display && display.scaleFactor) || 1;
+	const currentSize = usableBounds ? [usableBounds.width, usableBounds.height] : windowInstance.getSize();
+	let targetPhysicalWidth = requestedWidth !== null ? requestedWidth : currentSize[0] * scaleFactor;
+	let targetPhysicalHeight = requestedHeight !== null ? requestedHeight : currentSize[1] * scaleFactor;
+
+	if (clampToWorkArea) {
+		const clamped = clampPhysicalSizeToDisplay(display, targetPhysicalWidth, targetPhysicalHeight);
+		targetPhysicalWidth = requestedWidth !== null ? clamped.width : targetPhysicalWidth;
+		targetPhysicalHeight = requestedHeight !== null ? clamped.height : targetPhysicalHeight;
+	}
+
+	const nextWidth = requestedWidth !== null ? Math.max(1, Math.round(targetPhysicalWidth / scaleFactor)) : currentSize[0];
+	const nextHeight = requestedHeight !== null ? Math.max(1, Math.round(targetPhysicalHeight / scaleFactor)) : currentSize[1];
+
+	console.log('applyRequestedWindowSize: computed resize', {
+		requestedWidth,
+		requestedHeight,
+		scaleFactor,
+		currentSize,
+		targetPhysicalWidth,
+		targetPhysicalHeight,
+		nextWidth,
+		nextHeight,
+		displayId: display ? display.id : null
+	});
+
+	if (nextWidth !== currentSize[0] || nextHeight !== currentSize[1]) {
+		const baseBounds = usableBounds || getUsableWindowBounds(windowInstance, { preferNormal: true });
+		if (baseBounds) {
+			windowInstance.setBounds({
+				x: baseBounds.x,
+				y: baseBounds.y,
+				width: nextWidth,
+				height: nextHeight
+			});
+		} else {
+			windowInstance.setSize(nextWidth, nextHeight);
+		}
+	}
+	windowInstance.__lastDisplayId = display ? display.id : windowInstance.__lastDisplayId;
+}
+
+function isWindowBoundsVisible(bounds) {
+	if (!bounds) {
+		return true;
+	}
+	const displays = getAllDisplaysSorted();
+	if (!displays.length) {
+		return true;
+	}
+	for (const display of displays) {
+		const area = getDisplayWorkArea(display);
+		if (!area) {
+			continue;
+		}
+		if (rectanglesOverlap(bounds, area)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+function repositionWindowToPrimaryDisplay(windowInstance, lastBounds) {
+	const targetDisplay = getPrimaryDisplaySafe() || getAllDisplaysSorted()[0] || null;
+	const workArea = getDisplayWorkArea(targetDisplay);
+	if (!workArea) {
+		try {
+			console.log('No workArea available; centering window to keep visible.');
+			windowInstance.center();
+		} catch (error) {
+			console.warn('Failed to center window while ensuring visibility:', error);
+		}
+		return;
+	}
+	const width = Math.max(
+		200,
+		Math.min(lastBounds?.width || workArea.width, workArea.width)
+	);
+	const height = Math.max(
+		200,
+		Math.min(lastBounds?.height || workArea.height, workArea.height)
+	);
+	const nextBounds = {
+		x: workArea.x + Math.round((workArea.width - width) / 2),
+		y: workArea.y + Math.round((workArea.height - height) / 2),
+		width,
+		height
+	};
+	try {
+		console.log('Repositioning window to primary display with bounds:', nextBounds);
+		windowInstance.setBounds(nextBounds);
+	} catch (error) {
+		console.warn('Failed to reposition window to primary display:', error);
+	}
+}
+
+function ensureWindowVisible(windowInstance, options = {}) {
+	if (!windowInstance || windowInstance.isDestroyed()) {
+		return;
+	}
+	const shouldFocus = options.focus !== false;
+	const forceShow = options.forceShow === true;
+	const usableBounds = getUsableWindowBounds(windowInstance);
+	const bounds = isUsableRect(usableBounds) ? usableBounds : null;
+	if (bounds && !isWindowBoundsVisible(bounds)) {
+		console.log('Window detected off-screen. Attempting to reposition.', bounds);
+		repositionWindowToPrimaryDisplay(windowInstance, bounds);
+	}
+
+	if (windowInstance.isMinimized()) {
+		try {
+			windowInstance.restore();
+		} catch (error) {
+			console.warn('Failed to restore window while ensuring visibility:', error);
+		}
+	}
+
+	if (!windowInstance.isVisible() || forceShow) {
+		try {
+			windowInstance.show();
+		} catch (error) {
+			console.warn('Failed to show window while ensuring visibility:', error);
+		}
+	}
+
+	if (shouldFocus) {
+		try {
+			windowInstance.focus();
+		} catch (error) {
+			console.warn('Failed to focus window while ensuring visibility:', error);
+		}
+	}
+}
+
+function applyArgsToExistingWindow(windowInstance, args) {
+	if (!windowInstance || windowInstance.isDestroyed()) {
+		return false;
+	}
+
+	clearWindowCloseTimers(windowInstance);
+	prepareWindowForReuse(windowInstance, { show: false });
+
+		const mergedArgs = {
+			...(windowInstance.args || {}),
+			...args
+		};
+		windowInstance.args = mergedArgs;
+		if (typeof mergedArgs.defaultDragRegion === 'boolean') {
+			windowInstance.__defaultDragRegionEnabled = mergedArgs.defaultDragRegion;
+		}
+		console.log('applyArgsToExistingWindow: merged args', {
+			windowName: windowInstance.windowName || windowInstance.__namedWindowKey,
+			width: mergedArgs.width,
+			height: mergedArgs.height,
+			x: mergedArgs.x,
+			y: mergedArgs.y,
+			min: mergedArgs.min,
+			fullscreen: mergedArgs.fullscreen,
+			pin: mergedArgs.pin
+		});
+
+		const factor = getScaleFactorForWindow(windowInstance);
+		let loggedBounds = null;
+		try {
+			loggedBounds = windowInstance.getBounds();
+			console.log('Reusing window bounds before applying args:', loggedBounds);
+		} catch (error) {
+			console.warn('Unable to read bounds before applying args:', error);
+		}
+
+	try {
+		if (typeof mergedArgs.url === 'string' && mergedArgs.url.length) {
+			const currentUrl = windowInstance.webContents.getURL();
+			if (currentUrl !== mergedArgs.url) {
+				windowInstance.webContents.loadURL(mergedArgs.url);
+			}
+		}
+
+			const needsExplicitResize = typeof mergedArgs.width === 'number' || typeof mergedArgs.height === 'number';
+			if (needsExplicitResize) {
+				const isFullScreen = typeof windowInstance.isFullScreen === 'function' ? windowInstance.isFullScreen() : false;
+				if (isFullScreen) {
+					try {
+						windowInstance.setFullScreen(false);
+					} catch (error) {
+						console.warn('Failed to exit fullscreen prior to resize:', error);
+					}
+				}
+				const isMaximized = typeof windowInstance.isMaximized === 'function' ? windowInstance.isMaximized() : false;
+				if (isMaximized) {
+					try {
+						windowInstance.unmaximize();
+					} catch (error) {
+						console.warn('Failed to unmaximize prior to resize:', error);
+					}
+				}
+				applyRequestedWindowSize(windowInstance, { clampToWorkArea: true });
+				try {
+					console.log('Reusing window bounds after resize:', windowInstance.getBounds());
+				} catch (error) {
+					console.warn('Unable to read bounds after resize:', error);
+				}
+			}
+
+			const hasExplicitX = typeof mergedArgs.x === 'number' && mergedArgs.x !== -1;
+			const hasExplicitY = typeof mergedArgs.y === 'number' && mergedArgs.y !== -1;
+			if (hasExplicitX || hasExplicitY) {
+				const hasValidPosition = hasExplicitX && hasExplicitY;
+				if (hasValidPosition) {
+					const nextX = Math.floor(mergedArgs.x / factor);
+					const nextY = Math.floor(mergedArgs.y / factor);
+					windowInstance.setPosition(nextX, nextY);
+				} else {
+					const currentPosition = windowInstance.getPosition();
+					const nextX = hasExplicitX ? Math.floor(mergedArgs.x / factor) : currentPosition[0];
+					const nextY = hasExplicitY ? Math.floor(mergedArgs.y / factor) : currentPosition[1];
+					windowInstance.setPosition(nextX, nextY);
+				}
+			}
+
+		if (typeof mergedArgs.pin === 'boolean') {
+			if (mergedArgs.pin) {
+				if (process.platform === 'darwin') {
+					windowInstance.setAlwaysOnTop(true, 'floating', 1);
+				} else {
+					windowInstance.setAlwaysOnTop(true, 'level');
+				}
+				windowInstance.setVisibleOnAllWorkspaces(true);
+			} else {
+				windowInstance.setAlwaysOnTop(false);
+				windowInstance.setVisibleOnAllWorkspaces(false);
+			}
+		}
+
+	if (typeof mergedArgs.fullscreen === 'boolean') {
+		const currentlyFullScreen = typeof windowInstance.isFullScreen === 'function' ? windowInstance.isFullScreen() : false;
+		if (mergedArgs.fullscreen !== currentlyFullScreen) {
+			windowInstance.full = mergedArgs.fullscreen;
+			windowInstance.setFullScreen(mergedArgs.fullscreen);
+		} else {
+			windowInstance.full = mergedArgs.fullscreen;
+		}
+	}
+
+		const shouldMinimize = mergedArgs.min === true;
+		if (shouldMinimize) {
+			windowInstance.minimize();
+		} else {
+			ensureWindowVisible(windowInstance, { forceShow: true, focus: true });
+		}
+		try {
+			const finalBounds = windowInstance.getBounds();
+			const normalBounds = typeof windowInstance.getNormalBounds === 'function' ? windowInstance.getNormalBounds() : null;
+			console.log('applyArgsToExistingWindow: final state', {
+				isVisible: windowInstance.isVisible(),
+				isMinimized: windowInstance.isMinimized(),
+				bounds: finalBounds,
+				normalBounds
+			});
+		} catch (stateError) {
+			console.warn('applyArgsToExistingWindow: unable to capture final state:', stateError);
+		}
+	} catch (error) {
+		console.error('Failed to apply arguments to existing window:', error);
+		return false;
+	}
+
+	return true;
+}
+
 function isProcessElevated() {
 	if (typeof cachedElevationState === 'boolean') {
 		return cachedElevationState;
@@ -180,6 +870,18 @@ function createYargs(){
     type: "boolean",
     default: false
   })
+  .option("defaultDragRegion", {
+    alias: "dragbar",
+    describe: "Inject a transparent draggable strip when the page does not provide its own -webkit-app-region: drag.",
+    type: "boolean",
+    default: true
+  })
+  .option("multiinstance", {
+    alias: ["standalone"],
+    describe: "Opt-out of the single-instance lock so this run stays isolated from other launches.",
+    type: "boolean",
+    default: false
+  })
   .option("unclickable", {
     alias: "uc",
     describe: "The page will pass thru any mouse clicks or other mouse events",
@@ -285,6 +987,36 @@ function createYargs(){
     describe: "Enable WebRTC H.264 SPS/PPS keyframe field trial workaround.",
     type: "boolean",
     default: false
+  })
+  .option("disableAdaptiveScaling", {
+    alias: ["noScaling", "lockQuality"],
+    describe: "Disable WebRTC adaptive scaling - lock both resolution AND framerate (custom Electron only).",
+    type: "boolean",
+    default: false
+  })
+  .option("lockResolution", {
+    alias: "lockRes",
+    describe: "Lock WebRTC resolution only - framerate can still adapt (custom Electron only).",
+    type: "boolean",
+    default: false
+  })
+  .option("lockFramerate", {
+    alias: "lockFps",
+    describe: "Lock WebRTC framerate only - resolution can still adapt (custom Electron only).",
+    type: "boolean",
+    default: false
+  })
+  .option("hideCursorCapture", {
+    alias: ["noCursor", "suppressCursor"],
+    describe: "Hide cursor in screen capture by default (custom Electron only).",
+    type: "boolean",
+    default: false
+  })
+  .option("playoutDelay", {
+    alias: "bufferDelay",
+    describe: "Default playout delay hint in seconds for WebRTC receivers (0-600, custom Electron only).",
+    type: "number",
+    default: 0
   })
   .describe("help", "Show help.") // Override --help usage message.
   .wrap(process.stdout.columns); 
@@ -644,6 +1376,8 @@ delete Argv.respectGpuBlocklist;
 delete Argv.respectgpub;
 delete Argv.ignoregpub;
 
+const allowMultipleInstances = Argv.multiinstance === true || Argv.standalone === true;
+
 const hardwareEncodingState = {
 	encoderModeOverride: null
 };
@@ -688,6 +1422,11 @@ let gpuDiagnosticsWindow = null;
 function openGpuDiagnosticsWindow() {
 	if (gpuDiagnosticsWindow && !gpuDiagnosticsWindow.isDestroyed()) {
 		gpuDiagnosticsWindow.focus();
+		try {
+			console.log('Reusing GPU diagnostics window bounds:', gpuDiagnosticsWindow.getBounds());
+		} catch (error) {
+			console.warn('Unable to read GPU diagnostics window bounds:', error);
+		}
 		return true;
 	}
 	try {
@@ -717,14 +1456,41 @@ ipcMain.handle('hardware-encoding:open-gpu-diagnostics', () => {
 	return openGpuDiagnosticsWindow();
 });
 
+// Custom Electron capture preferences (v39.2.7+)
+ipcMain.handle('capture:get-preferences', () => {
+	return {
+		hideCursorCapture: Argv.hideCursorCapture || false,
+		playoutDelay: Argv.playoutDelay || 0,
+		disableAdaptiveScaling: Argv.disableAdaptiveScaling || false,
+		lockResolution: Argv.lockResolution || false,
+		lockFramerate: Argv.lockFramerate || false
+	};
+});
+
+ipcMain.handle('drag-region:get-default-preference', (event) => {
+	try {
+		const targetWindow = BrowserWindow.fromWebContents(event.sender);
+		if (targetWindow && typeof targetWindow.__defaultDragRegionEnabled === 'boolean') {
+			return targetWindow.__defaultDragRegionEnabled;
+		}
+	} catch (error) {
+		console.warn('Unable to resolve drag-region preference for renderer:', error);
+	}
+	return true;
+});
+
 if (Argv.help) {
   Argv.showHelp();
   process.exit(0); // Exit the script after showing help.
 }
 
-if (!app.requestSingleInstanceLock(Argv)) {
-	console.log("requestSingleInstanceLock");
-	return;
+if (!allowMultipleInstances) {
+	const gotInstanceLock = app.requestSingleInstanceLock(Argv);
+	if (!gotInstanceLock) {
+		console.log('requestSingleInstanceLock');
+		app.exit(0); // ensure the helper instance terminates after handing off args
+		return;
+	}
 }
 
 
@@ -735,6 +1501,7 @@ function parseDeepLink(deepLinkUrl) {
 
 		deepLinkUrl = deepLinkUrl.replace("electroncapture://", "https://");
 		const url = new URL(deepLinkUrl);
+		const sanitizedUrl = new URL(url.href);
 
 		console.log('Parsed URL:', {
 			pathname: url.pathname,
@@ -778,32 +1545,48 @@ function parseDeepLink(deepLinkUrl) {
 			return Number.isFinite(parsed) ? parsed : undefined;
 		};
 
-		assignWithAlias('url', 'u', url.href);
-		newArgs._ = Array.isArray(newArgs._)
-			? [url.href, ...newArgs._.filter((entry) => entry !== url.href)]
-			: [url.href];
+		const updateUrlArgs = (href) => {
+			assignWithAlias('url', 'u', href);
+			newArgs._ = Array.isArray(newArgs._)
+				? [href, ...newArgs._.filter((entry) => entry !== href)]
+				: [href];
+		};
 
 		const params = new URLSearchParams(url.search);
 
 		const width = parseIntegerValue(params.get('w'));
 		if (typeof width === 'number') {
 			assignWithAlias('width', 'w', width);
+			sanitizedUrl.searchParams.delete('w');
 		}
 		const height = parseIntegerValue(params.get('h'));
 		if (typeof height === 'number') {
 			assignWithAlias('height', 'h', height);
+			sanitizedUrl.searchParams.delete('h');
 		}
 		const xPos = parseIntegerValue(params.get('x'));
 		if (typeof xPos === 'number') {
 			assignWithAlias('x', 'x', xPos);
+			sanitizedUrl.searchParams.delete('x');
 		}
 		const yPos = parseIntegerValue(params.get('y'));
 		if (typeof yPos === 'number') {
 			assignWithAlias('y', 'y', yPos);
+			sanitizedUrl.searchParams.delete('y');
 		}
 
 		if (params.has('title')) {
 			assignWithAlias('title', 't', params.get('title'));
+			sanitizedUrl.searchParams.delete('title');
+		}
+
+		const windowNameKey = ['windowName', 'window'].find((key) => params.has(key));
+		if (windowNameKey) {
+			const normalizedName = normalizeWindowName(params.get(windowNameKey));
+			if (normalizedName) {
+				newArgs.windowName = normalizedName;
+				sanitizedUrl.searchParams.delete(windowNameKey);
+			}
 		}
 
 		[
@@ -817,6 +1600,7 @@ function parseDeepLink(deepLinkUrl) {
 			const parsed = parseBooleanValue(params.get(key));
 			if (typeof parsed === 'boolean') {
 				assignWithAlias(target, alias, parsed);
+				sanitizedUrl.searchParams.delete(key);
 			}
 		});
 
@@ -825,6 +1609,7 @@ function parseDeepLink(deepLinkUrl) {
 			const rawMode = params.get(encoderKey);
 			if (rawMode !== null && rawMode.trim().length) {
 				assignWithAlias('encoderMode', 'encmode', resolveEncoderModeOption(rawMode));
+				sanitizedUrl.searchParams.delete(encoderKey);
 			}
 		}
 
@@ -833,6 +1618,7 @@ function parseDeepLink(deepLinkUrl) {
 			const rawCodec = params.get(codecKey);
 			if (rawCodec !== null && rawCodec.trim().length) {
 				assignWithAlias('webrtcPreferredCodec', 'webrtcCodec', normalizeCodecPreference(rawCodec));
+				sanitizedUrl.searchParams.delete(codecKey);
 			}
 		}
 
@@ -850,6 +1636,7 @@ function parseDeepLink(deepLinkUrl) {
 						assignWithAlias('webrtcMaxBitrate', 'webrtcBr', normalizedBitrate);
 					}
 				}
+				sanitizedUrl.searchParams.delete(bitrateKey);
 			}
 		}
 
@@ -860,7 +1647,8 @@ function parseDeepLink(deepLinkUrl) {
 				{ keys: ['respectgpub', 'respectGpuBlocklist'], target: 'respectGpuBlocklist', alias: 'respectgpub' },
 				{ keys: ['gpuinfo', 'gpudiag'], target: 'gpuinfo', alias: 'gpudiag' },
 				{ keys: ['h264keytrial', 'webrtcH264KeyframeTrial'], target: 'webrtcH264KeyframeTrial', alias: 'h264keytrial' },
-				{ keys: ['wgc', 'usewgc'], target: 'usewgc', alias: 'wgc' }
+				{ keys: ['wgc', 'usewgc'], target: 'usewgc', alias: 'wgc' },
+				{ keys: ['dragbar', 'defaultDragRegion'], target: 'defaultDragRegion', alias: 'dragbar' }
 			];
 
 		booleanParamMappings.forEach(({ keys, target, alias }) => {
@@ -871,6 +1659,7 @@ function parseDeepLink(deepLinkUrl) {
 				const parsed = parseBooleanValue(params.get(key));
 				if (typeof parsed === 'boolean') {
 					assignWithAlias(target, alias, parsed);
+					sanitizedUrl.searchParams.delete(key);
 				}
 				return;
 			}
@@ -881,6 +1670,8 @@ function parseDeepLink(deepLinkUrl) {
 		const effectiveBitrate = Number(newArgs.webrtcMaxBitrate);
 		const sanitizedBitrate = Number.isFinite(effectiveBitrate) && effectiveBitrate > 0 ? Math.floor(effectiveBitrate) : 0;
 		assignWithAlias('webrtcMaxBitrate', 'webrtcBr', sanitizedBitrate);
+
+		updateUrlArgs(sanitizedUrl.href);
 
 		console.log('Parsed deep link args:', newArgs);
 		return newArgs;
@@ -1012,9 +1803,24 @@ if (Argv.ignoreGpuBlocklist) {
 	app.commandLine.appendSwitch('ignore-gpu-blocklist');
 	console.log('Chromium GPU blocklist will be ignored for this session.');
 }
+// Build field trials list
+const fieldTrials = [];
 if (Argv.webrtcH264KeyframeTrial) {
-	app.commandLine.appendSwitch('force-fieldtrials', 'WebRTC-H264-SpsPpsIdrIsH264Keyframe/Enabled/');
+	fieldTrials.push('WebRTC-H264-SpsPpsIdrIsH264Keyframe/Enabled/');
 	console.log('WebRTC H264 SPS/PPS keyframe field trial enabled.');
+}
+if (Argv.disableAdaptiveScaling) {
+	fieldTrials.push('WebRTC-DisableAdaptiveScaling/Enabled/');
+	console.log('WebRTC adaptive scaling disabled (resolution + framerate locked).');
+} else if (Argv.lockResolution) {
+	fieldTrials.push('WebRTC-LockResolution/Enabled/');
+	console.log('WebRTC resolution locked (framerate can still adapt).');
+} else if (Argv.lockFramerate) {
+	fieldTrials.push('WebRTC-LockFramerate/Enabled/');
+	console.log('WebRTC framerate locked (resolution can still adapt).');
+}
+if (fieldTrials.length > 0) {
+	app.commandLine.appendSwitch('force-fieldtrials', fieldTrials.join(''));
 }
 app.commandLine.appendSwitch('webrtc-max-cpu-consumption-percentage', '100');
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
@@ -1444,7 +2250,17 @@ async function createWindow(args, reuse=false) {
   }
   
   var URL = args.url, NODE = args.node, WIDTH = args.width, HEIGHT = args.height, TITLE = args.title, PIN = args.pin, X = args.x, Y = args.y, FULLSCREEN = args.fullscreen, UNCLICKABLE = args.uc, MINIMIZED = args.min, CSS = args.css, BGCOLOR = args.chroma, JS = args.js;
-
+  const defaultDragRegionEnabled = (() => {
+    if (typeof args.defaultDragRegion === 'boolean') {
+      return args.defaultDragRegion;
+    }
+    if (typeof args.dragbar === 'boolean') {
+      return args.dragbar;
+    }
+    return true;
+  })();
+  args.defaultDragRegion = defaultDragRegionEnabled;
+  args.dragbar = defaultDragRegionEnabled;
 
   let nodeExplicitFlag = args.__nodeExplicit === true;
 
@@ -1464,21 +2280,20 @@ async function createWindow(args, reuse=false) {
     assignNodeIntegration(false, false);
   }
 
-  if (typeof URL === 'string') {
-    URL = formatURL(URL.trim());
-  } else if (URL != null) {
-    try {
-      URL = formatURL(String(URL));
+	if (typeof URL === 'string') {
+		URL = formatURL(URL.trim());
+	} else if (URL != null) {
+		try {
+			URL = formatURL(String(URL));
     } catch (conversionError) {
       console.warn('Unable to normalize URL value from args:', conversionError);
     }
-  }
+	}
 
-  args.url = URL;
+	args.url = URL;
 
-
-  if (!nodeExplicitFlag && typeof URL === 'string') {
-    let preferenceResolved = false;
+	if (!nodeExplicitFlag && typeof URL === 'string') {
+		let preferenceResolved = false;
     try {
       const parsedUrl = new URL(URL);
       const nodeParamKeys = ['node', 'nodeintegration', 'nodeIntegration', 'enableNode'];
@@ -1522,11 +2337,37 @@ async function createWindow(args, reuse=false) {
     if (preferenceResolved) {
       nodeExplicitFlag = true;
     }
-  }
+	  }
 
   args.__nodeExplicit = nodeExplicitFlag;
 
-  let factor = screen.getPrimaryDisplay().scaleFactor;
+  const desiredImmutableWebPreferences = {
+  	nodeIntegration: !!NODE,
+  	nodeIntegrationInSubFrames: !!NODE,
+  	contextIsolation: !NODE
+  };
+
+	const requestedWindowName = normalizeWindowName(args.windowName);
+	if (requestedWindowName) {
+		args.windowName = requestedWindowName;
+		const existingWindow = getNamedWindowInstance(requestedWindowName);
+		if (existingWindow) {
+			if (!immutablePreferencesMatch(existingWindow, desiredImmutableWebPreferences)) {
+				console.log(`Skipping reuse for "${requestedWindowName}" because immutable webPreferences differ.`);
+			} else {
+				console.log(`Reusing existing window named "${requestedWindowName}".`);
+				if (applyArgsToExistingWindow(existingWindow, args)) {
+					return existingWindow;
+				}
+				console.warn(`Failed to reuse window "${requestedWindowName}" cleanly; creating a new window instead.`);
+			}
+		}
+	} else if (args.windowName) {
+		delete args.windowName;
+	}
+
+	const initialDisplay = resolveDisplayForArgs(args) || getPrimaryDisplaySafe();
+	let factor = (initialDisplay && initialDisplay.scaleFactor) || (getPrimaryDisplaySafe()?.scaleFactor) || 1;
   
   console.log(args);
   
@@ -1609,10 +2450,10 @@ async function createWindow(args, reuse=false) {
     currentTitle = TITLE.toString() + " " +(counter.toString());
   }
   
-  var ttt = screen.getPrimaryDisplay().workAreaSize;
+	var ttt = (initialDisplay && initialDisplay.workAreaSize) || (getPrimaryDisplaySafe()?.workAreaSize) || screen.getPrimaryDisplay().workAreaSize;
   
-  var targetWidth = WIDTH / factor;
-  var targetHeight = HEIGHT / factor;
+	var targetWidth = WIDTH / factor;
+	var targetHeight = HEIGHT / factor;
   
   var tainted = false;
   if (targetWidth > ttt.width){
@@ -1651,6 +2492,9 @@ async function createWindow(args, reuse=false) {
 		},
 		title: currentTitle
 	});
+	mainWindow.__immutableWebPreferences = desiredImmutableWebPreferences;
+	mainWindow.__defaultDragRegionEnabled = defaultDragRegionEnabled;
+	mainWindow.__lastDisplayId = initialDisplay ? initialDisplay.id : null;
 	
 	mainWindow.webContents.session.webRequest.onHeadersReceived({ urls: [ "*://*/*" ] },
 		(d, c)=>{
@@ -1666,6 +2510,12 @@ async function createWindow(args, reuse=false) {
 	//var appData = process.env.APPDATA+"\\..\\Local" || (process.platform == 'darwin' ? process.env.HOME + '/Library/Preferences' : process.env.HOME + "/.local/share")
 
 	mainWindow.args = args; // storing settings
+	if (args.windowName) {
+		mainWindow.windowName = args.windowName;
+		registerNamedWindowInstance(mainWindow, args.windowName);
+	} else {
+		mainWindow.windowName = null;
+	}
 	mainWindow.vdonVersion = false;
 	mainWindow.PPTHotkey = false;
 	
@@ -1800,21 +2650,41 @@ async function createWindow(args, reuse=false) {
 
 	mainWindow.on('close', function(e) {
 		e.preventDefault();
-		mainWindow.hide(); // hide, and wait 2 second before really closing; this allows for saving of files.
-		if (!global.closing){ // doesn't wait if we have issued a global app-wide closedown. speeds things up.
-			setTimeout(()=>{
-				if (!global.closing){
-					mainWindow.webContents.send('postMessage', {'hangup':true}); // allows us to disable the director; useful for speed and preventing camera blinking/flickering after the window closes.
-					setTimeout(()=>{  // we wait for the camera to be disabled before closing; this is to aviod blinking and for file saving.
-						if (!global.closing){
-							try{
-								mainWindow.destroy(); 
-							} catch(e){}
-						}
-					}, 2000);
-				}
-			}, 0);
+		if (!mainWindow || mainWindow.isDestroyed()) {
+			return;
 		}
+		mainWindow.hide(); // hide, and wait 2 second before really closing; this allows for saving of files.
+		if (global.closing){ // doesn't wait if we have issued a global app-wide closedown. speeds things up.
+			return;
+		}
+
+		clearWindowCloseTimers(mainWindow);
+		mainWindow.__pendingCloseRequested = true;
+
+		const hangupTimeout = setTimeout(()=>{
+			if (global.closing || !mainWindow || mainWindow.isDestroyed()){
+				return;
+			}
+			try {
+				mainWindow.webContents.send('postMessage', {'hangup':true}); // allows us to disable the director; useful for speed and preventing camera blinking/flickering after the window closes.
+			} catch (error) {
+				console.warn('Failed to send hangup before destroying window:', error);
+			}
+			const destroyTimeout = setTimeout(()=>{  // we wait for the camera to be disabled before closing; this is to avoid blinking and for file saving.
+				if (global.closing || !mainWindow || mainWindow.isDestroyed()){
+					return;
+				}
+				try{
+					mainWindow.destroy();
+				} catch(e){}
+				mainWindow.__pendingDestroyTimeout = null;
+				mainWindow.__pendingHangupTimeout = null;
+				mainWindow.__pendingCloseRequested = false;
+			}, 2000);
+			mainWindow.__pendingDestroyTimeout = destroyTimeout;
+		}, 0);
+
+		mainWindow.__pendingHangupTimeout = hangupTimeout;
 	});
 	
 	mainWindow.on('closed', function () { // Around line 1112
@@ -1885,7 +2755,6 @@ async function createWindow(args, reuse=false) {
 	mainWindow.webContents.on('did-finish-load', function(e){
 		console.log("did-finish-load");
 		if (tainted){
-			mainWindow.setSize(parseInt(WIDTH/factor), parseInt(HEIGHT/factor)); // allows for larger than display resolution.
 			tainted=false;
 		}
 		if (mainWindow && mainWindow.webContents.getURL().includes('youtube.com')){
@@ -2911,55 +3780,67 @@ contextMenu({
 			label: '🚿 Clean Video Output',
 			type: 'checkbox',
 			visible: (!browserWindow.webContents.getURL().includes('vdo.ninja') && !browserWindow.webContents.getURL().includes('invite.cam')),
-			checked: false,
+			checked: browserWindow.__cleanOutputEnabled || false,
 			click: () => {
-				var css = " \
-					.html5-video-player {\
-						z-index:unset!important;\
-					}\
-					.html5-video-container {	\
-						z-index:unset!important;\
-					}\
-					video { \
-						width: 100vw!important;height: 100vh!important;  \
-						left: 0px!important;    \
-						object-fit: cover!important;\
-						top: 0px!important;\
-						overflow:hidden;\
-						z-index: 2147483647!important;\
-						position: fixed!important;\
-					}\
-					body {\
-						overflow: hidden!important;\
-					}";
-				browserWindow.webContents.insertCSS(css, {cssOrigin: 'user'});
-				browserWindow.webContents.executeJavaScript('(function () {\
-					var videos = document.querySelectorAll("video");\
-					if (videos.length>1){\
-						var video = videos[0];\
-						for (var i=1;i<videos.length;i++){\
-							if (!video.videoWidth){\
-								video = videos[i];\
-							} else if (videos[i].videoWidth && (videos[i].videoWidth>video.videoWidth)){\
-								video = videos[i];\
-							}\
+				// Toggle clean output mode
+				if (browserWindow.__cleanOutputEnabled) {
+					// Disable clean output mode by reloading the page
+					console.log('Disabling clean output mode - reloading page');
+					browserWindow.__cleanOutputEnabled = false;
+					browserWindow.webContents.reload();
+				} else {
+					// Enable clean output mode
+					console.log('Enabling clean output mode');
+					browserWindow.__cleanOutputEnabled = true;
+
+					var css = " \
+						.html5-video-player {\
+							z-index:unset!important;\
 						}\
-						document.body.appendChild(video);\
-					} else if (videos.length){\
-						document.body.appendChild(videos[0]);\
-					}\
-				})();');
-				
-				if (browserWindow.webContents.getURL().includes('youtube.com')){
+						.html5-video-container {	\
+							z-index:unset!important;\
+						}\
+						video { \
+							width: 100vw!important;height: 100vh!important;  \
+							left: 0px!important;    \
+							object-fit: cover!important;\
+							top: 0px!important;\
+							overflow:hidden;\
+							z-index: 2147483647!important;\
+							position: fixed!important;\
+						}\
+						body {\
+							overflow: hidden!important;\
+						}";
+					browserWindow.webContents.insertCSS(css, {cssOrigin: 'user'});
 					browserWindow.webContents.executeJavaScript('(function () {\
-						if (!xxxxxx){\
-							var xxxxxx = setInterval(function(){\
-							if (document.querySelector(".ytp-ad-skip-button")){\
-								document.querySelector(".ytp-ad-skip-button").click();\
+						var videos = document.querySelectorAll("video");\
+						if (videos.length>1){\
+							var video = videos[0];\
+							for (var i=1;i<videos.length;i++){\
+								if (!video.videoWidth){\
+									video = videos[i];\
+								} else if (videos[i].videoWidth && (videos[i].videoWidth>video.videoWidth)){\
+									video = videos[i];\
+								}\
 							}\
-							},500);\
+							document.body.appendChild(video);\
+						} else if (videos.length){\
+							document.body.appendChild(videos[0]);\
 						}\
 					})();');
+
+					if (browserWindow.webContents.getURL().includes('youtube.com')){
+						browserWindow.webContents.executeJavaScript('(function () {\
+							if (!xxxxxx){\
+								var xxxxxx = setInterval(function(){\
+								if (document.querySelector(".ytp-ad-skip-button")){\
+									document.querySelector(".ytp-ad-skip-button").click();\
+								}\
+								},500);\
+							}\
+						})();');
+					}
 				}
 			}
 		},
@@ -3074,6 +3955,22 @@ contextMenu({
 
 app.on('second-instance', (event, commandLine, workingDirectory, argv2) => {
     console.log('Second instance launched with args:', commandLine);
+	const windowSummaries = BrowserWindow.getAllWindows().map((win) => {
+		try {
+			return {
+				id: win.id,
+				title: win.getTitle(),
+				name: win.windowName || win.__namedWindowKey || null,
+				isDestroyed: win.isDestroyed(),
+				isVisible: win.isVisible(),
+				isMinimized: win.isMinimized(),
+				bounds: win.getBounds()
+			};
+		} catch (error) {
+			return { id: win.id, error: error.message };
+		}
+	});
+	console.log('Existing windows at second-instance start:', windowSummaries);
     
     // Check for deep link first
     const deepLinkUrl = commandLine.find(arg => arg.startsWith('electroncapture://'));
@@ -3128,7 +4025,15 @@ app.on('window-all-closed', () => {
   }
   console.log("'window-all-closed': All windows are closed. Unregistering all shortcuts and quitting.");
   globalShortcut.unregisterAll();
-  app.quit();
+
+  // macOS-specific: use app.exit(0) to ensure helper processes are killed
+  // Windows/Linux: use app.quit() to maintain existing behavior
+  if (process.platform === 'darwin') {
+    console.log("'window-all-closed': macOS - using app.exit(0) to force quit and kill helper processes.");
+    app.exit(0);
+  } else {
+    app.quit();
+  }
 });
 
 var closing = 0;
