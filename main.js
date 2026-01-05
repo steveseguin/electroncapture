@@ -17,6 +17,12 @@ ipcMain.on('getSources', async function(eventRet, args) {
 	} catch(e){console.error(e);}
 });
 
+// Test logging handler - forwards renderer logs to main process console
+ipcMain.on('test-log', (event, { type, msg }) => {
+	const prefix = type === 'error' ? '\x1b[31m' : type === 'success' ? '\x1b[32m' : '\x1b[36m';
+	const reset = '\x1b[0m';
+	console.log(`${prefix}[TEST:${type.toUpperCase()}]${reset} ${msg}`);
+});
 
 const { Readable } = require('stream');
 const { fetch: undiciFetch } = require('undici');
