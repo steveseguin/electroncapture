@@ -67,23 +67,45 @@ jobs:
             dist/elecap-*.exe
 
       - name: Submit to VirusTotal
-        if: secrets.VIRUSTOTAL_API_KEY != ''
         shell: bash
         run: |
-          # Find the portable exe
-          EXE_FILE=$(ls dist/elecap.exe 2>/dev/null || echo "")
-          if [ -n "$EXE_FILE" ]; then
+          if [ -z "$VIRUSTOTAL_API_KEY" ]; then
+            echo "::notice::Skipping VirusTotal - no API key configured"
+            exit 0
+          fi
+
+          EXE_FILE="dist/elecap.exe"
+          if [ -f "$EXE_FILE" ]; then
             echo "Submitting $EXE_FILE to VirusTotal..."
-            RESPONSE=$(curl -s --request POST \
-              --url 'https://www.virustotal.com/api/v3/files' \
-              --header "x-apikey: ${{ secrets.VIRUSTOTAL_API_KEY }}" \
-              --form "file=@$EXE_FILE")
-            ANALYSIS_ID=$(echo "$RESPONSE" | jq -r '.data.id // empty')
-            if [ -n "$ANALYSIS_ID" ]; then
-              echo "VirusTotal analysis submitted: https://www.virustotal.com/gui/file-analysis/$ANALYSIS_ID"
+
+            # Get SHA256 for direct link
+            SHA256=$(sha256sum "$EXE_FILE" | cut -d' ' -f1)
+            echo "SHA256: $SHA256"
+
+            # Get upload URL for large files (>32MB)
+            UPLOAD_URL=$(curl -s --request GET \
+              --url 'https://www.virustotal.com/api/v3/files/upload_url' \
+              --header "x-apikey: $VIRUSTOTAL_API_KEY" | jq -r '.data')
+
+            if [ -n "$UPLOAD_URL" ] && [ "$UPLOAD_URL" != "null" ]; then
+              # Upload to the large file endpoint
+              RESPONSE=$(curl -s --request POST \
+                --url "$UPLOAD_URL" \
+                --header "x-apikey: $VIRUSTOTAL_API_KEY" \
+                --form "file=@$EXE_FILE")
+
+              ANALYSIS_ID=$(echo "$RESPONSE" | jq -r '.data.id // empty')
+              if [ -n "$ANALYSIS_ID" ]; then
+                echo "::notice::VirusTotal scan submitted successfully"
+                echo "::notice::View results: https://www.virustotal.com/gui/file/$SHA256"
+              else
+                echo "::warning::VirusTotal response: $RESPONSE"
+              fi
             else
-              echo "VirusTotal submission response: $RESPONSE"
+              echo "::warning::Failed to get VirusTotal upload URL"
             fi
+          else
+            echo "::warning::No exe file found at $EXE_FILE"
           fi
         env:
           VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
