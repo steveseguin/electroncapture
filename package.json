@@ -1,6 +1,6 @@
 {
   "name": "VDON.Electron.Capture.App",
-  "version": "2.22.0",
+  "version": "2.23.1",
   "description": "A simple tool to aid with frameless window video capture and VDO.Ninja publishing",
   "author": "Steve Seguin <steve@seguin.email>",
   "main": "main.js",
@@ -33,10 +33,10 @@
   "build": {
     "appId": "capture.electron",
     "productName": "elecap",
-    "electronVersion": "39.2.7-qp20",
+    "electronVersion": "39.2.8-qp20",
     "electronDownload": {
       "mirror": "https://github.com/steveseguin/electron/releases/download/",
-      "customDir": "v39.2.7-qp20"
+      "customDir": "v39.2.8-qp20"
     },
     "protocols": {
       "name": "electroncapture",

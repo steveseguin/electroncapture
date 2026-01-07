@@ -160,6 +160,31 @@ function immutablePreferencesMatch(existingWindow, requestedPreferences) {
 	return Object.keys(requestedPreferences).every((key) => existingPreferences[key] === requestedPreferences[key]);
 }
 
+// Window bounds persistence for remembering size between sessions
+const BOUNDS_FILE = path.join(app.getPath('userData'), 'window-bounds.json');
+
+function saveWindowBounds(bounds) {
+	try {
+		fs.writeFileSync(BOUNDS_FILE, JSON.stringify(bounds));
+	} catch (e) {
+		// Ignore write errors
+	}
+}
+
+function loadWindowBounds() {
+	try {
+		const data = fs.readFileSync(BOUNDS_FILE, 'utf8');
+		const bounds = JSON.parse(data);
+		// Validate bounds have required properties
+		if (bounds && typeof bounds.width === 'number' && typeof bounds.height === 'number') {
+			return bounds;
+		}
+	} catch (e) {
+		// File doesn't exist or invalid - return null
+	}
+	return null;
+}
+
 function getScaleFactorForWindow(targetWindow) {
 	const fallbackScale = () => {
 		const primary = getPrimaryDisplaySafe();
@@ -1023,6 +1048,11 @@ function createYargs(){
     describe: "Default playout delay hint in seconds for WebRTC receivers (0-600, custom Electron only).",
     type: "number",
     default: 0
+  })
+  .option("nodpi", {
+    describe: "Disable automatic DPI compensation (content will render at system scale).",
+    type: "boolean",
+    default: false
   })
   .describe("help", "Show help.") // Override --help usage message.
   .wrap(process.stdout.columns); 
@@ -2501,7 +2531,30 @@ async function createWindow(args, reuse=false) {
 	mainWindow.__immutableWebPreferences = desiredImmutableWebPreferences;
 	mainWindow.__defaultDragRegionEnabled = defaultDragRegionEnabled;
 	mainWindow.__lastDisplayId = initialDisplay ? initialDisplay.id : null;
-	
+
+	// Restore saved window bounds if user didn't explicitly provide size/position
+	// Only applies when using default dimensions (1280x720)
+	if (args.width === 1280 && args.height === 720 && args.x === -1 && args.y === -1) {
+		const savedBounds = loadWindowBounds();
+		if (savedBounds) {
+			try {
+				// Validate saved bounds are within current display area
+				const displays = screen.getAllDisplays();
+				const isValidPosition = displays.some(d => {
+					const wa = d.workArea;
+					return savedBounds.x >= wa.x - 50 && savedBounds.x < wa.x + wa.width &&
+					       savedBounds.y >= wa.y - 50 && savedBounds.y < wa.y + wa.height;
+				});
+				if (isValidPosition && savedBounds.width >= 200 && savedBounds.height >= 100) {
+					mainWindow.setBounds(savedBounds);
+					console.log('Restored saved window bounds:', savedBounds);
+				}
+			} catch (e) {
+				console.warn('Failed to restore saved window bounds:', e);
+			}
+		}
+	}
+
 	mainWindow.webContents.session.webRequest.onHeadersReceived({ urls: [ "*://*/*" ] },
 		(d, c)=>{
 		  if(d.responseHeaders['X-Frame-Options']){
@@ -2641,8 +2694,35 @@ async function createWindow(args, reuse=false) {
 			}
 		});
 	});
-  
-  
+
+	// Save window bounds on resize (debounced) for persistence between sessions
+	let saveBoundsTimeout = null;
+	mainWindow.on('resize', () => {
+		if (saveBoundsTimeout) {
+			clearTimeout(saveBoundsTimeout);
+		}
+		saveBoundsTimeout = setTimeout(() => {
+			if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isMinimized() && !mainWindow.isMaximized() && !mainWindow.isFullScreen()) {
+				const bounds = mainWindow.getBounds();
+				saveWindowBounds(bounds);
+			}
+		}, 500);
+	});
+
+	// Also save on move for position persistence
+	mainWindow.on('move', () => {
+		if (saveBoundsTimeout) {
+			clearTimeout(saveBoundsTimeout);
+		}
+		saveBoundsTimeout = setTimeout(() => {
+			if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isMinimized() && !mainWindow.isMaximized() && !mainWindow.isFullScreen()) {
+				const bounds = mainWindow.getBounds();
+				saveWindowBounds(bounds);
+			}
+		}, 500);
+	});
+
+
 	mainWindow.webContents.on('will-prevent-unload', (event) => {
 		const options = {
 			type: 'question',
@@ -2982,11 +3062,29 @@ async function createWindow(args, reuse=false) {
 				  }
 				  :root {
 					  --electron-drag-fix: none!important;
-					  
+
 				  }
 				`);
 			}
 		});
+
+		// DPI compensation: scale content inversely to system DPI for 1:1 pixel rendering
+		if (!mainWindow.args.nodpi) {
+			const applyDpiCompensation = () => {
+				try {
+					const scaleFactor = getScaleFactorForWindow(mainWindow);
+					if (scaleFactor > 1) {
+						mainWindow.webContents.setZoomFactor(1 / scaleFactor);
+						console.log(`DPI compensation applied: zoom factor = ${(1 / scaleFactor).toFixed(3)} (scale: ${scaleFactor})`);
+					}
+				} catch (e) {
+					console.warn('Failed to apply DPI compensation:', e);
+				}
+			};
+
+			mainWindow.webContents.on('did-finish-load', applyDpiCompensation);
+			mainWindow.webContents.on('did-navigate', applyDpiCompensation);
+		}
 	} catch (e){
 		console.error(e);
 		//app.quit();
