@@ -2,12 +2,15 @@ const { exec } = require('child_process');
 const fs = require('fs').promises;
 const path = require('path');
 const axios = require('axios');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 // Configuration
 const MAX_DIFF_SIZE = 20000; // Characters - truncate if larger
 const MAX_FILES_TO_SAMPLE = 5; // Maximum number of files to include in the diff
 const SAMPLE_LINES_PER_FILE = 200; // Maximum lines to include per file
+
+// Z.AI GLM API Configuration
+const ZAI_API_ENDPOINT = 'https://api.z.ai/api/coding/paas/v4/chat/completions';
+const ZAI_MODEL = 'glm-4.7';
 
 // --- Error Handling ---
 class ScriptError extends Error {
@@ -25,18 +28,39 @@ function log(level, message, context = {}) {
   console.log(`[${timestamp}] [${level.toUpperCase()}] ${message}`, context);
 }
 
-// Initialize Gemini API
-let model;
-try {
-  if (!process.env.GEMINI_API_KEY) {
-    throw new Error('GEMINI_API_KEY environment variable is not set.');
-  }
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' }); // Change to a version now supported.
-  log('info', 'Gemini API initialized successfully.');
-} catch (error) {
-  log('error', 'Failed to initialize Gemini API', { error: error.message });
-  process.exit(1); // Exit if API key is missing or init fails
+// Validate Z.AI API key
+if (!process.env.ZAI_API_KEY) {
+  log('error', 'ZAI_API_KEY environment variable is not set.');
+  process.exit(1);
+}
+log('info', 'Z.AI API configuration loaded successfully.');
+
+/**
+ * Calls the Z.AI GLM API with system and user prompts.
+ * @param {string} systemPrompt - The system instructions.
+ * @param {string} userPrompt - The user message/data.
+ * @returns {Promise<string|null>} - The API response content or null if failed.
+ */
+async function callZaiApi(systemPrompt, userPrompt) {
+  const requestBody = {
+    model: ZAI_MODEL,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ],
+    temperature: 0.7,
+    stream: false
+  };
+
+  const response = await axios.post(ZAI_API_ENDPOINT, requestBody, {
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.ZAI_API_KEY}`
+    },
+    timeout: 60000
+  });
+
+  return response.data?.choices?.[0]?.message?.content?.trim() || null;
 }
 
 // --- Git Operations ---
@@ -356,7 +380,7 @@ async function getRecentBranchCommits(branchName) {
 // --- AI Enhancement ---
 
 /**
- * Enhances the commit message using the Gemini API.
+ * Enhances the commit message using the Z.AI API.
  * @param {string} originalMessage - The original commit message.
  * @param {string} diff - The summarized code diff.
  * @param {string} branchName - The current Git branch name.
@@ -372,9 +396,7 @@ async function enhanceCommitMessage(originalMessage, diff, branchName, dirSummar
      ? `* **Recent Steps on Branch (${branchName}):**\n${recentCommits.map(s => `        * ${s}`).join('\n')}`
      : `* **Recent Steps on Branch (${branchName}):** (This appears to be the first commit on this branch since merging from the base branch)`;
 
-  // Construct the prompt for the AI
-  const prompt = `
-You are an expert developer assistant tasked with refining Git commit messages for the "Social Stream Ninja" project. Your goal is to create a message that follows Conventional Commits format (e.g., "feat:", "fix:", "chore:", "refactor:", "style:", "test:", "docs:", "build:", "ci:") and provides clear, concise, and informative context about the changes.
+  const systemPrompt = `You are an expert developer assistant tasked with refining Git commit messages for the "Social Stream Ninja" project. Your goal is to create a message that follows Conventional Commits format (e.g., "feat:", "fix:", "chore:", "refactor:", "style:", "test:", "docs:", "build:", "ci:") and provides clear, concise, and informative context about the changes.
 
 **Project Context: Social Stream Ninja**
 
@@ -383,9 +405,7 @@ You are an expert developer assistant tasked with refining Git commit messages f
 * **Key Components:** \`dock.html\` (main dashboard/controller), \`featured.html\` (chat overlay), \`sources/\` directory (platform integrations), \`custom.js\` (user scripting), TTS functionality, API handling logic, \`.github/\` (workflows/actions), \`scripts/\` (utility scripts).
 * **Technology Stack:** Primarily JavaScript, HTML, CSS, Node.js (for scripts/actions), Browser Extension APIs, WebRTC (via VDO.Ninja), potentially Electron.
 
-**Task:**
-
-Analyze the provided information (original message, code diff, branch context, directory summary, recent commits) and generate an improved commit message adhering to the following guidelines:
+**Guidelines:**
 
 1.  **Format:** Use the Conventional Commits specification (<type>[optional scope]: <description>). Choose the most appropriate type (feat, fix, chore, refactor, style, test, docs, build, ci). The scope (e.g., \`feat(api)\`, \`fix(twitch)\`, \`chore(deps)\`) is optional but encouraged if the change primarily affects a specific component.
 2.  **Subject Line:**
@@ -399,9 +419,9 @@ Analyze the provided information (original message, code diff, branch context, d
     * Reference specific files, components (e.g., \`dock.html\`, TTS module, GitHub Actions), or features affected.
     * Incorporate context from the branch name, directory summary, and recent commits if relevant (e.g., "Continues work on feature X from previous commits").
 4.  **Tone:** Professional and clear.
-5.  **Focus:** The message should *only* contain the commit message itself, starting directly with the type/scope. Do not add introductions like "Here is the enhanced commit message:".
+5.  **Focus:** The message should *only* contain the commit message itself, starting directly with the type/scope. Do not add introductions like "Here is the enhanced commit message:".`;
 
-**Input Data:**
+  const userPrompt = `Analyze the provided information and generate an improved commit message:
 
 * **Original Commit Message:**
     \`\`\`
@@ -415,37 +435,27 @@ ${recentCommitLines}
     ${diff}
     \`\`\`
 
-**Generate the improved commit message now:**
-`;
+**Generate the improved commit message now:**`;
 
   try {
-    log('debug', 'Sending prompt to Gemini API.');
-    // Ensure the model object is valid before calling
-    if (!model) {
-        throw new Error('Gemini model is not initialized.');
+    log('debug', 'Sending prompt to Z.AI API.');
+    const enhancedMessage = await callZaiApi(systemPrompt, userPrompt);
+    if (!enhancedMessage) {
+        throw new Error('Empty response from Z.AI API.');
     }
-    const result = await model.generateContent(prompt);
-    // Basic validation of the response structure
-    if (!result || !result.response || typeof result.response.text !== 'function') {
-        log('error', 'Invalid response structure received from Gemini API.', { response: result });
-        throw new Error('Invalid response structure from Gemini API.');
-    }
-    const enhancedMessage = result.response.text().trim();
-    log('info', 'Successfully received enhanced commit message from Gemini API.');
-    log('debug', 'Enhanced Message:', { message: enhancedMessage }); // Log the message itself for debugging
+    log('info', 'Successfully received enhanced commit message from Z.AI API.');
+    log('debug', 'Enhanced Message:', { message: enhancedMessage });
     // Basic check if the response seems like a commit message (starts with a common type)
     if (!/^(feat|fix|chore|refactor|style|test|docs|build|ci)/.test(enhancedMessage)) {
         log('warn', 'Generated message does not strictly follow Conventional Commit format.', { message: enhancedMessage });
-        // Decide if you want to proceed anyway or return null/error
     }
     return enhancedMessage;
   } catch (error) {
-    log('error', 'Error calling Gemini API', { errorMessage: error.message, promptLength: prompt.length });
-    // Log more details if available (e.g., error response from API)
+    log('error', 'Error calling Z.AI API', { errorMessage: error.message });
     if (error.response) {
-        log('error', 'Gemini API Error Response:', { data: error.response.data });
+        log('error', 'Z.AI API Error Response:', { data: error.response.data });
     }
-    return null; // Indicate failure
+    return null;
   }
 }
 
@@ -563,15 +573,10 @@ async function updatePRDescription() {
 
     log('info', `Generating enhanced PR description (diff size: ${diffSnippet.length} chars)...`);
 
-    // Generate enhanced description using Gemini
-    const prompt = `
-You are an expert developer assistant helping refine a Pull Request description for the "Social Stream Ninja" project.
+    // Generate enhanced description using Z.AI
+    const systemPrompt = `You are an expert developer assistant helping refine a Pull Request description for the "Social Stream Ninja" project.
 
 **Project Context:** (Same as commit message context - consolidates social streams, features like overlay, TTS, API, etc.)
-
-**Task:**
-
-Review the existing PR information (title, original description, code diff) and generate an improved, comprehensive PR description. The goal is to clearly explain the PR's purpose, changes, and potential impact.
 
 **Guidelines:**
 
@@ -582,9 +587,9 @@ Review the existing PR information (title, original description, code diff) and 
 5.  **Testing:** (Optional but helpful) Suggest how reviewers can test the changes.
 6.  **Relate to Diff:** Ensure the description accurately reflects the code changes shown in the diff summary.
 7.  **Tone:** Professional and informative.
-8.  **Output:** Provide *only* the enhanced PR description text in Markdown format. Do not include introductory phrases like "Here's the updated description:". If the original description is good, you can refine it or even state that no major changes are needed (though usually, adding structure is beneficial).
+8.  **Output:** Provide *only* the enhanced PR description text in Markdown format. Do not include introductory phrases like "Here's the updated description:". If the original description is good, you can refine it or even state that no major changes are needed (though usually, adding structure is beneficial).`;
 
-**Input Data:**
+    const userPrompt = `Review the existing PR information and generate an improved, comprehensive PR description:
 
 * **PR Title:** ${prTitle}
 * **Target Branch:** ${prTargetBranch}
@@ -598,14 +603,12 @@ Review the existing PR information (title, original description, code diff) and 
     ${diffSnippet}
     \`\`\`
 
-**Generate the improved PR description now:**
-`;
+**Generate the improved PR description now:**`;
 
-    const enhancedDescriptionResult = await model.generateContent(prompt);
-    if (!enhancedDescriptionResult || !enhancedDescriptionResult.response || typeof enhancedDescriptionResult.response.text !== 'function') {
-        throw new Error('Invalid response structure from Gemini API for PR description.');
+    const enhancedDescription = await callZaiApi(systemPrompt, userPrompt);
+    if (!enhancedDescription) {
+        throw new Error('Empty response from Z.AI API for PR description.');
     }
-    const enhancedDescription = enhancedDescriptionResult.response.text().trim();
 
     // Update PR description via GitHub API
     const [owner, repo] = repoFullName.split('/');
@@ -704,7 +707,7 @@ async function main() {
     // Check if enhancement was successful (API returned something)
     // REMOVED: || enhancedMessage.toLowerCase().includes("error")
     if (!enhancedMessage || enhancedMessage.trim() === '') {
-      log('error', 'Failed to generate a valid enhanced commit message from Gemini API (empty response). Aborting update.');
+      log('error', 'Failed to generate a valid enhanced commit message from Z.AI API (empty response). Aborting update.');
       process.exit(1); // Exit with error if enhancement failed critically
     }
 
