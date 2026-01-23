@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ElectronCapture Deep Link Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.js"></script>
+	<style>
+	/* Modern Grey Theme */
+		:root {
+		  --primary-color: #2A2A2A;
+		  --secondary-color: #404040;
+		  --accent-color: #6366F1;
+		  --accent-hover: #4F46E5;
+		  --success-color: #22C55E;
+		  --success-hover: #16A34A;
+		  --text-primary: #E5E7EB;
+		  --text-secondary: #9CA3AF;
+		  --background-primary: #1A1A1A;
+		  --background-secondary: #262626;
+		  --background-tertiary: #333333;
+		  --border-color: #404040;
+		}
+
+		body {
+		  background-color: var(--background-primary);
+		  color: var(--text-primary);
+		  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+		  line-height: 1.5;
+		  min-height: 100vh;
+		  max-width: 640px;
+		  margin: auto auto;
+		}
+
+		.max-w-4xl {
+		  background-color: var(--background-secondary);
+		  border: 1px solid var(--border-color);
+		  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+		  backdrop-filter: blur(10px);
+		}
+
+		h1 {
+		  color: var(--text-primary);
+		  font-weight: 700;
+		  border-bottom: 2px solid var(--accent-color);
+		  padding-bottom: 0.5rem;
+		  margin-bottom: 2rem;
+		}
+
+		label {
+		  color: var(--text-secondary);
+		  font-weight: 500;
+		}
+
+		input[type="url"],
+		input[type="number"],
+		input[type="text"] {
+		  background-color: var(--background-tertiary);
+		  border: 1px solid var(--border-color);
+		  color: var(--text-primary);
+		  transition: all 0.2s ease-in-out;
+		}
+		
+		input[type="number"]{
+			width: 50px;
+		}
+		
+		input[type="url"]{
+			width: 98%;
+			padding: 5px;
+			margin: 5px 0;
+			font-size: 1.1em;
+		}
+
+		input[type="url"]:focus,
+		input[type="number"]:focus,
+		input[type="text"]:focus {
+		  border-color: var(--accent-color);
+		  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+		  background-color: var(--background-secondary);
+		}
+
+		input[type="checkbox"] {
+		  accent-color: var(--accent-color);
+		  width: 1.2rem;
+		  height: 1.2rem;
+		  border-radius: 4px;
+		  cursor: pointer;
+		}
+
+		.bg-gray-50 {
+		  background-color: var(--background-tertiary);
+		  border: 1px solid var(--border-color);
+		}
+
+		#generatedLink {
+		  background-color: var(--background-secondary);
+		  color: var(--text-primary);
+		  font-family: monospace;
+		  font-size: 0.9rem;
+		  padding: 0.75rem;
+		  border: 1px solid var(--border-color);
+		}
+
+		/* Button Styles */
+		#copyBtn, #testLink {
+		  padding: 0.5rem 1rem;
+		  font-weight: 500;
+		  transition: all 0.2s ease-in-out;
+		  border: none;
+		  cursor: pointer;
+		}
+
+		#copyBtn {
+		  background-color: var(--accent-color);
+		  color: white;
+		}
+
+		#copyBtn:hover {
+		  background-color: var(--accent-hover);
+		  transform: translateY(-1px);
+		}
+
+		#testLink {
+		  background-color: var(--success-color);
+		  color: white;
+		}
+
+		#testLink:hover {
+		  background-color: var(--success-hover);
+		  transform: translateY(-1px);
+		}
+
+		/* Form Layout Improvements */
+		.space-y-6 > * {
+		  margin-bottom: 1.5rem;
+		}
+
+		.grid {
+		  gap: 1.5rem;
+		}
+
+		/* Modern Scrollbar */
+		::-webkit-scrollbar {
+		  width: 8px;
+		  height: 8px;
+		}
+
+		::-webkit-scrollbar-track {
+		  background: var(--background-primary);
+		}
+
+		::-webkit-scrollbar-thumb {
+		  background: var(--border-color);
+		  border-radius: 4px;
+		}
+
+		::-webkit-scrollbar-thumb:hover {
+		  background: var(--secondary-color);
+		}
+
+		/* Responsive Improvements */
+		@media (max-width: 768px) {
+		  body {
+			padding: 1rem;
+		  }
+		  
+		  .max-w-4xl {
+			padding: 1.5rem;
+		  }
+		  
+		  .grid {
+			gap: 1rem;
+		  }
+		  
+		  #generatedLink {
+			font-size: 0.8rem;
+		  }
+		}
+
+		/* Animations */
+		@keyframes fadeIn {
+		  from {
+			opacity: 0;
+			transform: translateY(10px);
+		  }
+		  to {
+			opacity: 1;
+			transform: translateY(0);
+		  }
+		}
+
+		.max-w-4xl {
+		  animation: fadeIn 0.3s ease-out;
+		}
+
+		/* Focus Outline */
+		:focus {
+		  outline: none;
+		}
+
+		/* Copy Button Success State */
+		#copyBtn.bg-green-500 {
+		  background-color: var(--success-color);
+		}
+
+		#copyBtn.bg-green-500:hover {
+		  background-color: var(--success-hover);
+		}
+</style>
+	
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6" style="padding:20px;">
+        <h1 class="text-3xl font-bold mb-6 text-gray-800">ElectronCapture Deep Link Generator</h1>
+        
+        <form id="linkForm" class="space-y-6">
+            <!-- URL Input -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Target URL (https://...)
+                </label>
+                <input type="url" id="url" required
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="https://example.com">
+            </div>
+
+            <!-- Window Size -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Window Width (pixels)
+                    </label>
+                    <input type="number" id="width" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="1280">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Window Height (pixels)
+                    </label>
+                    <input type="number" id="height"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="720">
+                </div>
+            </div>
+
+            <!-- Window Position -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        X Position (pixels)
+                    </label>
+                    <input type="number" id="x"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="100">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Y Position (pixels)
+                    </label>
+                    <input type="number" id="y"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="100">
+                </div>
+            </div>
+
+            <!-- Window Title -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Window Title
+                </label>
+                <input type="text" id="title"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="My Window">
+            </div>
+
+            <!-- Checkboxes -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="flex items-center">
+                    <input type="checkbox" id="pin" class="h-4 w-4 text-blue-600 rounded">
+                    <label class="ml-2 text-sm text-gray-700">
+                        Always on Top
+                    </label>
+                </div>
+                <div class="flex items-center">
+                    <input type="checkbox" id="full" class="h-4 w-4 text-blue-600 rounded">
+                    <label class="ml-2 text-sm text-gray-700">
+                        Start Fullscreen
+                    </label>
+                </div>
+                <div class="flex items-center">
+                    <input type="checkbox" id="min" class="h-4 w-4 text-blue-600 rounded">
+                    <label class="ml-2 text-sm text-gray-700">
+                        Start Minimized
+                    </label>
+                </div>
+            </div>
+        </form>
+
+        <!-- Generated Link Section -->
+		<div class="mt-8 p-4 bg-gray-50 rounded-lg">
+			<div class="flex justify-between items-center mb-2">
+				<label class="block text-sm font-medium text-gray-700">
+					Generated Deep Link:
+				</label>
+				
+			</div>
+			<div class="flex space-x-4">
+				<input type="text" id="generatedLink" style="width: calc(100% - 1.5rem - 1px);" readonly
+					class="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-gray-700"
+					value="electroncapture://">
+					<div class="flex gap-2"> <!-- Added container for buttons -->
+					<button id="copyBtn" class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm">
+						Copy Link
+					</button>
+					<button id="testLink" class="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm">
+						Test Link
+					</button>
+				</div>
+			</div>
+		</div>
+    </div>
+	<br />
+	<small style="color:#888;">Note: You can download <a href="https://github.com/steveseguin/electroncapture/releases/" style="color:#888;" target="_blank"> ElectronCapture here</a> if needed.</small>
+
+    <script>
+        function generateLink() {
+            const url = document.getElementById('url').value.trim();
+            if (!url) return;
+
+            // Remove 'https://' if present
+            const cleanUrl = url.replace(/^https?:\/\//, '');
+            
+            let params = new URLSearchParams();
+            
+            // Add parameters only if they have values
+            const width = document.getElementById('width').value;
+            const height = document.getElementById('height').value;
+            const x = document.getElementById('x').value;
+            const y = document.getElementById('y').value;
+            const title = document.getElementById('title').value;
+            const pin = document.getElementById('pin').checked;
+            const full = document.getElementById('full').checked;
+            const min = document.getElementById('min').checked;
+
+            if (width) params.append('w', width);
+            if (height) params.append('h', height);
+            if (x) params.append('x', x);
+            if (y) params.append('y', y);
+            if (title) params.append('title', title);
+            if (pin) params.append('pin', 'true');
+            if (full) params.append('full', 'true');
+            if (min) params.append('min', 'true');
+
+            const paramsString = params.toString();
+            const deepLink = `electroncapture://${cleanUrl}${paramsString ? '?' + paramsString : ''}`;
+            
+            document.getElementById('generatedLink').value = deepLink;
+            document.getElementById('testLink').href = deepLink;
+        }
+
+        // Add event listeners to all form elements
+        document.querySelectorAll('#linkForm input').forEach(input => {
+            input.addEventListener('input', generateLink);
+            input.addEventListener('change', generateLink);
+        });
+		
+		document.getElementById('testLink').addEventListener('click', () => {
+			window.location.href = document.getElementById('generatedLink').value;
+		});
+
+        // Copy button functionality
+        document.getElementById('copyBtn').addEventListener('click', () => {
+            const linkInput = document.getElementById('generatedLink');
+            linkInput.select();
+            document.execCommand('copy');
+            
+            // Visual feedback
+            const copyBtn = document.getElementById('copyBtn');
+            const originalText = copyBtn.textContent;
+            copyBtn.textContent = 'Copied!';
+            copyBtn.classList.add('bg-green-500');
+            copyBtn.classList.remove('bg-blue-500');
+            
+            setTimeout(() => {
+                copyBtn.textContent = originalText;
+                copyBtn.classList.remove('bg-green-500');
+                copyBtn.classList.add('bg-blue-500');
+            }, 2000);
+        });
+    </script>
+</body>
+</html>
