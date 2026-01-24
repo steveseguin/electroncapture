@@ -34,6 +34,7 @@
     "appId": "capture.electron",
     "productName": "elecap",
     "electronVersion": "39.2.13-qp20",
+    "npmRebuild": false,
     "electronDownload": {
       "mirror": "https://github.com/steveseguin/electron/releases/download/",
       "customDir": "v39.2.13-qp20"
@@ -82,7 +83,9 @@
           "!test-window-reuse.html",
           "!test.css",
           "!test.js",
-          "!testFuses.js"
+          "!testFuses.js",
+          "!electron-asio-src",
+          "!electron-asio-src/**"
         ]
       },
       {
@@ -99,6 +102,22 @@
         "to": "native-modules/window-audio-capture/build/Release",
         "filter": [
           "window_audio_capture.node"
+        ]
+      },
+      {
+        "from": "native-modules/electron-asio",
+        "to": "native-modules/electron-asio",
+        "filter": [
+          "index.js",
+          "package.json"
+        ]
+      },
+      {
+        "from": "native-modules/electron-asio/build/Release",
+        "to": "native-modules/electron-asio/build/Release",
+        "filter": [
+          "electron_asio.node",
+          "portaudio_x64.dll"
         ]
       }
     ],
@@ -162,9 +181,11 @@
       "synopsis": "Video Capture Tool",
       "description": "A simple tool for frameless window video capture",
       "desktop": {
-        "Name": "EleCap",
-        "Comment": "Video Capture Tool",
-        "Categories": "Utility;"
+        "entry": {
+          "Name": "EleCap",
+          "Comment": "Video Capture Tool",
+          "Categories": "Utility;"
+        }
       }
     },
     "nsis": {
@@ -201,6 +222,7 @@
   },
   "devDependencies": {
     "@electron/fuses": "^2.0.0",
+    "archiver": "^7.0.1",
     "electron": "39.2.7",
     "electron-builder": "^26.5.0",
     "electron-notarize": "git://github.com/electron/notarize.git",

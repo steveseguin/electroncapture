@@ -11,6 +11,21 @@ try {
   console.error('Failed to load WindowAudioStream module:', error);
 }
 
+// ASIO Audio Capture (Windows only - for professional audio interfaces)
+let ElectronAsio = null;
+try {
+  ElectronAsio = require('./native-modules/electron-asio/index.js');
+  if (ElectronAsio && ElectronAsio.initialize) {
+    ElectronAsio.initialize();
+    console.log('[Electron Capture] ASIO module loaded:', ElectronAsio.getVersionInfo());
+  }
+} catch (error) {
+  // ASIO is optional and Windows-only
+  if (process.platform === 'win32') {
+    console.warn('ASIO module not available:', error.message);
+  }
+}
+
 const WINDOW_AUDIO_EVENT_CHANNEL = 'windowAudioStreamData';
 const APP_AUDIO_PARAM_NAMES = ['appaudio', 'appAudio', 'appAudioTarget'];
 
@@ -715,6 +730,17 @@ function createElectronApi() {
         return true;
       }
       return false;
+    },
+    // ASIO Audio Capture (Windows only)
+    'isAsioAvailable': () => Boolean(ElectronAsio && ElectronAsio.isAvailable && ElectronAsio.isAvailable()),
+    'getAsioDevices': () => ElectronAsio ? ElectronAsio.getDevices() : [],
+    'getAsioDeviceInfo': (deviceIndex) => ElectronAsio ? ElectronAsio.getDeviceInfo(deviceIndex) : null,
+    'getAsioVersionInfo': () => ElectronAsio ? ElectronAsio.getVersionInfo() : 'ASIO not available',
+    'createAsioStream': (options) => {
+      if (!ElectronAsio || !ElectronAsio.AsioStream) {
+        throw new Error('ASIO module not available');
+      }
+      return new ElectronAsio.AsioStream(options);
     }
   };
 }
@@ -731,6 +757,9 @@ const electronApi = createElectronApi();
       if (WindowAudioStream) {
         contextBridge.exposeInMainWorld('WindowAudioStream', WindowAudioStream);
       }
+      if (ElectronAsio) {
+        contextBridge.exposeInMainWorld('ElectronAsio', ElectronAsio);
+      }
       exposedViaContextBridge = true;
     } catch (error) {
       console.error('Failed to expose APIs via contextBridge:', error);
@@ -743,15 +772,27 @@ const electronApi = createElectronApi();
       if (WindowAudioStream) {
         window.WindowAudioStream = WindowAudioStream;
       }
+      if (ElectronAsio) {
+        window.ElectronAsio = ElectronAsio;
+      }
     } catch (error) {
       console.error('Failed to attach APIs to window:', error);
     }
-  } else if (WindowAudioStream) {
+  } else {
     // Provide a mirror on window as well for compatibility when contextIsolation is enabled.
-    try {
-      window.WindowAudioStream = WindowAudioStream;
-    } catch (error) {
-      // Ignore - window may not be writable in some sandboxed contexts.
+    if (WindowAudioStream) {
+      try {
+        window.WindowAudioStream = WindowAudioStream;
+      } catch (error) {
+        // Ignore - window may not be writable in some sandboxed contexts.
+      }
+    }
+    if (ElectronAsio) {
+      try {
+        window.ElectronAsio = ElectronAsio;
+      } catch (error) {
+        // Ignore - window may not be writable in some sandboxed contexts.
+      }
     }
   }
 })();

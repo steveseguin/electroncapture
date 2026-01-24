@@ -1,0 +1,10 @@
+{
+  "name": "electron-asio",
+  "version": "1.0.0",
+  "description": "ASIO audio capture for Electron (Windows only)",
+  "main": "index.js",
+  "author": "Steve Seguin",
+  "license": "MIT",
+  "os": ["win32"],
+  "keywords": ["asio", "audio", "capture", "electron", "portaudio"]
+}

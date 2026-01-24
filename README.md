@@ -159,7 +159,76 @@ Youtube has a built-in automatic ad-skipper added, and for both Youtube, Twitch,
 ![image](https://user-images.githubusercontent.com/2575698/130308991-4a6e15f2-00e3-453f-a79f-8a874d2a6417.png)
 
 
-### Audio Output 
+### ASIO Audio Capture (Windows Only)
+
+Electron Capture now supports **ASIO audio capture** for professional audio interfaces. ASIO (Audio Stream Input/Output) provides ultra-low latency audio capture directly from your audio interface, bypassing the Windows audio mixer.
+
+#### Why ASIO?
+
+- **Ultra-low latency**: ASIO drivers provide latency as low as 1-10ms vs 50-100ms+ for standard Windows audio
+- **Professional quality**: Direct bit-perfect audio capture from your interface
+- **Multi-channel support**: Capture multiple channels simultaneously from multi-channel interfaces
+- **Sample rate flexibility**: Support for professional sample rates (44.1kHz to 192kHz)
+
+#### Requirements
+
+1. **Windows only** - ASIO is a Windows audio standard
+2. **ASIO driver installed** - Either:
+   - Your audio interface's native ASIO driver (Focusrite, Universal Audio, RME, etc.)
+   - [ASIO4ALL](https://www.asio4all.org/) - Free universal ASIO driver for any audio device
+3. **Node integration enabled** - Launch with `--node` flag
+
+#### Usage
+
+```bash
+# Launch Electron Capture with node integration
+elecap.exe --node --url="file:///path/to/demo/asio-waveform.html"
+```
+
+#### JavaScript API
+
+```js
+// Check if ASIO is available
+if (window.electronApi.isAsioAvailable()) {
+    // Get list of ASIO devices
+    const devices = window.electronApi.getAsioDevices();
+    console.log('ASIO Devices:', devices);
+
+    // Create an ASIO audio stream
+    const stream = window.electronApi.createAsioStream({
+        deviceIndex: devices[0].index,  // First ASIO device
+        sampleRate: 48000,               // Sample rate in Hz
+        channels: 2,                     // Number of channels
+        framesPerBuffer: 256             // Buffer size (lower = less latency)
+    });
+
+    // Listen for audio data
+    stream.on('data', (audioData) => {
+        // audioData is a Float32Array of audio samples
+        console.log('Received', audioData.length, 'samples');
+    });
+
+    stream.on('error', (err) => {
+        console.error('ASIO Error:', err);
+    });
+
+    // Start capturing
+    stream.start();
+
+    // Stop when done
+    // stream.stop();
+}
+```
+
+#### Demo
+
+A waveform visualization demo is included at `demo/asio-waveform.html`. Open it in Electron Capture with:
+
+```bash
+elecap.exe --node --url="file:///C:/path/to/electroncapture/demo/asio-waveform.html"
+```
+
+### Audio Output
 
 A popular way of outputting audio from the Electron Capture app into OBS is done using a virtual audio cable. Some such cables include:
 
@@ -586,6 +655,7 @@ window.electronApi.applyPlayoutDelay(rtcRtpReceiver, 30);
 | Adaptive scaling control | ✅ | ❌ | ❌ | Yes |
 | Cursor suppression | ✅ | ❌ | ❌ | Optional |
 | Extended playout delay | ✅ | ❌ | ❌ | Optional |
+| ASIO audio capture | ✅ | ❌ | ❌ | --node |
 
 
 ### Security considerations

@@ -3,5 +3,7 @@
 /node_modules
 /native-modules/*
 !/native-modules/window-audio-capture
+!/native-modules/electron-asio
+/native-modules/electron-asio/build
 mac.sh
 /vdoninja
