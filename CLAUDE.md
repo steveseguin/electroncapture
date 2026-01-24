@@ -27,12 +27,17 @@ electroncapture/
 ├── window-audio-stream.js  # Audio capture stream handling
 ├── package.json            # Build config and dependencies
 ├── scripts/
-│   ├── install-custom-electron.js   # Downloads custom Electron for Windows
-│   └── install-window-audio-capture.js  # Builds native audio module
+│   ├── install-custom-electron.js      # Downloads custom Electron for Windows
+│   ├── install-window-audio-capture.js # Builds window audio capture module
+│   └── install-electron-asio.js        # Builds ASIO audio capture module
 ├── native-modules/
-│   └── window-audio-capture/        # Git submodule (private repo)
-│       ├── src/                     # C++ WASAPI capture code
-│       ├── index.js                 # Node.js bindings
+│   ├── window-audio-capture/        # Git submodule (private repo)
+│   │   ├── src/                     # C++ WASAPI capture code
+│   │   ├── index.js                 # Node.js bindings
+│   │   └── build/Release/           # Compiled .node binary
+│   └── electron-asio/               # ASIO audio capture (public)
+│       ├── src/                     # C++ PortAudio/ASIO code
+│       ├── deps/portaudio/          # PortAudio library
 │       └── build/Release/           # Compiled .node binary
 ├── docs/                   # Website (GitHub Pages from master:/docs)
 ├── assets/                 # Icons and images
@@ -126,6 +131,52 @@ native-modules/window-audio-capture/
 │   └── window_audio_capture.node  # Compiled binary
 ```
 
+## ASIO Audio Capture Plugin (Public)
+
+### Overview
+A native Node.js addon for capturing audio from ASIO devices (professional audio interfaces). Uses PortAudio with ASIO backend for ultra-low latency audio capture.
+
+### Building the Native Module
+```bash
+# Rebuild manually
+npm run native-modules:rebuild
+
+# Or build just ASIO module
+cd native-modules/electron-asio
+npm install
+
+# Skip building (for CI/testing)
+ELECTRON_ASIO_SKIP=1 npm install
+```
+
+### Module Structure
+```
+native-modules/electron-asio/
+├── src/
+│   ├── addon.cc           # N-API entry point
+│   ├── asio_wrapper.cc    # AsioStream class
+│   └── asio_wrapper.h
+├── deps/
+│   └── portaudio/         # PortAudio library
+│       ├── include/       # Headers
+│       └── lib/           # Windows libs and DLL
+├── binding.gyp            # Node-gyp build config
+├── index.js               # JavaScript wrapper (graceful fallback)
+├── lib/index.js           # Full library with AsioStream
+├── preload/
+│   ├── ipc-handlers.js    # IPC handlers for main process
+│   └── asio-preload.js    # Preload script exposure
+├── build/Release/
+│   ├── electron_asio.node # Compiled binary
+│   └── portaudio_x64.dll  # PortAudio runtime
+```
+
+### Requirements for Building
+- Windows 10/11
+- Visual Studio Build Tools 2019+ with C++ workload
+- Node.js 18+
+- Python 3.x (for node-gyp)
+
 ## Build Commands
 
 ### Windows (Custom Electron + Audio Capture)
@@ -168,13 +219,15 @@ npm start             # Run in development mode
 | Custom Electron (QP-cap) | Yes | No | No |
 | NVENC/HEVC | Yes | No | No |
 | Application Audio Capture | Yes | No | No |
+| ASIO Audio Capture | Yes | No | No |
 | Cursor Suppression | Yes | No | No |
 | Electron Version | 39.2.13-qp20 | 39.2.7 | 39.2.7 |
 
 ### Environment Variables
 ```bash
 CUSTOM_ELECTRON_SKIP=1        # Skip custom Electron download
-WINDOW_AUDIO_CAPTURE_SKIP=1   # Skip native module build
+WINDOW_AUDIO_CAPTURE_SKIP=1   # Skip window audio capture module build
+ELECTRON_ASIO_SKIP=1          # Skip ASIO audio capture module build
 CUSTOM_ELECTRON_LOCAL_DIR=... # Use local Electron build
 ```
 
