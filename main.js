@@ -815,6 +815,19 @@ try {
   console.error('Error loading window-audio-capture module:', err);
 }
 
+// Load ASIO audio capture module (Windows only)
+let asioIpcHandlers = null;
+try {
+  if (process.platform === 'win32') {
+    console.log('Loading electron-asio module...');
+    asioIpcHandlers = require('./native-modules/electron-asio/preload/ipc-handlers');
+    asioIpcHandlers.setupAsioIpc(ipcMain);
+    console.log('ASIO IPC handlers registered');
+  }
+} catch (err) {
+  console.warn('ASIO module not available:', err.message);
+}
+
 var ver = app.getVersion();
 const DEFAULT_URL = `https://vdo.ninja/electron?version=${ver}`;
 
@@ -4144,6 +4157,17 @@ var closing = 0;
 
 app.on('before-quit', (event) => {
   console.log("Application 'before-quit' event triggered.");
+
+  // Clean up ASIO streams
+  if (asioIpcHandlers && asioIpcHandlers.cleanupAsio) {
+    try {
+      asioIpcHandlers.cleanupAsio();
+      console.log('ASIO cleanup completed');
+    } catch (e) {
+      console.error('ASIO cleanup error:', e);
+    }
+  }
+
   if (!BrowserWindow.getAllWindows().length) {
     console.log("'before-quit': No windows open, quitting normally.");
     return; // No need to preventDefault or delay if no windows.

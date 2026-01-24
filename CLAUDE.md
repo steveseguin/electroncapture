@@ -65,7 +65,7 @@ Quick reference:
 powershell.exe -NoProfile -ExecutionPolicy Bypass `
   -File C:\Users\Steve\code\electron\script\build_win_qp_release.ps1 `
   -WorkspaceRoot C:\electron-work-v36\src `
-  -Tag v39.2.7 `
+  -Tag v39.2.13 `
   -SkipSync
 ```
 
@@ -74,10 +74,10 @@ In `package.json`:
 ```json
 {
   "build": {
-    "electronVersion": "39.2.7-qp20",
+    "electronVersion": "39.2.13-qp20",
     "electronDownload": {
       "mirror": "https://github.com/steveseguin/electron/releases/download/",
-      "customDir": "v39.2.7-qp20"
+      "customDir": "v39.2.13-qp20"
     }
   }
 }
@@ -169,7 +169,7 @@ npm start             # Run in development mode
 | NVENC/HEVC | Yes | No | No |
 | Application Audio Capture | Yes | No | No |
 | Cursor Suppression | Yes | No | No |
-| Electron Version | 39.2.7-qp20 | 39.2.7 | 39.2.7 |
+| Electron Version | 39.2.13-qp20 | 39.2.7 | 39.2.7 |
 
 ### Environment Variables
 ```bash
@@ -240,7 +240,7 @@ npm start -- --help
 ### Windows Build Fails: "Cannot create symbolic link"
 Enable Developer Mode in Windows Settings, or run as Administrator.
 
-### Linux Build Fails: "electron-v39.2.7-qp20-linux-x64.zip 404"
+### Linux Build Fails: "electron-v39.2.13-qp20-linux-x64.zip 404"
 The Linux build script should use stock Electron. Check `package.json` build:linux has the override flags.
 
 ### Native Module Not Found
@@ -253,7 +253,7 @@ git submodule update --init --recursive
 ### Custom Electron Not Installing
 ```bash
 # Check if custom version exists
-gh release view v39.2.7-qp20 --repo steveseguin/electron
+gh release view v39.2.13-qp20 --repo steveseguin/electron
 
 # Force re-download
 rm -rf node_modules/electron/dist

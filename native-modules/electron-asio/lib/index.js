@@ -8,18 +8,14 @@ const path = require('path');
 const EventEmitter = require('events');
 
 // Load native addon
-let native;
+let native = null;
 try {
     native = require('../build/Release/electron_asio.node');
 } catch (e) {
     try {
         native = require('../build/Debug/electron_asio.node');
     } catch (e2) {
-        throw new Error(
-            'Failed to load electron-asio native module. ' +
-            'Make sure you have built the addon with `npm run rebuild`. ' +
-            'Original error: ' + e.message
-        );
+        console.warn('[electron-asio] Native module not available:', e.message);
     }
 }
 
@@ -28,7 +24,12 @@ try {
  * @returns {boolean}
  */
 function isAvailable() {
-    return native.isAvailable();
+    if (!native) return false;
+    try {
+        return native.isAvailable();
+    } catch (e) {
+        return false;
+    }
 }
 
 /**
@@ -36,7 +37,12 @@ function isAvailable() {
  * @returns {string}
  */
 function getVersionInfo() {
-    return native.getVersionInfo();
+    if (!native) return 'ASIO module not loaded';
+    try {
+        return native.getVersionInfo();
+    } catch (e) {
+        return 'Unknown version';
+    }
 }
 
 /**
@@ -44,7 +50,13 @@ function getVersionInfo() {
  * @returns {DeviceInfo[]}
  */
 function getDevices() {
-    return native.getDevices();
+    if (!native) return [];
+    try {
+        return native.getDevices();
+    } catch (e) {
+        console.error('[electron-asio] Failed to get devices:', e);
+        return [];
+    }
 }
 
 /**
@@ -53,7 +65,13 @@ function getDevices() {
  * @returns {DeviceInfo|null}
  */
 function getDeviceInfo(deviceIndexOrName) {
-    return native.getDeviceInfo(deviceIndexOrName);
+    if (!native) return null;
+    try {
+        return native.getDeviceInfo(deviceIndexOrName);
+    } catch (e) {
+        console.error('[electron-asio] Failed to get device info:', e);
+        return null;
+    }
 }
 
 /**
@@ -66,6 +84,9 @@ class AsioStream extends EventEmitter {
      */
     constructor(config) {
         super();
+        if (!native) {
+            throw new Error('ASIO native module not available');
+        }
         this._native = new native.AsioStream(config);
         this._config = config;
         this._processCallback = null;
@@ -218,14 +239,25 @@ function createStream(config) {
  * @returns {boolean}
  */
 function initialize() {
-    return native.initialize();
+    if (!native) return false;
+    try {
+        return native.initialize();
+    } catch (e) {
+        console.error('[electron-asio] Initialize failed:', e);
+        return false;
+    }
 }
 
 /**
  * Terminate the ASIO subsystem (call on app exit)
  */
 function terminate() {
-    native.terminate();
+    if (!native) return;
+    try {
+        native.terminate();
+    } catch (e) {
+        console.warn('[electron-asio] Terminate error:', e);
+    }
 }
 
 // Export everything
