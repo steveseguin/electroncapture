@@ -33,10 +33,10 @@
   "build": {
     "appId": "capture.electron",
     "productName": "elecap",
-    "electronVersion": "39.2.8-qp20",
+    "electronVersion": "39.2.13-qp20",
     "electronDownload": {
       "mirror": "https://github.com/steveseguin/electron/releases/download/",
-      "customDir": "v39.2.8-qp20"
+      "customDir": "v39.2.13-qp20"
     },
     "protocols": {
       "name": "electroncapture",
