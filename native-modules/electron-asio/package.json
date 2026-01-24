@@ -6,5 +6,18 @@
   "author": "Steve Seguin",
   "license": "MIT",
   "os": ["win32"],
-  "keywords": ["asio", "audio", "capture", "electron", "portaudio"]
+  "keywords": ["asio", "audio", "capture", "electron", "portaudio"],
+  "scripts": {
+    "install": "node-gyp rebuild",
+    "rebuild": "node-gyp rebuild",
+    "build": "node-gyp build",
+    "clean": "node-gyp clean"
+  },
+  "dependencies": {
+    "node-addon-api": "^7.0.0"
+  },
+  "devDependencies": {
+    "node-gyp": "^10.0.0"
+  },
+  "gypfile": true
 }

@@ -5,6 +5,7 @@
 !/native-modules/window-audio-capture
 !/native-modules/electron-asio
 /native-modules/electron-asio/build
+/native-modules/electron-asio/node_modules
 mac.sh
 /vdoninja
 /.claude
