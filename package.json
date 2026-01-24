@@ -202,7 +202,7 @@
   "devDependencies": {
     "@electron/fuses": "^2.0.0",
     "electron": "39.2.7",
-    "electron-builder": "^24.13.3",
+    "electron-builder": "^26.5.0",
     "electron-notarize": "git://github.com/electron/notarize.git",
     "rimraf": "^5.0.5",
     "run-script-os-fix": "^1.0.4"
@@ -221,5 +221,8 @@
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=9.0.0"
+  },
+  "overrides": {
+    "tar": "^7.5.6"
   }
 }
