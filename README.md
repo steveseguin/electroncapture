@@ -222,11 +222,26 @@ if (window.electronApi.isAsioAvailable()) {
 
 #### Demo
 
-A waveform visualization demo is included at `demo/asio-waveform.html`. Open it in Electron Capture with:
+A waveform visualization demo is available at: **https://electroncapture.app/demo/asio-waveform.html**
+
+Open it in Electron Capture with node integration enabled:
 
 ```bash
-elecap.exe --node --url="file:///C:/path/to/electroncapture/demo/asio-waveform.html"
+elecap.exe --node --url="https://electroncapture.app/demo/asio-waveform.html"
 ```
+
+#### VDO.Ninja Integration
+
+VDO.Ninja will automatically detect and use ASIO when available in Electron Capture. No additional configuration is needed - just launch Electron Capture with `--node` and VDO.Ninja will offer ASIO devices as audio input options.
+
+#### Limitations & Considerations
+
+- **Windows only** - ASIO is a Windows-specific audio standard; macOS and Linux are not supported
+- **Exclusive device access** - ASIO typically takes exclusive control of the audio device; other applications may not be able to use it simultaneously
+- **Driver required** - You must have an ASIO driver installed (either your audio interface's native driver or ASIO4ALL)
+- **Node integration required** - Must launch with `--node` flag, which has security implications for untrusted websites
+- **Single device per stream** - Each ASIO stream captures from one device at a time
+- **No output routing** - ASIO capture is input-only; audio output still uses standard Windows audio
 
 ### Audio Output
 
