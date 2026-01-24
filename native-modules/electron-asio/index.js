@@ -13,20 +13,32 @@ let nativeModule = null;
 let isInitialized = false;
 
 /**
- * Load the native ASIO module
+ * Load the native ASIO module - handles both development and packaged paths
  */
 function loadNativeModule() {
     if (nativeModule) return nativeModule;
 
-    try {
-        // Try loading from build/Release (development)
-        const modulePath = path.join(__dirname, 'build', 'Release', 'electron_asio.node');
-        nativeModule = require(modulePath);
-        return nativeModule;
-    } catch (err) {
-        console.warn('[electron-asio] Failed to load native module:', err.message);
-        return null;
+    const moduleName = 'electron_asio.node';
+    const possiblePaths = [
+        // Development: relative to index.js
+        path.join(__dirname, 'build', 'Release', moduleName),
+        path.join(__dirname, 'build', 'Debug', moduleName),
+        // Packaged app: asar unpacked path
+        path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), 'build', 'Release', moduleName),
+    ];
+
+    for (const modulePath of possiblePaths) {
+        try {
+            nativeModule = require(modulePath);
+            console.log('[electron-asio] Loaded native module from:', modulePath);
+            return nativeModule;
+        } catch (err) {
+            // Continue to next path
+        }
     }
+
+    console.warn('[electron-asio] Native module not found in any expected location');
+    return null;
 }
 
 /**

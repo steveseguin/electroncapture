@@ -35,6 +35,10 @@
     "productName": "elecap",
     "electronVersion": "39.2.13-qp20",
     "npmRebuild": false,
+    "asarUnpack": [
+      "native-modules/**/*.node",
+      "native-modules/**/*.dll"
+    ],
     "electronDownload": {
       "mirror": "https://github.com/steveseguin/electron/releases/download/",
       "customDir": "v39.2.13-qp20"

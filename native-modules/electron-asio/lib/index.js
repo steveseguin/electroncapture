@@ -7,16 +7,37 @@
 const path = require('path');
 const EventEmitter = require('events');
 
-// Load native addon
+// Load native addon - handles both development and packaged (asar unpacked) paths
 let native = null;
-try {
-    native = require('../build/Release/electron_asio.node');
-} catch (e) {
-    try {
-        native = require('../build/Debug/electron_asio.node');
-    } catch (e2) {
-        console.warn('[electron-asio] Native module not available:', e.message);
+function loadNativeModule() {
+    const moduleName = 'electron_asio.node';
+    const possiblePaths = [
+        // Development: relative to lib/index.js
+        path.join(__dirname, '..', 'build', 'Release', moduleName),
+        path.join(__dirname, '..', 'build', 'Debug', moduleName),
+        // Packaged app: asar unpacked path
+        path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), '..', 'build', 'Release', moduleName),
+    ];
+
+    for (const modulePath of possiblePaths) {
+        try {
+            const mod = require(modulePath);
+            console.log('[electron-asio] Loaded native module from:', modulePath);
+            return mod;
+        } catch (e) {
+            // Continue to next path
+        }
     }
+    return null;
+}
+
+try {
+    native = loadNativeModule();
+    if (!native) {
+        console.warn('[electron-asio] Native module not found in any expected location');
+    }
+} catch (e) {
+    console.warn('[electron-asio] Failed to load native module:', e.message);
 }
 
 /**
