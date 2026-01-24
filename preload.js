@@ -1,28 +1,39 @@
 ﻿// preload.js
 const { ipcRenderer, contextBridge } = require('electron');
 
+// Native modules - try direct require first (works when sandbox disabled),
+// fall back to IPC-based approach when in sandbox mode.
+
 let WindowAudioStream = null;
+let ElectronAsio = null;
+let useIpcForWindowAudio = false;
+let useIpcForAsio = false;
+
+// Try loading WindowAudioStream directly (sandbox disabled mode)
 try {
   WindowAudioStream = require('./window-audio-stream.js');
   if (WindowAudioStream && typeof WindowAudioStream !== 'function' && WindowAudioStream.default) {
     WindowAudioStream = WindowAudioStream.default;
   }
+  console.log('[Electron Capture] WindowAudioStream loaded directly');
 } catch (error) {
-  console.error('Failed to load WindowAudioStream module:', error);
+  // Sandbox mode - use IPC fallback
+  useIpcForWindowAudio = true;
+  console.log('[Electron Capture] WindowAudioStream will use IPC (sandbox mode)');
 }
 
-// ASIO Audio Capture (Windows only - for professional audio interfaces)
-let ElectronAsio = null;
-try {
-  ElectronAsio = require('./native-modules/electron-asio/index.js');
-  if (ElectronAsio && ElectronAsio.initialize) {
-    ElectronAsio.initialize();
-    console.log('[Electron Capture] ASIO module loaded:', ElectronAsio.getVersionInfo());
-  }
-} catch (error) {
-  // ASIO is optional and Windows-only
-  if (process.platform === 'win32') {
-    console.warn('ASIO module not available:', error.message);
+// Try loading ElectronAsio directly (sandbox disabled mode, Windows only)
+if (process.platform === 'win32') {
+  try {
+    ElectronAsio = require('./native-modules/electron-asio/index.js');
+    if (ElectronAsio && ElectronAsio.initialize) {
+      ElectronAsio.initialize();
+      console.log('[Electron Capture] ASIO module loaded directly:', ElectronAsio.getVersionInfo());
+    }
+  } catch (error) {
+    // Sandbox mode - use IPC fallback
+    useIpcForAsio = true;
+    console.log('[Electron Capture] ASIO will use IPC (sandbox mode)');
   }
 }
 
@@ -715,7 +726,19 @@ function createElectronApi() {
       return { success: true, target: updated };
     },
     'getAppAudioTarget': () => appAudioTarget,
-    'isWindowAudioCaptureAvailable': () => Boolean(WindowAudioStream),
+    'isWindowAudioCaptureAvailable': () => {
+      // Direct mode: check module loaded
+      if (!useIpcForWindowAudio) return Boolean(WindowAudioStream);
+      // IPC mode: assume available if main process loaded it (async check done at startup)
+      return true; // Actual availability checked via windowAudio:getTargets
+    },
+    'isWindowAudioCaptureAvailableAsync': async () => {
+      if (!useIpcForWindowAudio) return Boolean(WindowAudioStream);
+      try {
+        const result = await ipcRenderer.invoke('windowAudio:getTargets');
+        return result && result.success !== false;
+      } catch { return false; }
+    },
     // Custom Electron capture preferences (v39.2.7+)
     'getCapturePreferences': () => ({ ...capturePreferences }),
     'getPlayoutDelay': () => capturePreferences.playoutDelay,
@@ -731,16 +754,105 @@ function createElectronApi() {
       }
       return false;
     },
-    // ASIO Audio Capture (Windows only)
-    'isAsioAvailable': () => Boolean(ElectronAsio && ElectronAsio.isAvailable && ElectronAsio.isAvailable()),
-    'getAsioDevices': () => ElectronAsio ? ElectronAsio.getDevices() : [],
-    'getAsioDeviceInfo': (deviceIndex) => ElectronAsio ? ElectronAsio.getDeviceInfo(deviceIndex) : null,
-    'getAsioVersionInfo': () => ElectronAsio ? ElectronAsio.getVersionInfo() : 'ASIO not available',
-    'createAsioStream': (options) => {
-      if (!ElectronAsio || !ElectronAsio.AsioStream) {
-        throw new Error('ASIO module not available');
+    // ASIO Audio Capture (Windows only) - supports both direct and IPC modes
+    'isAsioAvailable': () => {
+      if (!useIpcForAsio) {
+        return Boolean(ElectronAsio && ElectronAsio.isAvailable && ElectronAsio.isAvailable());
       }
-      return new ElectronAsio.AsioStream(options);
+      // IPC mode: return false synchronously, use async version for accurate check
+      return false;
+    },
+    'isAsioAvailableAsync': async () => {
+      if (!useIpcForAsio) {
+        return Boolean(ElectronAsio && ElectronAsio.isAvailable && ElectronAsio.isAvailable());
+      }
+      try {
+        return await ipcRenderer.invoke('asio:isAvailable');
+      } catch { return false; }
+    },
+    'getAsioDevices': () => {
+      if (!useIpcForAsio) return ElectronAsio ? ElectronAsio.getDevices() : [];
+      console.warn('getAsioDevices: Use getAsioDevicesAsync in sandbox mode');
+      return [];
+    },
+    'getAsioDevicesAsync': async () => {
+      if (!useIpcForAsio) return ElectronAsio ? ElectronAsio.getDevices() : [];
+      try {
+        return await ipcRenderer.invoke('asio:getDevices');
+      } catch { return []; }
+    },
+    'getAsioDeviceInfo': (deviceIndex) => {
+      if (!useIpcForAsio) return ElectronAsio ? ElectronAsio.getDeviceInfo(deviceIndex) : null;
+      console.warn('getAsioDeviceInfo: Use getAsioDeviceInfoAsync in sandbox mode');
+      return null;
+    },
+    'getAsioDeviceInfoAsync': async (deviceIndex) => {
+      if (!useIpcForAsio) return ElectronAsio ? ElectronAsio.getDeviceInfo(deviceIndex) : null;
+      try {
+        return await ipcRenderer.invoke('asio:getDeviceInfo', deviceIndex);
+      } catch { return null; }
+    },
+    'getAsioVersionInfo': () => {
+      if (!useIpcForAsio) return ElectronAsio ? ElectronAsio.getVersionInfo() : 'ASIO not available';
+      return 'ASIO (IPC mode)';
+    },
+    'getAsioVersionInfoAsync': async () => {
+      if (!useIpcForAsio) return ElectronAsio ? ElectronAsio.getVersionInfo() : 'ASIO not available';
+      try {
+        return await ipcRenderer.invoke('asio:getVersionInfo');
+      } catch { return 'ASIO not available'; }
+    },
+    'createAsioStream': (options) => {
+      if (!useIpcForAsio) {
+        if (!ElectronAsio || !ElectronAsio.AsioStream) {
+          throw new Error('ASIO module not available');
+        }
+        return new ElectronAsio.AsioStream(options);
+      }
+      throw new Error('createAsioStream: Use createAsioStreamAsync in sandbox mode');
+    },
+    'createAsioStreamAsync': async (options) => {
+      if (!useIpcForAsio) {
+        if (!ElectronAsio || !ElectronAsio.AsioStream) {
+          throw new Error('ASIO module not available');
+        }
+        return new ElectronAsio.AsioStream(options);
+      }
+      // IPC mode: create stream in main process, return control object
+      try {
+        const streamInfo = await ipcRenderer.invoke('asio:createStream', options);
+        return {
+          streamId: streamInfo.streamId,
+          inputLatency: streamInfo.inputLatency,
+          outputLatency: streamInfo.outputLatency,
+          sampleRate: streamInfo.sampleRate,
+          bufferSize: streamInfo.bufferSize,
+          start: () => ipcRenderer.invoke('asio:startStream', streamInfo.streamId),
+          stop: () => ipcRenderer.invoke('asio:stopStream', streamInfo.streamId),
+          close: () => ipcRenderer.invoke('asio:closeStream', streamInfo.streamId),
+          getStats: () => ipcRenderer.invoke('asio:getStreamStats', streamInfo.streamId),
+          write: (buffers) => {
+            const serialized = buffers.map(buf => Array.from(buf));
+            return ipcRenderer.invoke('asio:writeStream', streamInfo.streamId, serialized);
+          }
+        };
+      } catch (err) {
+        throw new Error('Failed to create ASIO stream: ' + err.message);
+      }
+    },
+    // Subscribe to ASIO audio data (IPC mode only)
+    'onAsioAudioData': (callback) => {
+      const handler = (event, { streamId, buffers }) => {
+        const float32Buffers = buffers.map(arr => new Float32Array(arr));
+        callback(streamId, float32Buffers);
+      };
+      ipcRenderer.on('asio:audioData', handler);
+      return () => ipcRenderer.removeListener('asio:audioData', handler);
+    },
+    'onAsioError': (callback) => {
+      const handler = (event, { streamId, error }) => callback(streamId, error);
+      ipcRenderer.on('asio:error', handler);
+      return () => ipcRenderer.removeListener('asio:error', handler);
     }
   };
 }
