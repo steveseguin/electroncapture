@@ -433,6 +433,26 @@ npm install -g node@14.6.0
 npm install
 npm run build:win32
 ```
+
+#### Native Modules (Windows)
+
+The Windows build includes two native modules that are built automatically:
+
+- **window-audio-capture** - Capture audio from specific applications (private repo, requires access)
+- **electron-asio** - ASIO audio capture for professional audio interfaces
+
+To rebuild native modules manually:
+```
+npm run native-modules:rebuild
+```
+
+To skip native module builds (for testing):
+```
+set WINDOW_AUDIO_CAPTURE_SKIP=1
+set ELECTRON_ASIO_SKIP=1
+npm install
+```
+
 ### Building the app from source on macOS :
 
 * For Mac, please also see this issue for building: https://github.com/electron-userland/electron-builder/issues/3828
