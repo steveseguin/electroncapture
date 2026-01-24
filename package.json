@@ -109,7 +109,10 @@
         "to": "native-modules/electron-asio",
         "filter": [
           "index.js",
-          "package.json"
+          "package.json",
+          "lib/index.js",
+          "preload/ipc-handlers.js",
+          "preload/asio-preload.js"
         ]
       },
       {
