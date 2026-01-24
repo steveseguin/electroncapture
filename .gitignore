@@ -7,3 +7,5 @@
 /native-modules/electron-asio/build
 mac.sh
 /vdoninja
+/.claude
+/electron-asio-src
