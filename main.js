@@ -1508,45 +1508,6 @@ ipcMain.handle('capture:get-preferences', () => {
 	};
 });
 
-// Settings panel IPC handlers (for electron.html hamburger menu)
-ipcMain.on('settings:set-always-on-top', (event, value) => {
-	const win = BrowserWindow.fromWebContents(event.sender);
-	if (win && !win.isDestroyed()) {
-		win.setAlwaysOnTop(Boolean(value));
-		console.log('Settings: Always on top set to', value);
-	}
-});
-
-ipcMain.on('settings:set-window-size', (event, { width, height }) => {
-	const win = BrowserWindow.fromWebContents(event.sender);
-	if (win && !win.isDestroyed() && width > 0 && height > 0) {
-		win.setSize(Math.floor(width), Math.floor(height));
-		console.log('Settings: Window size set to', width, 'x', height);
-	}
-});
-
-ipcMain.on('settings:open-external', (event, url) => {
-	if (typeof url === 'string' && (url.startsWith('https://') || url.startsWith('http://'))) {
-		const { shell } = require('electron');
-		shell.openExternal(url).catch((err) => {
-			console.warn('Failed to open external URL:', err);
-		});
-	}
-});
-
-ipcMain.handle('settings:get-current', (event) => {
-	const win = BrowserWindow.fromWebContents(event.sender);
-	if (!win || win.isDestroyed()) {
-		return null;
-	}
-	const bounds = win.getBounds();
-	return {
-		alwaysOnTop: win.isAlwaysOnTop(),
-		width: bounds.width,
-		height: bounds.height
-	};
-});
-
 ipcMain.handle('drag-region:get-default-preference', (event) => {
 	try {
 		const targetWindow = BrowserWindow.fromWebContents(event.sender);

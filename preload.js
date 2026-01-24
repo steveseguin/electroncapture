@@ -662,12 +662,6 @@ let doSomethingInWebApp = null;
 
 function createElectronApi() {
   return {
-    // Settings panel functions (for electron.html)
-    'setAlwaysOnTop': (value) => ipcRenderer.send('settings:set-always-on-top', value),
-    'setWindowSize': (w, h) => ipcRenderer.send('settings:set-window-size', { width: w, height: h }),
-    'openExternal': (url) => ipcRenderer.send('settings:open-external', url),
-    'getSettings': () => ipcRenderer.invoke('settings:get-current'),
-
     'exposeDoSomethingInWebApp': function(callback) {
       doSomethingInWebApp = callback;
     },

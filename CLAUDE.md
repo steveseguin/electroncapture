@@ -6,7 +6,7 @@
 
 **Repository**: https://github.com/steveseguin/electroncapture
 **Website**: https://electroncapture.app
-**Current Version**: 2.23.0
+**Current Version**: 2.22.0
 
 ## Key Features
 
@@ -74,18 +74,18 @@ In `package.json`:
 ```json
 {
   "build": {
-    "electronVersion": "39.2.8-qp20",
+    "electronVersion": "39.2.7-qp20",
     "electronDownload": {
       "mirror": "https://github.com/steveseguin/electron/releases/download/",
-      "customDir": "v39.2.8-qp20"
+      "customDir": "v39.2.7-qp20"
     }
   }
 }
 ```
 
 The `scripts/install-custom-electron.js` handles downloading:
-- **Windows**: Downloads v39.2.8-qp20 from `steveseguin/electron` releases (custom build with transparent window resize fix)
-- **Linux/Mac**: Downloads v39.2.7 from official `electron/electron` releases (stock)
+- **Windows**: Downloads from `steveseguin/electron` releases (custom build)
+- **Linux/Mac**: Downloads from official `electron/electron` releases (stock)
 
 ## Window Audio Capture Plugin (Private Repo)
 
@@ -169,7 +169,7 @@ npm start             # Run in development mode
 | NVENC/HEVC | Yes | No | No |
 | Application Audio Capture | Yes | No | No |
 | Cursor Suppression | Yes | No | No |
-| Electron Version | 39.2.8-qp20 | 39.2.7 | 39.2.7 |
+| Electron Version | 39.2.7-qp20 | 39.2.7 | 39.2.7 |
 
 ### Environment Variables
 ```bash
