@@ -1879,7 +1879,7 @@ app.commandLine.appendSwitch('ignore-certificate-errors');
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
 app.commandLine.appendSwitch('disable-http-cache');
 app.commandLine.appendSwitch('ignore-certificate-errors-spki-list');
-app.commandLine.appendSwitch('unsafely-treat-insecure-origin-as-secure', 'http://insecure.vdo.ninja,http://insecure.rtc.ninja,http://whip.vdo.ninja,https://whip.vdo.ninja,http://whep.vdo.ninja,https://whep.vdo.ninja,http://insecure.versus.cam,http://127.0.0.1,https://vdo.ninja,https://versus.cam,https://rtc.ninja');
+app.commandLine.appendSwitch('unsafely-treat-insecure-origin-as-secure', 'http://insecure.vdo.ninja,http://insecure.rtc.ninja,http://whip.vdo.ninja,https://whip.vdo.ninja,http://whep.vdo.ninja,https://whep.vdo.ninja,http://insecure.versus.cam,http://dev.versus.cam,http://127.0.0.1,https://vdo.ninja,https://versus.cam,https://rtc.ninja');
 
 
 var counter=0;
@@ -3063,7 +3063,6 @@ async function createWindow(args, reuse=false) {
 	
 	
 	try {
-		
 		mainWindow.webContents.on('dom-ready', async (event)=> {
 			console.log('dom-ready');
 
@@ -4224,31 +4223,38 @@ app.whenReady().then(function(){
     console.log("APP READY");
     
     // Set up permission handling for the session partition used by windows
-    session.fromPartition("persist:abc").setPermissionRequestHandler((webContents, permission, callback) => {
-        try {
-            let allowedPermissions = [
-                "audioCapture",
-                "videoCapture",
-                "desktopCapture",
-                "pageCapture",
-                "tabCapture",
-                "mediaKeySystem",
-                "media",
-                "experimental"
-            ];
-            
-            if (allowedPermissions.includes(permission)) {
-                callback(true); // Approve permission request
-            } else {
-                console.error(
-                    `The application tried to request permission for '${permission}'. This permission was not whitelisted and has been blocked.`
-                );
-                callback(false); // Deny
-            }
-        } catch(e) {
-            console.error(e);
-            callback(false); // Deny on error
+    const allowedPermissions = [
+        "audioCapture",
+        "videoCapture",
+        "desktopCapture",
+        "pageCapture",
+        "tabCapture",
+        "mediaKeySystem",
+        "media",
+        "speaker-selection",
+        "window-management",
+        "experimental"
+    ];
+
+    session.fromPartition("persist:abc").setPermissionRequestHandler((webContents, permission, callback, details) => {
+        if (allowedPermissions.includes(permission)) {
+            callback(true);
+        } else {
+            console.warn(`Permission '${permission}' not whitelisted`);
+            callback(false);
         }
+    });
+
+    session.fromPartition("persist:abc").setPermissionCheckHandler((webContents, permission, requestingOrigin) => {
+        return allowedPermissions.includes(permission);
+    });
+
+    session.fromPartition("persist:abc").setDevicePermissionHandler((details) => {
+        // Allow media devices, but not USB/HID
+        if (details.deviceType === 'hid' || details.deviceType === 'usb') {
+            return false;
+        }
+        return true;
     });
 
 	// Register protocol handler first
