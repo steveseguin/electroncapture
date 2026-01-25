@@ -4223,14 +4223,17 @@ function checkProtocolHandler() {
 app.whenReady().then(function(){
     console.log("APP READY");
     
-    // Set up permission handling
-    session.fromPartition("default").setPermissionRequestHandler((webContents, permission, callback) => {
+    // Set up permission handling for the session partition used by windows
+    session.fromPartition("persist:abc").setPermissionRequestHandler((webContents, permission, callback) => {
         try {
             let allowedPermissions = [
-                "audioCapture", 
-                "desktopCapture", 
-                "pageCapture", 
-                "tabCapture", 
+                "audioCapture",
+                "videoCapture",
+                "desktopCapture",
+                "pageCapture",
+                "tabCapture",
+                "mediaKeySystem",
+                "media",
                 "experimental"
             ];
             
