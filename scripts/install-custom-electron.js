@@ -15,6 +15,9 @@ const PLATFORM_TARGETS = new Map([
     mirrorBase: 'https://github.com/steveseguin/electron/releases/download/',
     artifacts: new Map([
       ['x64', 'electron-v39.2.16-qp20-win32-x64.zip']
+    ]),
+    checksums: new Map([
+      ['electron-v39.2.16-qp20-win32-x64.zip', '01a45b4530ed32a79d82e45e6a1275f9146eeee4fedcfd13344184742bcd5047']
     ])
   }],
   ['linux', {
@@ -188,6 +191,11 @@ function resolveFromCwd (id) {
 const checksumCache = new Map();
 
 async function loadChecksums (target) {
+  // Use embedded checksums if available (no remote fetch needed)
+  if (target.checksums && target.checksums.size > 0) {
+    return target.checksums;
+  }
+
   const cacheKey = `${target.mirrorBase}|${target.releaseTag}`;
   if (checksumCache.has(cacheKey)) {
     return checksumCache.get(cacheKey);
