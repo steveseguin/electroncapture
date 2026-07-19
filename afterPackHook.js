@@ -22,16 +22,10 @@ exports.default = async function(context) {
   
   // Check if the binary exists
   if (!fs.existsSync(electronBinaryPath)) {
-    console.error(`Electron binary not found at: ${electronBinaryPath}`);
-    console.log('Contents of appOutDir:', fs.readdirSync(appOutDir));
-    return;
+    const contents = fs.existsSync(appOutDir) ? fs.readdirSync(appOutDir) : [];
+    throw new Error(`Electron binary not found at: ${electronBinaryPath}. appOutDir contains: ${contents.join(', ')}`);
   }
-  
-  // Apply fuses
-  try {
-    await setFuses(appOutDir, electronBinaryPath);
-  } catch (error) {
-    console.error('Failed to set fuses:', error);
-    // Don't fail the build, but log the error
-  }
+
+  // Fuse failures are security failures and must stop the package build.
+  await setFuses(appOutDir, electronBinaryPath);
 };

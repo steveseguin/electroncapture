@@ -10,3 +10,16 @@ mac.sh
 /vdoninja
 /.claude
 /electron-asio-src
+/.agents
+/.secret
+/.env
+/.env.*
+/*.cer
+/*.crt
+/*.key
+/*.log
+/*.mobileprovision
+/*.p12
+/*.pem
+/*.pfx
+/npm-debug.log*

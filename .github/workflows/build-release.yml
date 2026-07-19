@@ -7,17 +7,44 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version tag (e.g., v2.23.1)'
+        description: 'Version tag (e.g., v2.23.3)'
         required: true
 
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate release version
+        shell: bash
+        env:
+          REQUESTED_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+        run: |
+          package_version="$(node -p "require('./package.json').version")"
+          requested_version="${REQUESTED_VERSION#v}"
+          if [ "$requested_version" != "$package_version" ]; then
+            echo "::error::Requested version $REQUESTED_VERSION does not match package.json version v$package_version"
+            exit 1
+          fi
+          echo "Validated release version v$package_version"
+
   build-windows:
+    needs: validate
     runs-on: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: ${{ secrets.SUBMODULE_SSH_KEY != '' && 'recursive' || 'false' }}
           ssh-key: ${{ secrets.SUBMODULE_SSH_KEY }}
 
       - name: Setup Node.js
@@ -29,26 +56,29 @@ jobs:
       - name: Install dependencies
         run: npm ci
         env:
-          # Skip native module build if submodule not available
           WINDOW_AUDIO_CAPTURE_SKIP: ${{ secrets.SUBMODULE_SSH_KEY == '' && '1' || '0' }}
 
-      - name: Build Windows
+      - name: Build Windows x64
         run: npm run build:win32
+        env:
+          WINDOW_AUDIO_CAPTURE_SKIP: ${{ secrets.SUBMODULE_SSH_KEY == '' && '1' || '0' }}
 
-      - name: Get version
-        id: version
-        shell: bash
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "tag=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
-          else
-            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-          fi
+      - name: Verify Windows x64 package
+        run: npm run verify:win32
+        env:
+          WINDOW_AUDIO_CAPTURE_SKIP: ${{ secrets.SUBMODULE_SSH_KEY == '' && '1' || '0' }}
+
+      - name: Submit executables to VirusTotal
+        continue-on-error: true
+        run: npm run submit:virustotal
+        env:
+          VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
 
       - name: Upload to Release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
+          fail_on_unmatched_files: true
           files: |
             dist/elecap_win_*_portable.zip
             dist/elecap_win_*_installer.zip
@@ -61,56 +91,155 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-builds
+          if-no-files-found: error
+          retention-days: 14
           path: |
             dist/elecap_win_*_portable.zip
             dist/elecap_win_*_installer.zip
             dist/elecap-*.exe
 
-      - name: Submit to VirusTotal
-        shell: bash
-        run: |
-          if [ -z "$VIRUSTOTAL_API_KEY" ]; then
-            echo "::notice::Skipping VirusTotal - no API key configured"
-            exit 0
-          fi
+  build-windows-arm64:
+    needs: validate
+    runs-on: windows-11-arm
+    env:
+      npm_config_arch: arm64
+      ELECTRON_INSTALL_ARCH: arm64
+      ELECTRON_ASIO_SKIP: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: ${{ secrets.SUBMODULE_SSH_KEY != '' && 'recursive' || 'false' }}
+          ssh-key: ${{ secrets.SUBMODULE_SSH_KEY }}
 
-          EXE_FILE="dist/elecap.exe"
-          if [ -f "$EXE_FILE" ]; then
-            echo "Submitting $EXE_FILE to VirusTotal..."
+      - name: Setup ARM64 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          architecture: arm64
+          cache: 'npm'
 
-            # Get SHA256 for direct link
-            SHA256=$(sha256sum "$EXE_FILE" | cut -d' ' -f1)
-            echo "SHA256: $SHA256"
+      - name: Install dependencies
+        run: npm ci
+        env:
+          WINDOW_AUDIO_CAPTURE_SKIP: ${{ secrets.SUBMODULE_SSH_KEY == '' && '1' || '0' }}
 
-            # Get upload URL for large files (>32MB)
-            UPLOAD_URL=$(curl -s --request GET \
-              --url 'https://www.virustotal.com/api/v3/files/upload_url' \
-              --header "x-apikey: $VIRUSTOTAL_API_KEY" | jq -r '.data')
+      - name: Build Windows ARM64
+        run: npm run build:win-arm64
+        env:
+          WINDOW_AUDIO_CAPTURE_SKIP: ${{ secrets.SUBMODULE_SSH_KEY == '' && '1' || '0' }}
 
-            if [ -n "$UPLOAD_URL" ] && [ "$UPLOAD_URL" != "null" ]; then
-              # Upload to the large file endpoint
-              RESPONSE=$(curl -s --request POST \
-                --url "$UPLOAD_URL" \
-                --header "x-apikey: $VIRUSTOTAL_API_KEY" \
-                --form "file=@$EXE_FILE")
+      - name: Verify Windows ARM64 package
+        run: npm run verify:win-arm64
+        env:
+          WINDOW_AUDIO_CAPTURE_SKIP: ${{ secrets.SUBMODULE_SSH_KEY == '' && '1' || '0' }}
 
-              ANALYSIS_ID=$(echo "$RESPONSE" | jq -r '.data.id // empty')
-              if [ -n "$ANALYSIS_ID" ]; then
-                echo "::notice::VirusTotal scan submitted successfully"
-                echo "::notice::View results: https://www.virustotal.com/gui/file/$SHA256"
-              else
-                echo "::warning::VirusTotal response: $RESPONSE"
-              fi
-            else
-              echo "::warning::Failed to get VirusTotal upload URL"
-            fi
-          else
-            echo "::warning::No exe file found at $EXE_FILE"
-          fi
+      - name: Submit executables to VirusTotal
+        continue-on-error: true
+        run: npm run submit:virustotal
         env:
           VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
 
+      - name: Upload to Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          fail_on_unmatched_files: true
+          files: |
+            dist/*win-arm64*.exe
+            dist/*_arm64_*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifacts (for workflow_dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-arm64-builds
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            dist/*win-arm64*.exe
+            dist/*_arm64_*.zip
+
+  build-macos:
+    needs: validate
+    runs-on: macos-15
+    env:
+      CUSTOM_ELECTRON_SKIP: '1'
+      ELECTRON_ASIO_SKIP: '1'
+      WINDOW_AUDIO_CAPTURE_SKIP: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate macOS signing secrets
+        shell: bash
+        env:
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          missing=()
+          [ -n "$CSC_LINK" ] || missing+=("MAC_CSC_LINK")
+          [ -n "$CSC_KEY_PASSWORD" ] || missing+=("MAC_CSC_KEY_PASSWORD")
+          [ -n "$APPLE_ID" ] || missing+=("APPLE_ID")
+          [ -n "$APPLE_TEAM_ID" ] || missing+=("APPLE_TEAM_ID")
+          [ -n "$APPLE_APP_SPECIFIC_PASSWORD" ] || missing+=("APPLE_APP_SPECIFIC_PASSWORD")
+          if [ ${#missing[@]} -ne 0 ]; then
+            echo "::error::Missing required macOS signing secrets: ${missing[*]}"
+            exit 1
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build, sign, and notarize macOS universal package
+        run: npm run build:darwin -- --config.mac.forceCodeSigning=true
+        env:
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+
+      - name: Verify macOS package
+        run: npm run verify:darwin
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Upload to Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          fail_on_unmatched_files: true
+          files: |
+            dist/*.dmg
+            dist/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifacts (for workflow_dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-universal-builds
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            dist/*.dmg
+            dist/*.zip
+
   build-linux:
+    needs: validate
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -132,11 +261,13 @@ jobs:
 
       - name: Upload to Release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
+          fail_on_unmatched_files: true
           files: |
             dist/*.AppImage
             dist/*.deb
+            dist/*.rpm
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -145,6 +276,61 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux-builds
+          if-no-files-found: error
+          retention-days: 14
           path: |
             dist/*.AppImage
             dist/*.deb
+            dist/*.rpm
+
+  build-linux-arm64:
+    needs: validate
+    runs-on: ubuntu-24.04-arm
+    env:
+      npm_config_arch: arm64
+      ELECTRON_INSTALL_ARCH: arm64
+      WINDOW_AUDIO_CAPTURE_SKIP: '1'
+      ELECTRON_ASIO_SKIP: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup ARM64 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          architecture: arm64
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Linux ARM64
+        run: npm run build:arm64
+
+      - name: Verify Linux ARM64 package
+        run: npm run verify:linux-arm64
+
+      - name: Upload to Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          fail_on_unmatched_files: true
+          files: |
+            dist/*-arm64.AppImage
+            dist/*-arm64.deb
+            dist/*-arm64.rpm
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifacts (for workflow_dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-arm64-builds
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            dist/*-arm64.AppImage
+            dist/*-arm64.deb
+            dist/*-arm64.rpm

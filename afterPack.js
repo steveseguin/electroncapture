@@ -2,15 +2,14 @@ const fs = require('fs');
 const path = require('path');
 const archiver = require('archiver');
 
-exports.default = async function(artifacts, platformName) {
-  if (process.platform !== 'win32') return;
+exports.default = async function(buildResult) {
+  if (process.platform !== 'win32') return [];
   
   // Get version from package.json directly
   const pkgJson = require('./package.json');
   const version = pkgJson.version;
   
-  // The artifacts are already in the dist directory
-  const distDir = path.join(__dirname, 'dist');
+  const distDir = buildResult.outDir;
   
   console.log('Starting afterAllArtifactBuild process');
   console.log('distDir:', distDir);
@@ -28,19 +27,22 @@ exports.default = async function(artifacts, platformName) {
     }
   ];
 
+  // `electron-builder --dir` intentionally creates no installer artifacts.
+  if (files.every((file) => !fs.existsSync(file.source))) {
+    return [];
+  }
+
+  const createdArtifacts = [];
   for (const file of files) {
     console.log(`Looking for ${file.type} at:`, file.source);
-    if (fs.existsSync(file.source)) {
-      console.log(`Creating ${file.type} zip at:`, file.dest);
-      try {
-        await createZip(file.source, file.dest);
-      } catch (err) {
-        console.error(`Error zipping ${file.type}:`, err);
-      }
-    } else {
-      console.error(`${file.type} not found at:`, file.source);
+    if (!fs.existsSync(file.source)) {
+      throw new Error(`Expected Windows ${file.type} artifact not found: ${file.source}`);
     }
+    console.log(`Creating ${file.type} zip at:`, file.dest);
+    await createZip(file.source, file.dest);
+    createdArtifacts.push(file.dest);
   }
+  return createdArtifacts;
 };
 
 function createZip(source, dest) {
@@ -52,6 +54,7 @@ function createZip(source, dest) {
       console.log(`Successfully created zip: ${dest}`);
       resolve();
     });
+    output.on('error', reject);
     
     archive.on('error', (err) => {
       console.error('Error creating zip:', err);

@@ -9,6 +9,131 @@ const {app, BrowserWindow, BrowserView, webFrameMain, desktopCapturer, ipcMain, 
 const contextMenu = require('electron-context-menu');
 const Yargs = require('yargs')
 const isDev = require('electron-is-dev');
+const {
+	resolveEarlyDataPaths,
+	prepareEarlyDataPaths,
+	initializePortableProfile,
+	markPortableProfileInitialized,
+	writePortableCopyRequest,
+	consumePortableCopyRequest,
+} = require('./portable-data-paths');
+
+let earlyDataPaths = resolveEarlyDataPaths();
+let portableMigrationPending = null;
+let legacyUserDataPath = null;
+if (earlyDataPaths) {
+	try {
+		prepareEarlyDataPaths(earlyDataPaths);
+		if (earlyDataPaths.mode === 'portable') {
+			const legacyOverride = String(process.env.ELECTRON_CAPTURE_PORTABLE_LEGACY_USER_DATA_DIR || '').trim();
+			legacyUserDataPath = legacyOverride
+				? path.resolve(legacyOverride)
+				: path.join(app.getPath('appData'), app.name);
+			const resumedMigration = consumePortableCopyRequest(earlyDataPaths, legacyUserDataPath);
+			if (resumedMigration.action === 'copy') {
+				console.log('[startup] Copied the existing AppData profile into the portable data folder.');
+			} else if (resumedMigration.action === 'copy-source-missing') {
+				console.warn('[startup] The existing AppData profile was no longer available; starting with a fresh portable profile.');
+				electron.dialog.showErrorBox(
+					'Existing profile not copied',
+					'The AppData profile selected on the previous run was no longer available. Electron Capture will start with a fresh portable profile.'
+				);
+			}
+			const migration = initializePortableProfile(earlyDataPaths, {
+				legacyUserData: legacyUserDataPath,
+				choice: process.env.ELECTRON_CAPTURE_PORTABLE_MIGRATION_CHOICE,
+			});
+			if (migration.action === 'pending') portableMigrationPending = migration;
+			console.log(`[startup] Portable profile initialization: ${migration.action}`);
+		}
+		app.setPath('userData', earlyDataPaths.userData);
+		app.setPath('sessionData', earlyDataPaths.sessionData);
+		app.setPath('crashDumps', earlyDataPaths.crashes);
+		app.setAppLogsPath(earlyDataPaths.logs);
+		console.log(`[startup] Using ${earlyDataPaths.mode} data directory: ${earlyDataPaths.dataRoot}`);
+	} catch (error) {
+		const detail = error && error.message ? error.message : String(error);
+		if (earlyDataPaths.mode === 'portable') {
+			console.error('[startup] Portable data directory setup failed:', detail);
+			electron.dialog.showErrorBox(
+				'Portable data folder unavailable',
+				`Electron Capture could not use its portable data folder beside the EXE.\n\n${detail}\n\nMove the portable EXE to a writable folder and try again.`
+			);
+			process.exit(1);
+		}
+		console.warn('[startup] Failed to apply ELECTRON_CAPTURE_USER_DATA_DIR:', detail);
+		earlyDataPaths = null;
+	}
+}
+
+const isPortableMode = !!earlyDataPaths && earlyDataPaths.mode === 'portable';
+
+async function handlePendingPortableMigration() {
+	if (!portableMigrationPending || !isPortableMode) return false;
+
+	let result;
+	try {
+		result = await dialog.showMessageBox({
+			type: 'question',
+			buttons: ['Start fresh', 'Copy existing data and restart'],
+			defaultId: 0,
+			cancelId: 0,
+			title: 'Set up portable data',
+			message: 'Existing Electron Capture data was found in Windows AppData.',
+			detail: [
+				'Copy it into the portable data folder?',
+				'',
+				'This includes settings and browser sessions. Disposable caches will start fresh, and the original AppData files will remain unchanged.',
+				'Close any installed copy of Electron Capture before copying.',
+				'',
+				`Existing data: ${portableMigrationPending.legacyUserData}`,
+				`Portable data: ${earlyDataPaths.userData}`,
+			].join('\n'),
+		});
+	} catch (error) {
+		console.warn('[startup] Could not show the portable migration prompt; starting fresh:', error);
+		result = { response: 0 };
+	}
+
+	if (result.response !== 1) {
+		markPortableProfileInitialized(earlyDataPaths, 'fresh');
+		portableMigrationPending = null;
+		return false;
+	}
+
+	writePortableCopyRequest(earlyDataPaths);
+	const portableExecutablePath = String(process.env.PORTABLE_EXECUTABLE_FILE || '').trim();
+	try {
+		if (!portableExecutablePath || !fs.existsSync(portableExecutablePath)) {
+			throw new Error('The original portable executable could not be found.');
+		}
+		app.relaunch({ execPath: portableExecutablePath, args: process.argv.slice(1) });
+	} catch (error) {
+		console.error('[startup] Automatic portable restart failed:', error);
+		dialog.showErrorBox(
+			'Restart Electron Capture',
+			'Close and reopen the portable EXE to finish copying the existing profile.'
+		);
+	}
+	app.quit();
+	return true;
+}
+
+console.log(
+	`[startup] Electron Capture ${app.getVersion()} | Electron ${process.versions.electron} | Chromium ${process.versions.chrome} | Node ${process.versions.node} | ${process.platform}/${process.arch} | packaged=${app.isPackaged} | portable=${isPortableMode}`
+);
+
+app.on('render-process-gone', (_event, webContents, details) => {
+	console.error('[process] Renderer process exited unexpectedly:', {
+		webContentsId: webContents && webContents.id,
+		reason: details && details.reason,
+		exitCode: details && details.exitCode,
+	});
+});
+
+app.on('child-process-gone', (_event, details) => {
+	console.error('[process] Child process exited unexpectedly:', details);
+});
 
 ipcMain.on('getSources', async function(eventRet, args) {
 	try{
@@ -1792,6 +1917,10 @@ function parseDeepLink(deepLinkUrl) {
 }
 
 function registerProtocolHandling() {
+	if (isPortableMode) {
+		console.log('[startup] Skipping protocol registration in portable mode.');
+		return;
+	}
     // Check if we're already the default protocol handler
     if (process.defaultApp) {
         if (process.argv.length >= 2) {
@@ -1822,14 +1951,8 @@ if (process.platform === 'win32') {
     }
   }
 }
-// Register protocol client
-if (process.defaultApp) {
-  if (process.argv.length >= 2) {
-    app.setAsDefaultProtocolClient('electroncapture', process.execPath, [path.resolve(process.argv[1])])
-  }
-} else {
-  app.setAsDefaultProtocolClient('electroncapture');
-}
+// Register the protocol client for installed/development builds only.
+registerProtocolHandling();
 
 
 function getDirectories(path) {
@@ -4274,26 +4397,15 @@ app.on('before-quit', (event) => {
   }
 });
 
-const folder = path.join(app.getPath('appData'), `${app.name}`);
+const folder = earlyDataPaths ? earlyDataPaths.userData : path.join(app.getPath('appData'), `${app.name}`);
 if (!fs.existsSync(folder)) {
 	fs.mkdirSync(folder, { recursive: true });
 }
-app.setPath('userData', folder);
+if (!earlyDataPaths) app.setPath('userData', folder);
 
-function checkProtocolHandler() {
-  const isDefault = app.isDefaultProtocolClient('electroncapture');
-  console.log('Is electroncapture protocol handler registered?', isDefault);
-  
-  if (!isDefault) {
-    const success = app.setAsDefaultProtocolClient('electroncapture');
-    console.log('Attempted to register protocol handler:', success);
-  }
-}
-
-// Remove the checkProtocolHandler function as it's redundant with registerProtocolHandling
-
-app.whenReady().then(function(){
+app.whenReady().then(async function(){
     console.log("APP READY");
+	if (await handlePendingPortableMigration()) return;
     
     // Set up permission handling for the session partition used by windows
     const allowedPermissions = [
@@ -4358,7 +4470,7 @@ if (require('electron-squirrel-startup')) app.quit();
 
 if (process.platform === 'win32') {
   const handleStartupEvent = () => {
-    if (process.platform !== 'win32') {
+    if (process.platform !== 'win32' || isPortableMode) {
       return false;
     }
 
@@ -4390,7 +4502,7 @@ app.on('ready', () => {
     const cachePath = path.join(userDataPath, 'Cache');
     try {
         if (fs.existsSync(cachePath)) {
-            fs.rmdirSync(cachePath, { recursive: true });
+            fs.rmSync(cachePath, { recursive: true, force: true });
         }
     } catch (error) {
         console.warn('Could not clear cache:', error);
