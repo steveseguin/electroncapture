@@ -104,6 +104,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           fail_on_unmatched_files: true
+          prerelease: true
           files: |
             dist/elecap_win_*_portable.zip
             dist/elecap_win_*_installer.zip
@@ -193,6 +194,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           fail_on_unmatched_files: true
+          prerelease: true
           files: |
             dist/*win-arm64*.exe
             dist/*_arm64_*.zip
@@ -269,6 +271,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           fail_on_unmatched_files: true
+          prerelease: true
           files: |
             dist/*.dmg
             dist/*.zip
@@ -312,6 +315,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           fail_on_unmatched_files: true
+          prerelease: true
           files: |
             dist/*.AppImage
             dist/*.deb
@@ -364,6 +368,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           fail_on_unmatched_files: true
+          prerelease: true
           files: |
             dist/*-arm64.AppImage
             dist/*-arm64.deb
