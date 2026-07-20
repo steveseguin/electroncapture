@@ -38,7 +38,7 @@ function loadLocalSecretEnv(secretPath = DEFAULT_SECRET_PATH) {
 }
 
 function parseArgs(argv) {
-  const options = { dir: path.resolve(process.cwd(), 'dist'), failOnError: false };
+  const options = { dir: path.resolve(process.cwd(), 'dist'), failOnError: false, requireApiKey: false };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === '--dir') {
@@ -48,6 +48,8 @@ function parseArgs(argv) {
       index += 1;
     } else if (arg === '--fail-on-error') {
       options.failOnError = true;
+    } else if (arg === '--require-api-key') {
+      options.requireApiKey = true;
     } else {
       throw new Error(`Unknown argument: ${arg}`);
     }
@@ -139,6 +141,7 @@ async function main() {
   loadLocalSecretEnv();
   const apiKey = String(process.env.VIRUSTOTAL_API_KEY || process.env.VT_API_KEY || '').trim();
   if (!apiKey) {
+    if (options.requireApiKey) throw new Error('VirusTotal API key is required but not configured');
     console.log('[VirusTotal] API key not set; skipping submission');
     return;
   }

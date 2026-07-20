@@ -88,10 +88,12 @@ function verifyPackagedFiles(unpackedDir) {
   const archiveEntries = asar.listPackage(asarPath);
   const entries = archiveEntries.map((entry) => entry.replace(/\\/g, '/').replace(/^\/+/, ''));
   const forbidden = [
-    '.agents', '.claude', '.env', '.secret', 'CLAUDE.md', 'afterPack.js',
-    'afterPackArm64.js', 'afterPackHook.js', 'afterSign.js', 'docs',
-    'electron-builder.win-arm64.js', 'installer.nsh', 'package-lock.json',
-    'scripts', 'setFuses.js', 'test', 'tests', 'vdoninja',
+    '.agents', '.claude', '.env', '.secret', 'build-config.env', 'certs',
+    'CLAUDE.md', 'CODE_SIGNING.md', 'code-signing-cert.pem', 'customSign.js',
+    'afterPack.js', 'afterPackArm64.js', 'afterPackHook.js', 'afterSign.js',
+    'docs', 'electron-builder.env', 'electron-builder.win-arm64.js',
+    'installer.nsh', 'package-lock.json', 'scripts', 'setFuses.js', 'test',
+    'tests', 'vdoninja',
   ];
   const leaked = entries.filter((entry) => forbidden.some((name) => entry === name || entry.startsWith(`${name}/`)));
   if (leaked.length > 0) {

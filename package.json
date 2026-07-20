@@ -27,7 +27,9 @@
     "release": "electron-builder --publish always",
     "test:portable-paths": "node ./test/portable-data-paths-regression.js",
     "verify:win32": "node ./scripts/verify-windows-x64-build.js",
+    "verify:win32-signatures": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/verify-windows-signatures.ps1 -Architecture x64",
     "verify:win-arm64": "node ./scripts/verify-windows-arm64-build.js",
+    "verify:win-arm64-signatures": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/verify-windows-signatures.ps1 -Architecture arm64",
     "verify:linux-arm64": "node ./scripts/verify-linux-arm64-build.js",
     "verify:darwin": "node ./scripts/verify-macos-build.js",
     "submit:virustotal": "node ./scripts/submit-virustotal.js",
@@ -72,6 +74,8 @@
           "!.last_enhance_run",
           "!.npmrc",
           "!.secret",
+          "!build-config.env",
+          "!electron-builder.env",
           "!.env",
           "!.env.*",
           "!*.cer",
@@ -91,12 +95,17 @@
           "!BENEFITS.md",
           "!CNAME",
           "!CLAUDE.md",
+          "!CODE_SIGNING.md",
           "!PRIVACY.md",
           "!README.md",
           "!afterPack.js",
           "!afterPackArm64.js",
           "!afterPackHook.js",
+          "!certs",
+          "!certs/**",
           "!ci.yml",
+          "!code-signing-cert.pem",
+          "!customSign.js",
           "!docs",
           "!docs/**",
           "!dist",
@@ -210,7 +219,16 @@
           ]
         }
       ],
-      "icon": "assets/icons/win/icon.ico"
+      "icon": "assets/icons/win/icon.ico",
+      "signtoolOptions": {
+        "certificateFile": "certs/electroncapture.pfx",
+        "publisherName": "Steve Seguin",
+        "timeStampServer": "http://timestamp.digicert.com",
+        "signingHashAlgorithms": [
+          "sha256"
+        ],
+        "sign": "./customSign.js"
+      }
     },
     "linux": {
       "category": "public.build.automation",
