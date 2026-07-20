@@ -33,7 +33,7 @@ const version = require("../package.json").version;
 const expectedArtifacts = [
   path.join(distDir, `elecap-${version}-arm64.AppImage`),
   path.join(distDir, `elecap-${version}-arm64.deb`),
-  path.join(distDir, `elecap-${version}-arm64.rpm`),
+  path.join(distDir, `elecap-${version}-aarch64.rpm`),
 ];
 
 for (const artifact of expectedArtifacts) {

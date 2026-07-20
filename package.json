@@ -96,7 +96,6 @@
           "!afterPack.js",
           "!afterPackArm64.js",
           "!afterPackHook.js",
-          "!afterSign.js",
           "!ci.yml",
           "!docs",
           "!docs/**",
@@ -261,13 +260,11 @@
         "releaseType": "release"
       }
     ],
-    "afterSign": "./afterSign.js",
     "afterPack": "./afterPackHook.js",
     "afterAllArtifactBuild": "./afterPack.js"
   },
   "devDependencies": {
     "@electron/fuses": "^2.0.0",
-    "@electron/notarize": "2.5.0",
     "archiver": "^7.0.1",
     "electron": "39.2.7",
     "electron-builder": "^26.5.0",
