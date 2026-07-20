@@ -71,9 +71,24 @@ async function runSignTool(toolPath, args, toolEnv, password) {
   } catch (error) {
     const stdout = sanitizeOutput(error.stdout, password);
     const stderr = sanitizeOutput(error.stderr, password);
-    const details = [stdout, stderr].filter(Boolean).join('\n');
+    const message = sanitizeOutput(error.message, password);
+    const details = [...new Set([stdout, stderr, message].filter(Boolean))].join('\n');
     throw new Error(`signtool failed for ${path.basename(args[args.length - 1])}${details ? `\n${details}` : ''}`);
   }
+}
+
+async function getSignTool(signingManager, isWindows) {
+  const toolInfo = await signingManager.getToolPath(isWindows);
+  if (!isWindows || fs.existsSync(toolInfo.path) || process.arch !== 'arm64') return toolInfo;
+
+  const architectureDirectory = path.dirname(toolInfo.path);
+  if (path.basename(architectureDirectory).toLowerCase() !== 'arm64') return toolInfo;
+
+  const x64ToolPath = path.join(path.dirname(architectureDirectory), 'x64', path.basename(toolInfo.path));
+  if (!fs.existsSync(x64ToolPath)) return toolInfo;
+
+  console.log(`  * using x64 signtool under Windows ARM emulation  path=${x64ToolPath}`);
+  return { ...toolInfo, path: x64ToolPath };
 }
 
 exports.default = async function signWindowsArtifact(configuration, packager) {
@@ -104,7 +119,7 @@ exports.default = async function signWindowsArtifact(configuration, packager) {
   const isWindows = process.platform === 'win32';
   if (!packager?.signingManager) throw new Error('Windows signing manager is unavailable');
   const signingManager = await packager.signingManager.value;
-  const toolInfo = await signingManager.getToolPath(isWindows);
+  const toolInfo = await getSignTool(signingManager, isWindows);
   const args = signingManager.computeSignToolArgs({ ...configuration, cscInfo }, isWindows);
 
   console.log(`  * signing         file=${configuration.path} certificateFile=${path.relative(__dirname, certificateFile)}`);

@@ -90,7 +90,8 @@ jobs:
           WINDOW_AUDIO_CAPTURE_SKIP: ${{ secrets.SUBMODULE_SSH_KEY == '' && '1' || '0' }}
 
       - name: Verify Windows x64 signatures
-        run: npm run verify:win32-signatures
+        shell: powershell
+        run: .\scripts\verify-windows-signatures.ps1 -Architecture x64
 
       - name: Submit executables to VirusTotal
         continue-on-error: true
@@ -178,7 +179,8 @@ jobs:
           WINDOW_AUDIO_CAPTURE_SKIP: ${{ secrets.SUBMODULE_SSH_KEY == '' && '1' || '0' }}
 
       - name: Verify Windows ARM64 signatures
-        run: npm run verify:win-arm64-signatures
+        shell: powershell
+        run: .\scripts\verify-windows-signatures.ps1 -Architecture arm64
 
       - name: Submit executables to VirusTotal
         continue-on-error: true
