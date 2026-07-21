@@ -23,12 +23,22 @@ Lastly, since playback is agnostic, you can window-capture the same video multip
 ## Video guide on how to use Electron Capture
 [![Video Guide for Electron](https://user-images.githubusercontent.com/2575698/129784248-3270a876-6831-4595-9eb5-63665843e631.png)](https://youtu.be/mZ7X7WvRcRA "Video Guide for Electron")
 
-## Custom Electron Build (QP20)
-- The pipeline now targets the custom binaries published on `steveseguin/electron` under the `v36.9.5-qp20` tag. During `npm install` our `postinstall` hook (`scripts/install-custom-electron.js`) replaces the stock Electron bits with the patched archive that clamps QP to 0-20 and enables NVENC.
-- Requirements: Node.js ≥ 18, git, and network access to GitHub Releases. From PowerShell or WSL run `npm install` (or `npm ci`) at the repo root; the hook pulls `electron-v36.9.5-qp20-${platform}-${arch}.zip` (Linux: `linux-x64`, Windows: `win32-x64`), unpacks it into `node_modules/electron/dist`, and stamps `.custom-version` so reinstalls are skipped.
-- Verify with `node scripts/install-custom-electron.js` (re-runs the hook) or by checking `node_modules/electron/dist/.custom-version`—it should read `36.9.5-qp20`. At runtime `npx electron --version` will still report the upstream package version, but the bundled bits are the custom build.
-- Building for Windows uses the same commands as before (`npm run build:win32`). The new `build.electronVersion` metadata keeps the generated installer aligned with the custom runtime.
-- To fall back to stock Electron set `CUSTOM_ELECTRON_SKIP=1` before installing, or delete `node_modules/electron/dist` and reinstall.
+## Electron Builds and ARM64 Support
+
+- Windows x64 continues to use the custom `v39.2.16-qp20` Electron build, including the QP, NVENC, and transparent-window patches. Build it with `npm run build:win32`.
+- Windows ARM64 uses the official Electron `v39.2.7` ARM64 runtime and is built independently with `npm run build:win-arm64`. It does not replace or modify the custom Windows x64 build.
+- The Windows ARM64 package excludes the x64-only ASIO/PortAudio binary. Process/window audio capture is rebuilt natively when the private module is available.
+- macOS uses official Electron `v39.2.7` and `npm run build:darwin` produces a universal Intel/Apple Silicon package.
+- Linux ARM64, including the base architecture used by NVIDIA DGX Spark, uses official Electron `v39.2.7` and is built with `npm run build:arm64`.
+- Requirements: Node.js ≥ 18, git, and network access to GitHub Releases. The Electron installer and `postinstall` hook (`scripts/install-custom-electron.js`) select the configured runtime for the current platform and architecture.
+- To fall back to stock Electron during local installation, set `CUSTOM_ELECTRON_SKIP=1` before installing, or delete `node_modules/electron/dist` and reinstall.
+
+### Windows installer and portable data
+
+- The installer offers an unchecked, per-user option to add its install directory to `PATH`. If selected, the entry is removed during uninstall.
+- The portable build stores its profile, browser sessions, cache, logs, and crash reports in an `ElectronCapture-data` folder beside `elecap.exe`. Move that folder with the EXE to retain the profile.
+- On its first run, the portable build can copy an existing Electron Capture profile from Windows AppData. The original profile is left unchanged.
+- Portable mode does not register the `electroncapture://` protocol, because that would modify the host Windows installation.
 
 ## Settings and Parameters
 
@@ -337,7 +347,7 @@ Please note that the Electron Capture app does not auto-update to newer versions
 
 ### Windows Version 🪟
 
-There are two versions for Windows. An installer for x64 systems. There's also a portable version, which is larger in size, but supports x64 and x86 (32-bit) systems. The portable version requires no install and is easier to use from the command-line or from a batch file.
+There are installer and portable builds for Windows x64, plus separate Windows ARM64 builds. The portable version requires no install and is easier to use from the command line or a batch file. Its data is kept in the `ElectronCapture-data` folder beside the portable EXE.
 
 New release here: https://github.com/steveseguin/electroncapture/releases/
 
@@ -469,11 +479,15 @@ npm run build:darwin
 
 If you need to sign the build, for distribution, you can then try:
 ```
-npm install
-export appleId={yourApp@dev.email}
-export appleIdPassword={app-specific-password-here}
-sudo -E npm run build:darwin
+export CSC_LINK=/path/to/developer-id-application-certificate.p12
+export CSC_KEY_PASSWORD={certificate-export-password}
+export APPLE_ID={yourApp@dev.email}
+export APPLE_TEAM_ID={your-10-character-team-id}
+export APPLE_APP_SPECIFIC_PASSWORD={app-specific-password-here}
+npm run build:darwin
 ```
+
+GitHub Actions uses the same three Apple values as `APPLE_ID`, `APPLE_TEAM_ID`, and `APPLE_APP_SPECIFIC_PASSWORD` repository secrets. Add the base64-encoded Developer ID Application certificate as `MAC_CSC_LINK` and its export password as `MAC_CSC_KEY_PASSWORD`; the release workflow maps those values to electron-builder's signing variables.
 
 ### Trouble-shooting  -- if can't hide cursor when window capturing using OBS:
 Change the capture method in OBS to "BitBlt"and uncheck the Capture Cursor. Also make sure OBS runs in compatibility mode for win 7, so you don't get a black screen
@@ -692,6 +706,7 @@ window.electronApi.applyPlayoutDelay(rtcRtpReceiver, 30);
 | Extended playout delay | ✅ | ❌ | ❌ | Optional |
 | ASIO audio capture | ✅ | ❌ | ❌ | --node |
 
+The Windows feature column above refers to the custom x64 build. The official Windows ARM64 build does not include the custom QP/NVENC/window patches, and ASIO is unavailable until an ARM64 PortAudio/ASIO dependency is provided.
 
 ### Security considerations
 

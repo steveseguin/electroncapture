@@ -1,6 +1,9 @@
 /build
 /dist
 /node_modules
+/certs
+/build-config.env
+/electron-builder.env
 /native-modules/*
 !/native-modules/window-audio-capture
 !/native-modules/electron-asio
@@ -10,3 +13,17 @@ mac.sh
 /vdoninja
 /.claude
 /electron-asio-src
+/.agents
+/.secret
+/.env
+/.env.*
+/*.cer
+/*.crt
+/*.key
+/*.log
+/*.mobileprovision
+/*.p12
+/*.pem
+!/code-signing-cert.pem
+/*.pfx
+/npm-debug.log*

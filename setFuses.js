@@ -1,38 +1,30 @@
 const { flipFuses, FuseVersion, FuseV1Options } = require('@electron/fuses');
-const path = require('path');
-const fs = require('fs');
 
 async function setFuses(buildPath, electronBinaryPath) {
   console.log('Setting Electron fuses for enhanced security...');
   console.log('Binary path:', electronBinaryPath);
-  
+
   try {
     await flipFuses(electronBinaryPath, {
       version: FuseVersion.V1,
-      // CRITICAL: Disable RunAsNode to prevent ELECTRON_RUN_AS_NODE bypass
+      // Disable RunAsNode to prevent ELECTRON_RUN_AS_NODE bypass.
       [FuseV1Options.RunAsNode]: false,
-      
-      // Disable node options environment variable (prevents NODE_OPTIONS injection)
+      // Prevent NODE_OPTIONS injection.
       [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
-      
-      // Disable node CLI inspect arguments (prevents --inspect attacks)
+      // Prevent --inspect arguments from enabling a debugger.
       [FuseV1Options.EnableNodeCliInspectArguments]: false,
-      
-      // Enable cookie encryption for better security
+      // Encrypt browser cookies at rest where the platform supports it.
       [FuseV1Options.EnableCookieEncryption]: true,
-      
-      // Keep these as default for compatibility
+      // Preserve existing compatibility choices.
       [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: false,
       [FuseV1Options.OnlyLoadAppFromAsar]: false,
       [FuseV1Options.LoadBrowserProcessSpecificV8Snapshot]: false,
-      
-      // Keep this enabled as your app uses file:// protocol
       [FuseV1Options.GrantFileProtocolExtraPrivileges]: true
     });
-    
-    console.log('✓ Fuses set successfully');
+
+    console.log('Fuses set successfully');
   } catch (error) {
-    console.error('✗ Error setting fuses:', error);
+    console.error('Error setting fuses:', error);
     throw error;
   }
 }
