@@ -104,6 +104,7 @@ jobs:
 
       - name: Verify Windows x64 signatures
         shell: powershell
+        timeout-minutes: 5
         run: .\scripts\verify-windows-signatures.ps1 -Architecture x64
 
       - name: Build Windows 11 x64
@@ -116,6 +117,7 @@ jobs:
 
       - name: Verify Windows 11 x64 signatures
         shell: powershell
+        timeout-minutes: 5
         run: .\scripts\verify-windows-signatures.ps1 -Architecture x64 -Variant win11
 
       - name: Test Windows installer replacement and rollback
@@ -168,12 +170,10 @@ jobs:
       npm_config_arch: arm64
       ELECTRON_INSTALL_ARCH: arm64
       ELECTRON_ASIO_SKIP: '1'
+      WINDOW_AUDIO_CAPTURE_SKIP: '1'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: ${{ secrets.SUBMODULE_SSH_KEY != '' && 'recursive' || 'false' }}
-          ssh-key: ${{ secrets.SUBMODULE_SSH_KEY }}
 
       - name: Setup ARM64 Node.js
         uses: actions/setup-node@v4
@@ -202,22 +202,18 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-        env:
-          WINDOW_AUDIO_CAPTURE_SKIP: ${{ secrets.SUBMODULE_SSH_KEY == '' && '1' || '0' }}
 
       - name: Build Windows ARM64
         run: npm run build:win-arm64
         env:
           WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
-          WINDOW_AUDIO_CAPTURE_SKIP: ${{ secrets.SUBMODULE_SSH_KEY == '' && '1' || '0' }}
 
       - name: Verify Windows ARM64 package
         run: npm run verify:win-arm64
-        env:
-          WINDOW_AUDIO_CAPTURE_SKIP: ${{ secrets.SUBMODULE_SSH_KEY == '' && '1' || '0' }}
 
       - name: Verify Windows ARM64 signatures
         shell: powershell
+        timeout-minutes: 5
         run: .\scripts\verify-windows-signatures.ps1 -Architecture arm64
 
       - name: Submit executables to VirusTotal

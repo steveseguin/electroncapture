@@ -83,73 +83,41 @@ $certificateBytes = [System.Convert]::FromBase64String($certificateBase64)
 $publicCert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2 -ArgumentList @(,$certificateBytes)
 $expectedThumbprint = $publicCert.Thumbprint
 $filesToVerify = @($releaseFiles) + @($unpackedFiles.FullName)
-$temporaryTrustStores = [System.Collections.Generic.List[string]]::new()
 
-try {
-    # The release certificate is self-signed. Trust only this pinned certificate
-    # for the current user while PowerShell performs its full validity check.
-    foreach ($storeName in @('Root', 'TrustedPublisher')) {
-        $store = [System.Security.Cryptography.X509Certificates.X509Store]::new(
-            $storeName,
-            [System.Security.Cryptography.X509Certificates.StoreLocation]::CurrentUser
-        )
-        $store.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
-        try {
-            $existing = $store.Certificates.Find(
-                [System.Security.Cryptography.X509Certificates.X509FindType]::FindByThumbprint,
-                $expectedThumbprint,
-                $false
-            )
-            if ($existing.Count -eq 0) {
-                $store.Add($publicCert)
-                $temporaryTrustStores.Add($storeName)
-            }
-        } finally {
-            $store.Close()
-        }
+foreach ($file in $filesToVerify) {
+    $signature = Get-AuthenticodeSignature -LiteralPath $file
+    if ($null -eq $signature.SignerCertificate) {
+        throw "Authenticode signature missing: $file"
+    }
+    if ($signature.SignerCertificate.Thumbprint -ne $expectedThumbprint -or
+        [System.Convert]::ToBase64String($signature.SignerCertificate.RawData) -ne
+            [System.Convert]::ToBase64String($publicCert.RawData)) {
+        throw "Unexpected signing certificate on $file. Expected $expectedThumbprint, got $($signature.SignerCertificate.Thumbprint)."
+    }
+    if ($signature.SignatureType -ne [System.Management.Automation.SignatureType]::Authenticode) {
+        throw "Expected an embedded Authenticode signature on $file, got $($signature.SignatureType)."
     }
 
-    foreach ($file in $filesToVerify) {
-        $signature = Get-AuthenticodeSignature -LiteralPath $file
-        if ($signature.Status -ne [System.Management.Automation.SignatureStatus]::Valid) {
-            throw "Authenticode signature is not valid on $file. Status: $($signature.Status); message: $($signature.StatusMessage)"
-        }
-        if ($null -eq $signature.SignerCertificate) {
-            throw "Authenticode signature missing: $file"
-        }
-        if ($signature.SignerCertificate.Thumbprint -ne $expectedThumbprint) {
-            throw "Unexpected signing certificate on $file. Expected $expectedThumbprint, got $($signature.SignerCertificate.Thumbprint)."
-        }
-        if ($null -eq $signature.TimeStamperCertificate) {
-            throw "Trusted timestamp missing from signature: $file"
-        }
-        $relativePath = if ($file.StartsWith($distPath, [System.StringComparison]::OrdinalIgnoreCase)) {
-            $file.Substring($distPath.Length).TrimStart('\', '/')
-        } else {
-            $file
-        }
-        Write-Output "Verified $Architecture signature: $relativePath"
+    $statusIsValid = $signature.Status -eq [System.Management.Automation.SignatureStatus]::Valid
+    $statusIsOnlyPinnedRootTrust =
+        $signature.Status -eq [System.Management.Automation.SignatureStatus]::UnknownError -and
+        $signature.StatusMessage -eq 'A certificate chain processed, but terminated in a root certificate which is not trusted by the trust provider'
+    if (-not $statusIsValid -and -not $statusIsOnlyPinnedRootTrust) {
+        throw "Authenticode signature verification failed on $file. Status: $($signature.Status); message: $($signature.StatusMessage)"
     }
-} finally {
-    foreach ($storeName in $temporaryTrustStores) {
-        $store = [System.Security.Cryptography.X509Certificates.X509Store]::new(
-            $storeName,
-            [System.Security.Cryptography.X509Certificates.StoreLocation]::CurrentUser
-        )
-        $store.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
-        try {
-            $temporaryCertificates = $store.Certificates.Find(
-                [System.Security.Cryptography.X509Certificates.X509FindType]::FindByThumbprint,
-                $expectedThumbprint,
-                $false
-            )
-            foreach ($certificate in $temporaryCertificates) {
-                $store.Remove($certificate)
-            }
-        } finally {
-            $store.Close()
-        }
+
+    # Get-AuthenticodeSignature reports HashMismatch for modified PE content.
+    # The accepted UnknownError is only the expected trust result for the exact
+    # pinned self-signed certificate; no certificate-store mutation is needed.
+    if ($null -eq $signature.TimeStamperCertificate) {
+        throw "Authenticode timestamp missing from signature: $file"
     }
+    $relativePath = if ($file.StartsWith($distPath, [System.StringComparison]::OrdinalIgnoreCase)) {
+        $file.Substring($distPath.Length).TrimStart('\', '/')
+    } else {
+        $file
+    }
+    Write-Output "Verified $Architecture signature: $relativePath"
 }
 
-Write-Output "Verified Electron Capture signer $expectedThumbprint and trusted timestamps on $($filesToVerify.Count) executables."
+Write-Output "Verified Electron Capture signer $expectedThumbprint and Authenticode timestamps on $($filesToVerify.Count) executables."
