@@ -52,10 +52,19 @@ jobs:
     # selected by windows-latest. Keep the native ASIO build on VS 2022.
     runs-on: windows-2022
     steps:
+      - name: Require private submodule key
+        shell: pwsh
+        env:
+          SUBMODULE_SSH_KEY: ${{ secrets.SUBMODULE_SSH_KEY }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:SUBMODULE_SSH_KEY)) {
+            throw 'SUBMODULE_SSH_KEY is required for complete Windows x64 builds.'
+          }
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: ${{ secrets.SUBMODULE_SSH_KEY != '' && 'recursive' || 'false' }}
+          submodules: recursive
           ssh-key: ${{ secrets.SUBMODULE_SSH_KEY }}
 
       - name: Setup Node.js
@@ -84,19 +93,14 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-        env:
-          WINDOW_AUDIO_CAPTURE_SKIP: ${{ secrets.SUBMODULE_SSH_KEY == '' && '1' || '0' }}
 
       - name: Build Windows x64
         run: npm run build:win32
         env:
           WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
-          WINDOW_AUDIO_CAPTURE_SKIP: ${{ secrets.SUBMODULE_SSH_KEY == '' && '1' || '0' }}
 
       - name: Verify Windows x64 package
         run: npm run verify:win32
-        env:
-          WINDOW_AUDIO_CAPTURE_SKIP: ${{ secrets.SUBMODULE_SSH_KEY == '' && '1' || '0' }}
 
       - name: Verify Windows x64 signatures
         shell: powershell
@@ -106,25 +110,31 @@ jobs:
         run: npm run build:win11
         env:
           WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
-          WINDOW_AUDIO_CAPTURE_SKIP: ${{ secrets.SUBMODULE_SSH_KEY == '' && '1' || '0' }}
 
       - name: Verify Windows 11 x64 package
         run: npm run verify:win11
-        env:
-          WINDOW_AUDIO_CAPTURE_SKIP: ${{ secrets.SUBMODULE_SSH_KEY == '' && '1' || '0' }}
 
       - name: Verify Windows 11 x64 signatures
         shell: powershell
         run: .\scripts\verify-windows-signatures.ps1 -Architecture x64 -Variant win11
 
+      - name: Test Windows installer replacement and rollback
+        shell: powershell
+        run: |
+          $version = (Get-Content -Raw .\package.json | ConvertFrom-Json).version
+          .\scripts\test-windows-installer-roundtrip.ps1 `
+            -FallbackInstaller ".\dist\elecap-$version.exe" `
+            -CurrentInstaller ".\dist\elecap-$version-win11.exe"
+
       - name: Submit executables to VirusTotal
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         continue-on-error: true
         run: node scripts/submit-virustotal.js --dir dist --require-api-key --fail-on-error
         env:
           VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
 
       - name: Upload to Release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           fail_on_unmatched_files: true
@@ -211,13 +221,14 @@ jobs:
         run: .\scripts\verify-windows-signatures.ps1 -Architecture arm64
 
       - name: Submit executables to VirusTotal
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         continue-on-error: true
         run: node scripts/submit-virustotal.js --dir dist --require-api-key --fail-on-error
         env:
           VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
 
       - name: Upload to Release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           fail_on_unmatched_files: true
@@ -293,7 +304,7 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
       - name: Upload to Release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           fail_on_unmatched_files: true
@@ -336,7 +347,7 @@ jobs:
         run: npm run build:linux
 
       - name: Upload to Release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           fail_on_unmatched_files: true
@@ -388,7 +399,7 @@ jobs:
         run: npm run verify:linux-arm64
 
       - name: Upload to Release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           fail_on_unmatched_files: true

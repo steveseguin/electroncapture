@@ -1,6 +1,7 @@
 'use strict';
 
 const assert = require('assert');
+const fs = require('fs');
 const path = require('path');
 const {
   buildMarkerValue,
@@ -57,6 +58,13 @@ assert.strictEqual(path.basename(windows11Artifacts[0].source), 'elecap-win11.ex
 assert.strictEqual(path.basename(windows11Artifacts[1].source), 'elecap-2.23.3-win11.exe');
 assert.strictEqual(path.basename(windows11Artifacts[0].dest), 'elecap_win11_v2.23.3_portable.zip');
 assert.notDeepStrictEqual(windows11Artifacts, fallbackArtifacts);
+
+const mainSource = fs.readFileSync(path.resolve('main.js'), 'utf8');
+assert.match(
+  mainSource,
+  /if \(Argv\.encoderMode === 'software'\) \{\s*app\.commandLine\.appendSwitch\('disable-accelerated-video-encode'\);/,
+  '--encmode=software must disable Chromium accelerated video encoding at startup'
+);
 
 const currentMarker = buildMarkerValue(
   windows10,

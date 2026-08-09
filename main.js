@@ -1207,7 +1207,7 @@ function createYargs(){
   })
   .option("encoderMode", {
     alias: "encmode",
-    describe: "Default encoder mode for WebCodecs/WebRTC in the renderer (hardware|software|auto).",
+    describe: "Encoder preference (hardware|software|auto); software disables accelerated video encoding at startup.",
     type: "string",
     default: "hardware"
   })
@@ -2046,6 +2046,11 @@ if (process.platform === 'win32' && Argv.d3d12Encoder === true) {
     enableFeatureSet.add('D3D12VideoEncodeAccelerator');
 } else if (process.platform === 'win32') {
     console.log('D3D12 video encode accelerator disabled (enable with --d3d12enc).');
+}
+
+if (Argv.encoderMode === 'software') {
+	app.commandLine.appendSwitch('disable-accelerated-video-encode');
+	console.log('Accelerated video encoding disabled by --encmode=software.');
 }
 
 if (process.platform === 'linux' && Argv.vaapiEncoder !== false) {

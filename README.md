@@ -538,7 +538,7 @@ These tweaks are entirely optional and aimed at advanced workflows. By default E
 #### CLI switches
 
 ```
---encmode=<hardware|software|auto>   # default hardware; switch to software to disable GPU encode or auto to let the renderer decide
+--encmode=<hardware|software|auto>   # hardware/auto keep Chromium defaults; software disables GPU encoding at process startup
 --d3d12enc                           # opt-in to Chromium’s D3D12 Video Encode Accelerator (off by default)
 --vaapienc                           # toggle VA-API hardware encode on Linux (enabled by default)
 --webrtcCodec=<auto|h264|vp9|av1>    # optional codec hint exposed to the renderer for custom scripts
@@ -548,7 +548,7 @@ These tweaks are entirely optional and aimed at advanced workflows. By default E
 --h264keytrial                       # enable the WebRTC H.264 SPS/PPS keyframe workaround (off by default)
 ```
 
-Pass these on the command line or embed them in electroncapture:// links (for example `...&encmode=software` or `...&h264keytrial=1`).
+Pass these on the command line. Process-wide options such as `encmode` and `h264keytrial` must be set when Electron Capture starts.
 
 Codec and bitrate hints are only surfaced through the renderer API; Electron Capture no longer overrides WebRTC settings on your behalf, so VDO.Ninja can manage them natively.
 
@@ -558,12 +558,12 @@ Inside any renderer window you can use `window.electronCaptureEncoder` to inspec
 
 ```js
 window.electronCaptureEncoder.getState();             // returns { defaultMode, preferredMode, codecPreference, maxBitrate }
-window.electronCaptureEncoder.setPreferredMode('software'); // flip hardware/software/auto at runtime
+window.electronCaptureEncoder.setPreferredMode('software'); // publish a preference for cooperating page code
 window.electronCaptureEncoder.resetPreferredMode();  // revert to the CLI default
 window.electronCaptureEncoder.openGpuDiagnostics();  // open chrome://gpu from within Electron
 ```
 
-Use the preferred mode helper to toggle hardware acceleration without restarting the app, or check the GPU diagnostics window to confirm whether `mf_video_encode` is active.
+The preferred mode helper only stores and broadcasts a preference for page integrations; it does not reconfigure Chromium or an active encoder. Use the startup `--encmode=software` option to disable accelerated video encoding, or check the GPU diagnostics window to confirm whether `mf_video_encode` is active.
 
 
 ### Custom Electron Build Features
