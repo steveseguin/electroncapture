@@ -50,6 +50,7 @@ Lastly, since playback is agnostic, you can window-capture the same video multip
 | --y               | -y        | The y-position of the window in pixels.         | 100                               | Value in px                                     |
 | --url             | -u        | The URL of the window to load.                  | "https://vdo.ninja/electron"     |                                                |
 | --title           | -t        | The default Title for the app Window.           | "My App"                          | Handy for use with OBS window capture          |
+| --class           | --app-id  | Set the Linux Wayland app_id / X11 WM_CLASS.    | "jellyfin"                        | Linux only; implies `--multiinstance`           |
 | --pin             | -p        | Enables always on top.                          |                                   |                                                |
 | --hwa             | -a        | Enables Hardware Acceleration.                  |                                   |                                                |
 | --node            | -n        | Enables node-integration.                       |                                   | Required for screen capture, global hotkeys, etc. |
@@ -134,6 +135,15 @@ start elecap.exe -w 640 -h 360 -x 640 -y 360 -u="https://vdo.ninja/?scene&fakegu
 - x and y position is available in v1.5.2 and up; x or y values must be greater than 0.
 
 If you want each launch to operate as a completely separate process (instead of reusing the existing instance's windows), start it with the `--multiinstance` flag (alias: `--standalone`).
+
+On Linux, `--class` (alias: `--app-id`) assigns a stable compositor identity to the process so Wayland/Gamescope and X11 can distinguish launches. Supplying it automatically enables multi-instance mode, so each distinct identity stays in its own process:
+
+```bash
+./elecap.AppImage --class=jellyfin --title="Jellyfin" --url="http://127.0.0.1:8096"
+./elecap.AppImage --class=radarr --title="Radarr" --url="http://127.0.0.1:7878"
+```
+
+Use a short, stable, filename-like value rather than a title or save-folder path. A custom identity may not match Elecap's installed `.desktop` entry, so regular Linux desktops may show a generic icon for that window; this is expected when intentionally creating separate application groups.
 
 <img src="https://user-images.githubusercontent.com/2575698/80891745-290d3000-8c94-11ea-85c4-ae0e7cd1ec19.png " alt="" data-canonical-src="https://user-images.githubusercontent.com/2575698/80891745-290d3000-8c94-11ea-85c4-ae0e7cd1ec19.png " style="display:inline-block" height="300" />
 

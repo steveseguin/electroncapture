@@ -37,6 +37,9 @@ jobs:
           fi
           echo "Validated release version v$package_version"
 
+      - name: Run regression tests
+        run: npm test
+
   build-windows:
     needs: validate
     # node-gyp 10 does not recognize the Visual Studio 2026 image currently

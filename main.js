@@ -17,6 +17,12 @@ const {
 	writePortableCopyRequest,
 	consumePortableCopyRequest,
 } = require('./portable-data-paths');
+const {
+	normalizeLinuxAppIdentity,
+	applyLinuxDesktopIdentity,
+	shouldAllowMultipleInstances,
+	createBrowserWindowWithLinuxIdentity
+} = require('./linux-app-identity');
 
 let earlyDataPaths = resolveEarlyDataPaths();
 let portableMigrationPending = null;
@@ -1056,6 +1062,13 @@ function createYargs(){
     type: "string",
 	default: null
   })
+  .option("class", {
+    alias: ["app-id"],
+    describe: "Set a distinct Linux Wayland app_id / X11 WM_CLASS. Implies --multiinstance on Linux.",
+    type: "string",
+	nargs: 1,
+	default: null
+  })
   .option("p", {
     alias: "pin",
     describe: "Toggle always on top",
@@ -1539,6 +1552,20 @@ if (Argv.help) {
   process.exit(0);
 }
 
+let linuxAppIdentity = null;
+if (process.platform === 'linux' && Argv.class !== null) {
+	try {
+		linuxAppIdentity = normalizeLinuxAppIdentity(Argv.class);
+		Argv.class = linuxAppIdentity.className;
+		Argv['app-id'] = linuxAppIdentity.className;
+		applyLinuxDesktopIdentity(app, linuxAppIdentity);
+		console.log(`[startup] Linux application identity set to "${linuxAppIdentity.className}"; enabling multi-instance mode.`);
+	} catch (error) {
+		console.error(`Invalid --class value: ${error.message}`);
+		process.exit(1);
+	}
+}
+
 const VALID_ENCODER_MODES = new Set(['hardware', 'software', 'auto']);
 
 function normalizeEncoderModeToken(rawValue) {
@@ -1616,7 +1643,7 @@ delete Argv.respectGpuBlocklist;
 delete Argv.respectgpub;
 delete Argv.ignoregpub;
 
-const allowMultipleInstances = Argv.multiinstance === true || Argv.standalone === true;
+const allowMultipleInstances = shouldAllowMultipleInstances(Argv, linuxAppIdentity);
 
 const hardwareEncodingState = {
 	encoderModeOverride: null
@@ -1670,7 +1697,7 @@ function openGpuDiagnosticsWindow() {
 		return true;
 	}
 	try {
-		gpuDiagnosticsWindow = new BrowserWindow({
+		gpuDiagnosticsWindow = createBrowserWindowWithLinuxIdentity(app, BrowserWindow, {
 			width: 1000,
 			height: 720,
 			title: 'GPU Diagnostics',
@@ -1679,7 +1706,7 @@ function openGpuDiagnosticsWindow() {
 				contextIsolation: true,
 				sandbox: false
 			}
-		});
+		}, linuxAppIdentity);
 		gpuDiagnosticsWindow.on('closed', () => {
 			gpuDiagnosticsWindow = null;
 		});
@@ -2704,7 +2731,7 @@ async function createWindow(args, reuse=false) {
   }
 
 	// Create the browser window.
-	var mainWindow = new BrowserWindow({
+	var mainWindow = createBrowserWindowWithLinuxIdentity(app, BrowserWindow, {
 		transparent: true,
 		//focusable: false,
 		width: targetWidth,
@@ -2727,7 +2754,7 @@ async function createWindow(args, reuse=false) {
 			nodeIntegration: NODE  // this could be a security hazard, but useful for enabling screen sharing and global hotkeys
 		},
 		title: currentTitle
-	});
+	}, linuxAppIdentity);
 	mainWindow.__immutableWebPreferences = desiredImmutableWebPreferences;
 	mainWindow.__defaultDragRegionEnabled = defaultDragRegionEnabled;
 	mainWindow.__lastDisplayId = initialDisplay ? initialDisplay.id : null;

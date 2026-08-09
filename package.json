@@ -5,6 +5,7 @@
   "author": "Steve Seguin <steve@seguin.email>",
   "main": "main.js",
   "scripts": {
+    "test": "npm run test:portable-paths && npm run test:linux-app-identity",
     "prestart": "node ./scripts/install-window-audio-capture.js && node ./scripts/install-electron-asio.js",
     "start": "electron .",
     "build": "run-os",
@@ -26,6 +27,7 @@
     "clean": "rimraf ./dist",
     "release": "electron-builder --publish always",
     "test:portable-paths": "node ./test/portable-data-paths-regression.js",
+    "test:linux-app-identity": "node ./test/linux-app-identity-regression.js",
     "verify:win32": "node ./scripts/verify-windows-x64-build.js",
     "verify:win32-signatures": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/verify-windows-signatures.ps1 -Architecture x64",
     "verify:win-arm64": "node ./scripts/verify-windows-arm64-build.js",
