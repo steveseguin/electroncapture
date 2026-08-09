@@ -31,6 +31,9 @@ if (Test-Path -LiteralPath $installPath) {
 }
 
 function Get-ElecapUninstallEntries {
+    if (-not (Test-Path -LiteralPath $uninstallRegistryRoot)) {
+        return
+    }
     @(Get-ChildItem -LiteralPath $uninstallRegistryRoot | ForEach-Object {
         $values = Get-ItemProperty -LiteralPath $_.PSPath
         if ($values.DisplayName -like 'elecap *') {
