@@ -5,13 +5,15 @@
   "author": "Steve Seguin <steve@seguin.email>",
   "main": "main.js",
   "scripts": {
-    "test": "npm run test:portable-paths && npm run test:linux-app-identity",
+    "test": "npm run test:portable-paths && npm run test:linux-app-identity && npm run test:windows-runtimes && npm run test:capture-preferences",
     "prestart": "node ./scripts/install-window-audio-capture.js && node ./scripts/install-electron-asio.js",
     "start": "electron .",
     "build": "run-os",
     "prebuild": "node ./scripts/install-window-audio-capture.js && node ./scripts/install-electron-asio.js",
     "build:win32": "electron-builder --win --publish=never",
     "prebuild:win32": "node ./scripts/install-window-audio-capture.js && node ./scripts/install-electron-asio.js",
+    "build:win11": "electron-builder --config electron-builder.win11.js --win --x64 --publish=never",
+    "prebuild:win11": "node ./scripts/install-window-audio-capture.js && node ./scripts/install-electron-asio.js",
     "build:win-arm64": "electron-builder --config electron-builder.win-arm64.js --win --arm64 --publish=never",
     "prebuild:win-arm64": "node ./scripts/install-window-audio-capture.js",
     "build:darwin": "electron-builder --mac --universal --publish=never --config.electronVersion=39.2.7 --config.electronDownload.mirror=https://github.com/electron/electron/releases/download/ --config.electronDownload.customDir=v39.2.7",
@@ -28,8 +30,12 @@
     "release": "electron-builder --publish always",
     "test:portable-paths": "node ./test/portable-data-paths-regression.js",
     "test:linux-app-identity": "node ./test/linux-app-identity-regression.js",
+    "test:windows-runtimes": "node ./test/windows-runtime-config-regression.js",
+    "test:capture-preferences": "node ./test/capture-preference-hooks-regression.js",
     "verify:win32": "node ./scripts/verify-windows-x64-build.js",
     "verify:win32-signatures": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/verify-windows-signatures.ps1 -Architecture x64",
+    "verify:win11": "node ./scripts/verify-windows-x64-build.js --win11",
+    "verify:win11-signatures": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/verify-windows-signatures.ps1 -Architecture x64 -Variant win11",
     "verify:win-arm64": "node ./scripts/verify-windows-arm64-build.js",
     "verify:win-arm64-signatures": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/verify-windows-signatures.ps1 -Architecture arm64",
     "verify:linux-arm64": "node ./scripts/verify-linux-arm64-build.js",
@@ -53,7 +59,7 @@
     ],
     "electronDownload": {
       "mirror": "https://github.com/steveseguin/electron/releases/download/",
-      "customDir": "v39.2.16-qp20"
+      "customDir": "v39.2.16-qp20.1"
     },
     "protocols": {
       "name": "electroncapture",
@@ -113,6 +119,7 @@
           "!dist",
           "!dist/**",
           "!electron-builder.win-arm64.js",
+          "!electron-builder.win11.js",
           "!example.jpg",
           "!forcekill.bat",
           "!installer.nsh",

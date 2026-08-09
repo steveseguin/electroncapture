@@ -25,7 +25,9 @@ Lastly, since playback is agnostic, you can window-capture the same video multip
 
 ## Electron Builds and ARM64 Support
 
-- Windows x64 continues to use the custom `v39.2.16-qp20` Electron build, including the QP, NVENC, and transparent-window patches. Build it with `npm run build:win32`.
+- Windows 10 x64 keeps the verified custom `v39.2.16-qp20` fallback. Build it with `npm run build:win32`.
+- Windows 11 x64 can use the custom `v43.3.0-qp20` runtime with current Chromium security fixes and the Electron Capture transparency, QP, cursor, scaling, and delay patches. Build it with `npm run build:win11`.
+- These are alternative installers for the same app. Installing one replaces the other; keep the v39 installer available for rollback.
 - Windows ARM64 uses the official Electron `v39.2.7` ARM64 runtime and is built independently with `npm run build:win-arm64`. It does not replace or modify the custom Windows x64 build.
 - The Windows ARM64 package excludes the x64-only ASIO/PortAudio binary. Process/window audio capture is rebuilt natively when the private module is available.
 - macOS uses official Electron `v39.2.7` and `npm run build:darwin` produces a universal Intel/Apple Silicon package.
@@ -65,11 +67,11 @@ Lastly, since playback is agnostic, you can window-capture the same video multip
 | --css             | -css      | Have local CSS script be auto-loaded into every page | "style.css"                 | Path to CSS file to inject                     |
 | --hidecursor      | -hc       | Hide the mouse pointer / cursor                 |                                   |                                                |
 | --monitor         | -m        | Monitor index to open on (0-based index)        | 0                                 | Select which monitor to display on             |
-| --disableAdaptiveScaling | --noScaling | Disable WebRTC adaptive scaling (lock resolution + framerate) |               | Custom Electron build only (v39.2.7+)          |
-| --lockResolution  | --lockRes | Lock WebRTC resolution only (framerate can adapt) |                              | Custom Electron build only (v39.2.7+)          |
-| --lockFramerate   | --lockFps | Lock WebRTC framerate only (resolution can adapt) |                              | Custom Electron build only (v39.2.7+)          |
-| --hideCursorCapture | --noCursor | Hide cursor in screen capture by default      |                                   | Custom Electron build only (v39.2.7+)          |
-| --playoutDelay    | --bufferDelay | Default playout delay for WebRTC receivers (seconds) | 0-600                    | Custom Electron build only (v39.2.7+)          |
+| --disableAdaptiveScaling | --noScaling | Disable WebRTC adaptive scaling (lock resolution + framerate) |               | Custom Windows x64 build only                   |
+| --lockResolution  | --lockRes | Lock WebRTC resolution only (framerate can adapt) |                              | Custom Windows x64 build only                   |
+| --lockFramerate   | --lockFps | Lock WebRTC framerate only (resolution can adapt) |                              | Custom Windows x64 build only                   |
+| --hideCursorCapture | --noCursor | Hide cursor in screen capture by default      |                                   | Custom Windows x64 build only                   |
+| --playoutDelay    | --bufferDelay | Default playout delay for WebRTC receivers (seconds) | 0-600                    | Custom Windows x64 build only                   |
 
 **Notes:**
 * Use the `--help` command to get the most recent available commands and options.
@@ -529,7 +531,7 @@ Seems to work with newer npm versions
 
 These tweaks are entirely optional and aimed at advanced workflows. By default Electron Capture:
 
-- Prefers hardware encoding through Media Foundation on Windows (NVENC) while leaving the newer Chromium D3D12 encoder disabled unless opted in.
+- Prefers Chromium's Media Foundation hardware encoding on Windows while leaving the newer D3D12 encoder disabled unless opted in.
 - Enables `PlatformHEVCEncoderSupport` so HEVC/H.265 hardware encode is available when the operating system exposes it.
 - Falls back to software automatically when alpha channels, 10‑bit color, or unsupported codecs are requested.
 
@@ -561,10 +563,10 @@ window.electronCaptureEncoder.resetPreferredMode();  // revert to the CLI defaul
 window.electronCaptureEncoder.openGpuDiagnostics();  // open chrome://gpu from within Electron
 ```
 
-Use the preferred mode helper to toggle hardware acceleration without restarting the app, or check the GPU diagnostics window to confirm whether `mf_video_encode` (Media Foundation / NVENC) is active.
+Use the preferred mode helper to toggle hardware acceleration without restarting the app, or check the GPU diagnostics window to confirm whether `mf_video_encode` is active.
 
 
-### Custom Electron Build Features (v39.2.7+)
+### Custom Electron Build Features
 
 > **⚠️ WINDOWS ONLY**: The Windows build uses a custom-patched Electron with enhanced WebRTC capabilities. These features are compiled into the Electron binary and **only work on the Windows custom build**. Mac and Linux use official Electron releases without these patches.
 
@@ -582,13 +584,13 @@ Use the preferred mode helper to toggle hardware acceleration without restarting
 
 **Affected codecs**: H.264, H.265/HEVC, VP8, VP9, AV1 (all benefit automatically)
 
-**How to verify**: Use `chrome://webrtc-internals` and look for `googQpSum` in the stats - values should stay low (under 25).
+**How to verify**: In `chrome://webrtc-internals`, divide `qpSum` by `framesEncoded`; `qpSum` alone is cumulative. H.264 should average at or below 20 in a sustained constrained test. VP8 uses a different reported scale and can average about 25 with libvpx capped at 20.
 
-#### 2. NVENC Hardware Encoding (ON by Default - Windows Only)
+#### 2. Hardware Encoding Preference (Windows Only)
 
-**✅ Enabled automatically** - uses your NVIDIA GPU when available.
+**Enabled automatically** - Chromium uses a supported hardware encoder when one is available and compatible with the requested stream.
 
-**What it does**: Enables NVIDIA GPU hardware encoding through FFmpeg's NVENC support for H.264, H.265/HEVC, and AV1.
+**What it does**: Prefers Chromium's Windows Media Foundation hardware encoder. The older v39 build script also patched FFmpeg for standalone NVENC, but Electron Capture's browser APIs use Chromium's encoder path. The v43 build preserves GPU encoding through Media Foundation instead of carrying that obsolete FFmpeg integration forward.
 
 **Why it's great for professional use**:
 - **Lower CPU usage** - encoding offloaded to GPU, freeing CPU for other tasks
@@ -596,7 +598,7 @@ Use the preferred mode helper to toggle hardware acceleration without restarting
 - **Consistent quality** - hardware encoders maintain steady performance under load
 - **Cooler, quieter system** - less CPU heat during long streaming sessions
 
-**Requirements**: NVIDIA GPU with NVENC support (GTX 600 series or newer). The `nvEncodeAPI64.dll` is included in the release.
+**Requirements**: A GPU, driver, codec, and Windows version supported by Chromium's hardware encoder. Electron Capture does not bundle `nvEncodeAPI64.dll`.
 
 **How to verify**: Check `chrome://gpu` for "Video Encode" acceleration status, or monitor GPU usage during encoding.
 
@@ -642,7 +644,7 @@ elecap.exe --lockFramerate --url="https://vdo.ninja/..."
 
 **CLI Option**:
 ```bash
-# Enable cursor suppression for all screen captures
+# Suppress the cursor when a screen capture does not specify its own cursor setting
 elecap.exe --hideCursorCapture --url="https://vdo.ninja/..."
 ```
 
@@ -653,19 +655,20 @@ const stream = await navigator.mediaDevices.getDisplayMedia({
   video: { cursor: 'never' }
 });
 
-// Other options: 'always' (default), 'motion' (hide when stationary)
+// 'always' is the default. This custom path does not implement separate
+// stationary-cursor behavior for 'motion'.
 ```
 
 #### 5. Extended Playout Delay (Windows Only)
 
 **What it does**: Increases maximum receiver buffer from 10 seconds to 10 minutes (600 seconds).
 
-**Why it matters**: For professional streaming over unreliable networks, a larger buffer allows better packet loss recovery - similar to how SRT or RTMP handle poor connections. Standard WebRTC is optimized for low-latency video calls, not high-latency broadcast scenarios.
+**Why it matters**: For professional streaming over unreliable networks, a larger receiver buffer can absorb more jitter and late frames. WebRTC still requests missing packets near the live edge; this option does not retain sender RTP packets for minutes or turn WebRTC into SRT/RTMP.
 
 **Improvements in this patch**:
-- Frame buffer: 800 → 7,200 frames (2 min @ 60fps)
-- NACK history: 1 second → 2 minutes
-- Maximum delay: 10 seconds → 10 minutes
+- Frame buffer capacity: 800 -> 36,000 frames (10 min at 60fps)
+- Missing-packet list: 1,000 -> 10,000 packets, with a wrap-safe 32,000-packet age limit
+- Maximum delay: 10 seconds -> 10 minutes
 
 **CLI Option**:
 ```bash
@@ -676,13 +679,12 @@ elecap.exe --playoutDelay=30 --url="https://vdo.ninja/..."
 elecap.exe --playoutDelay=120 --url="https://vdo.ninja/..."
 ```
 
+The CLI value is applied automatically to video receivers after their remote description is set.
+
 **JavaScript API** (on the receiver side):
 ```js
 // Set buffer directly on RTCRtpReceiver
 receiver.playoutDelayHint = 120; // 2 minute buffer
-
-// Or use the Electron helper
-window.electronApi.applyPlayoutDelay(receiver, 60); // 60 seconds
 ```
 
 **Trade-off**: Higher playout delay = more latency. A 30-second buffer means 30 seconds of delay before video appears.
@@ -700,9 +702,6 @@ window.electronApi.getCapturePreferences();
 window.electronApi.isCursorSuppressionEnabled();  // true/false
 window.electronApi.isAdaptiveScalingDisabled();   // true/false
 window.electronApi.getPlayoutDelay();             // number (seconds)
-
-// Apply playout delay to an RTCRtpReceiver
-window.electronApi.applyPlayoutDelay(rtcRtpReceiver, 30);
 ```
 
 #### Feature Availability Summary
@@ -710,13 +709,13 @@ window.electronApi.applyPlayoutDelay(rtcRtpReceiver, 30);
 | Feature | Windows | Mac | Linux | Requires CLI Flag |
 |---------|---------|-----|-------|-------------------|
 | QP-Cap (quality lock) | ✅ | ❌ | ❌ | No (automatic) |
-| NVENC encoding | ✅ | ❌ | ❌ | No (automatic) |
+| Chromium hardware encoding preference | ✅ | ❌ | ❌ | No (automatic) |
 | Adaptive scaling control | ✅ | ❌ | ❌ | Yes |
 | Cursor suppression | ✅ | ❌ | ❌ | Optional |
 | Extended playout delay | ✅ | ❌ | ❌ | Optional |
 | ASIO audio capture | ✅ | ❌ | ❌ | --node |
 
-The Windows feature column above refers to the custom x64 build. The official Windows ARM64 build does not include the custom QP/NVENC/window patches, and ASIO is unavailable until an ARM64 PortAudio/ASIO dependency is provided.
+The Windows feature column above refers to the custom x64 builds. The official Windows ARM64 build does not include the custom QP/cursor/WebRTC patches, and ASIO is unavailable until an ARM64 PortAudio/ASIO dependency is provided.
 
 ### Security considerations
 

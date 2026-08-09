@@ -8,18 +8,31 @@ const { pipeline } = require('stream/promises');
 const { Readable } = require('stream');
 
 const CHECKSUM_MANIFEST = 'SHASUMS256.txt';
-const PLATFORM_TARGETS = new Map([
-  ['win32', {
+const WINDOWS_TARGETS = new Map([
+  ['win10', {
     version: '39.2.16-qp20',
-    releaseTag: 'v39.2.16-qp20',
+    releaseTag: 'v39.2.16-qp20.1',
     mirrorBase: 'https://github.com/steveseguin/electron/releases/download/',
     artifacts: new Map([
       ['x64', 'electron-v39.2.16-qp20-win32-x64.zip']
     ]),
     checksums: new Map([
-      ['electron-v39.2.16-qp20-win32-x64.zip', '01a45b4530ed32a79d82e45e6a1275f9146eeee4fedcfd13344184742bcd5047']
+      ['electron-v39.2.16-qp20-win32-x64.zip', '7cbe59bef11ed33f125ecca9176d978ea9b814e19d83505b63ce4c9393ad8784']
     ])
   }],
+  ['win11', {
+    version: '43.3.0-qp20',
+    releaseTag: 'v43.3.0-qp20',
+    mirrorBase: 'https://github.com/steveseguin/electron/releases/download/',
+    artifacts: new Map([
+      ['x64', 'electron-v43.3.0-qp20-win32-x64.zip']
+    ]),
+    checksums: new Map([
+      ['electron-v43.3.0-qp20-win32-x64.zip', 'dea789ff232f1d13c5bc40004453d69024072b3f52a379b95cead04a46d87a21']
+    ])
+  }]
+]);
+const PLATFORM_TARGETS = new Map([
   ['linux', {
     version: '39.2.7',
     releaseTag: 'v39.2.7',
@@ -40,11 +53,13 @@ const PLATFORM_TARGETS = new Map([
   }]
 ]);
 
-main().catch(err => {
-  console.error('[custom-electron] Failed to install custom Electron build.');
-  console.error(err);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch(err => {
+    console.error('[custom-electron] Failed to install custom Electron build.');
+    console.error(err);
+    process.exitCode = 1;
+  });
+}
 
 async function main () {
   if (process.env.CUSTOM_ELECTRON_SKIP === '1') {
@@ -54,7 +69,7 @@ async function main () {
 
   const platform = process.env.npm_config_platform || process.platform;
   const arch = process.env.npm_config_arch || process.arch;
-  const target = PLATFORM_TARGETS.get(platform);
+  const target = resolvePlatformTarget(platform);
 
   if (!target) {
     console.log(`[custom-electron] No custom build configured for ${platform}/${arch}; skipping.`);
@@ -77,7 +92,7 @@ async function main () {
   const electronDir = path.dirname(electronPkgPath);
   const distDir = path.join(electronDir, 'dist');
   const markerPath = path.join(distDir, '.custom-version');
-  const markerValue = `${customVersion}:${platform}:${arch}`;
+  const markerValue = buildMarkerValue(target, platform, arch, filename);
 
   if (await isCustomVersionPresent(markerPath, markerValue)) {
     console.log(`[custom-electron] ${customVersion} already installed for ${platform}/${arch}; skipping download.`);
@@ -156,6 +171,43 @@ async function main () {
   console.log(`[custom-electron] Installed ${target.version} for ${platform}/${arch}.`);
 }
 
+function resolveWindowsVariant (args = process.argv, env = process.env) {
+  const prefix = '--windows-variant=';
+  const cliValue = args.find(arg => arg.startsWith(prefix));
+  const value = (cliValue ? cliValue.slice(prefix.length) : env.CUSTOM_ELECTRON_WINDOWS_VARIANT || 'win10')
+    .trim()
+    .toLowerCase();
+  if (!WINDOWS_TARGETS.has(value)) {
+    throw new Error(`Unsupported Windows Electron variant "${value}"; expected win10 or win11.`);
+  }
+  return value;
+}
+
+function resolvePlatformTarget (platform, args = process.argv, env = process.env) {
+  return platform === 'win32'
+    ? WINDOWS_TARGETS.get(resolveWindowsVariant(args, env))
+    : PLATFORM_TARGETS.get(platform);
+}
+
+module.exports = {
+  buildMarkerValue,
+  parseChecksumManifest,
+  resolvePlatformTarget,
+  resolveWindowsVariant
+};
+
+function buildMarkerValue (target, platform, arch, filename) {
+  const checksum = target.checksums && target.checksums.get(filename);
+  return [
+    target.version,
+    target.releaseTag,
+    platform,
+    arch,
+    filename,
+    checksum || 'remote-manifest'
+  ].join(':');
+}
+
 async function isCustomVersionPresent (markerPath, expectedValue) {
   try {
     const data = await fs.promises.readFile(markerPath, 'utf8');
@@ -227,7 +279,8 @@ function parseChecksumManifest (text) {
       continue;
     }
 
-    const match = line.match(/^([a-fA-F0-9]{64}) \*(.+)$/);
+    // sha256sum uses two spaces for text mode and a space plus * for binary.
+    const match = line.match(/^([a-fA-F0-9]{64})[ \t]+\*?(.+)$/);
     if (match) {
       const [, hash, file] = match;
       entries.set(file, hash.toLowerCase());

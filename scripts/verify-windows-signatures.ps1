@@ -3,6 +3,8 @@ param(
     [Parameter(Mandatory = $true)]
     [ValidateSet('x64', 'arm64')]
     [string]$Architecture,
+    [ValidateSet('win10', 'win11')]
+    [string]$Variant = 'win10',
     [string]$DistDirectory,
     [string]$PublicCertificate
 )
@@ -44,7 +46,12 @@ function Get-PeMachine {
     }
 }
 
-$releaseFiles = if ($Architecture -eq 'x64') {
+$releaseFiles = if ($Architecture -eq 'x64' -and $Variant -eq 'win11') {
+    @(
+        (Join-Path $distPath "elecap-$version-win11.exe"),
+        (Join-Path $distPath 'elecap-win11.exe')
+    )
+} elseif ($Architecture -eq 'x64') {
     @(
         (Join-Path $distPath "elecap-$version.exe"),
         (Join-Path $distPath 'elecap.exe')
@@ -76,24 +83,73 @@ $certificateBytes = [System.Convert]::FromBase64String($certificateBase64)
 $publicCert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2 -ArgumentList @(,$certificateBytes)
 $expectedThumbprint = $publicCert.Thumbprint
 $filesToVerify = @($releaseFiles) + @($unpackedFiles.FullName)
+$temporaryTrustStores = [System.Collections.Generic.List[string]]::new()
 
-foreach ($file in $filesToVerify) {
-    $signature = Get-AuthenticodeSignature -LiteralPath $file
-    if ($null -eq $signature.SignerCertificate) {
-        throw "Authenticode signature missing: $file"
+try {
+    # The release certificate is self-signed. Trust only this pinned certificate
+    # for the current user while PowerShell performs its full validity check.
+    foreach ($storeName in @('Root', 'TrustedPublisher')) {
+        $store = [System.Security.Cryptography.X509Certificates.X509Store]::new(
+            $storeName,
+            [System.Security.Cryptography.X509Certificates.StoreLocation]::CurrentUser
+        )
+        $store.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
+        try {
+            $existing = $store.Certificates.Find(
+                [System.Security.Cryptography.X509Certificates.X509FindType]::FindByThumbprint,
+                $expectedThumbprint,
+                $false
+            )
+            if ($existing.Count -eq 0) {
+                $store.Add($publicCert)
+                $temporaryTrustStores.Add($storeName)
+            }
+        } finally {
+            $store.Close()
+        }
     }
-    if ($signature.SignerCertificate.Thumbprint -ne $expectedThumbprint) {
-        throw "Unexpected signing certificate on $file. Expected $expectedThumbprint, got $($signature.SignerCertificate.Thumbprint)."
+
+    foreach ($file in $filesToVerify) {
+        $signature = Get-AuthenticodeSignature -LiteralPath $file
+        if ($signature.Status -ne [System.Management.Automation.SignatureStatus]::Valid) {
+            throw "Authenticode signature is not valid on $file. Status: $($signature.Status); message: $($signature.StatusMessage)"
+        }
+        if ($null -eq $signature.SignerCertificate) {
+            throw "Authenticode signature missing: $file"
+        }
+        if ($signature.SignerCertificate.Thumbprint -ne $expectedThumbprint) {
+            throw "Unexpected signing certificate on $file. Expected $expectedThumbprint, got $($signature.SignerCertificate.Thumbprint)."
+        }
+        if ($null -eq $signature.TimeStamperCertificate) {
+            throw "Trusted timestamp missing from signature: $file"
+        }
+        $relativePath = if ($file.StartsWith($distPath, [System.StringComparison]::OrdinalIgnoreCase)) {
+            $file.Substring($distPath.Length).TrimStart('\', '/')
+        } else {
+            $file
+        }
+        Write-Output "Verified $Architecture signature: $relativePath"
     }
-    if ($null -eq $signature.TimeStamperCertificate) {
-        throw "Trusted timestamp missing from signature: $file"
+} finally {
+    foreach ($storeName in $temporaryTrustStores) {
+        $store = [System.Security.Cryptography.X509Certificates.X509Store]::new(
+            $storeName,
+            [System.Security.Cryptography.X509Certificates.StoreLocation]::CurrentUser
+        )
+        $store.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
+        try {
+            $temporaryCertificates = $store.Certificates.Find(
+                [System.Security.Cryptography.X509Certificates.X509FindType]::FindByThumbprint,
+                $expectedThumbprint,
+                $false
+            )
+            foreach ($certificate in $temporaryCertificates) {
+                $store.Remove($certificate)
+            }
+        } finally {
+            $store.Close()
+        }
     }
-    $relativePath = if ($file.StartsWith($distPath, [System.StringComparison]::OrdinalIgnoreCase)) {
-        $file.Substring($distPath.Length).TrimStart('\', '/')
-    } else {
-        $file
-    }
-    Write-Output "Verified $Architecture signature: $relativePath"
 }
 
 Write-Output "Verified Electron Capture signer $expectedThumbprint and trusted timestamps on $($filesToVerify.Count) executables."

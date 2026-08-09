@@ -23,6 +23,10 @@ const {
 	shouldAllowMultipleInstances,
 	createBrowserWindowWithLinuxIdentity
 } = require('./linux-app-identity');
+const {
+	resolveWindowCapturePreferences,
+	serializeCapturePreferences
+} = require('./capture-preference-hooks');
 
 let earlyDataPaths = resolveEarlyDataPaths();
 let portableMigrationPending = null;
@@ -1259,12 +1263,19 @@ function createYargs(){
     alias: "bufferDelay",
     describe: "Default playout delay hint in seconds for WebRTC receivers (0-600, custom Electron only).",
     type: "number",
+	nargs: 1,
     default: 0
   })
   .option("nodpi", {
     describe: "Disable automatic DPI compensation (content will render at system scale).",
     type: "boolean",
     default: false
+  })
+  .check((argv) => {
+	if (!Number.isFinite(argv.playoutDelay) || argv.playoutDelay < 0 || argv.playoutDelay > 600) {
+	  throw new Error('--playoutDelay must be a number from 0 through 600.');
+	}
+	return true;
   })
   .describe("help", "Show help.") // Override --help usage message.
   .wrap(process.stdout.columns); 
@@ -1723,15 +1734,10 @@ ipcMain.handle('hardware-encoding:open-gpu-diagnostics', () => {
 	return openGpuDiagnosticsWindow();
 });
 
-// Custom Electron capture preferences (v39.2.7+)
-ipcMain.handle('capture:get-preferences', () => {
-	return {
-		hideCursorCapture: Argv.hideCursorCapture || false,
-		playoutDelay: Argv.playoutDelay || 0,
-		disableAdaptiveScaling: Argv.disableAdaptiveScaling || false,
-		lockResolution: Argv.lockResolution || false,
-		lockFramerate: Argv.lockFramerate || false
-	};
+// Custom Electron capture preferences.
+ipcMain.handle('capture:get-preferences', (event) => {
+	const senderWindow = BrowserWindow.fromWebContents(event.sender);
+	return resolveWindowCapturePreferences(senderWindow, Argv);
 });
 
 ipcMain.handle('drag-region:get-default-preference', (event) => {
@@ -2731,6 +2737,7 @@ async function createWindow(args, reuse=false) {
   }
 
 	// Create the browser window.
+	const capturePreferencesArgument = serializeCapturePreferences(args);
 	var mainWindow = createBrowserWindowWithLinuxIdentity(app, BrowserWindow, {
 		transparent: true,
 		//focusable: false,
@@ -2745,6 +2752,7 @@ async function createWindow(args, reuse=false) {
 		show: false,
 		webPreferences: {
 			preload: path.join(__dirname, 'preload.js'),
+			additionalArguments: [`--electron-capture-preferences=${capturePreferencesArgument}`],
 			pageVisibility: true,
 			partition: 'persist:abc',
 			contextIsolation: !NODE,

@@ -60,10 +60,143 @@ const capturePreferences = {
   lockFramerate: false
 };
 
+// CAPTURE_PREFERENCE_HOOK_START
+function installCapturePreferenceHooks(preferences, targetGlobal) {
+  const globalObject = targetGlobal || globalThis;
+  const stateKey = Symbol.for('electroncapture.capturePreferenceHooks');
+  const requestedDelay = Number(preferences && preferences.playoutDelay);
+  const normalizedPreferences = {
+    hideCursorCapture: Boolean(preferences && preferences.hideCursorCapture),
+    playoutDelay: Number.isFinite(requestedDelay)
+      ? Math.min(600, Math.max(0, requestedDelay))
+      : 0
+  };
+
+  if (globalObject[stateKey]) {
+    globalObject[stateKey].preferences = normalizedPreferences;
+    return;
+  }
+
+  const state = { preferences: normalizedPreferences };
+  Object.defineProperty(globalObject, stateKey, {
+    configurable: false,
+    enumerable: false,
+    writable: false,
+    value: state
+  });
+
+  const mediaDevicesPrototype = globalObject.MediaDevices && globalObject.MediaDevices.prototype;
+  if (mediaDevicesPrototype && typeof mediaDevicesPrototype.getDisplayMedia === 'function') {
+    const originalGetDisplayMedia = mediaDevicesPrototype.getDisplayMedia;
+    mediaDevicesPrototype.getDisplayMedia = function getDisplayMediaWithCapturePreferences(...args) {
+      if (!state.preferences.hideCursorCapture) {
+        return Reflect.apply(originalGetDisplayMedia, this, args);
+      }
+
+      const originalConstraints = args[0];
+      let constraints = originalConstraints;
+      if (originalConstraints === undefined || originalConstraints === null) {
+        constraints = { video: { cursor: 'never' } };
+      } else if (typeof originalConstraints === 'object') {
+        const originalVideo = originalConstraints.video;
+        if (originalVideo === true || originalVideo === undefined || originalVideo === null) {
+          constraints = { ...originalConstraints, video: { cursor: 'never' } };
+        } else if (typeof originalVideo === 'object' && typeof originalVideo.cursor === 'undefined') {
+          constraints = {
+            ...originalConstraints,
+            video: { ...originalVideo, cursor: 'never' }
+          };
+        }
+      }
+
+      const nextArgs = args.length > 0 ? [constraints, ...args.slice(1)] : [constraints];
+      return Reflect.apply(originalGetDisplayMedia, this, nextArgs);
+    };
+  }
+
+  const peerConnectionPrototype = globalObject.RTCPeerConnection && globalObject.RTCPeerConnection.prototype;
+  if (!peerConnectionPrototype) {
+    return;
+  }
+
+  const applyPlayoutDelayToReceivers = (receivers) => {
+    const delay = state.preferences.playoutDelay;
+    if (delay <= 0 || !receivers || typeof receivers[Symbol.iterator] !== 'function') {
+      return;
+    }
+    for (const receiver of receivers) {
+      if (!receiver || !receiver.track || receiver.track.kind !== 'video' || !('playoutDelayHint' in receiver)) {
+        continue;
+      }
+      try {
+        receiver.playoutDelayHint = delay;
+      } catch (error) {
+        // A receiver may stop between getReceivers() and assignment.
+      }
+    }
+  };
+
+  if (typeof peerConnectionPrototype.getReceivers === 'function' &&
+      typeof peerConnectionPrototype.setRemoteDescription === 'function') {
+    const originalGetReceivers = peerConnectionPrototype.getReceivers;
+    const originalSetRemoteDescription = peerConnectionPrototype.setRemoteDescription;
+    peerConnectionPrototype.setRemoteDescription = function setRemoteDescriptionWithCapturePreferences(...args) {
+      const result = Reflect.apply(originalSetRemoteDescription, this, args);
+      return Promise.resolve(result).then((value) => {
+        try {
+          applyPlayoutDelayToReceivers(Reflect.apply(originalGetReceivers, this, []));
+        } catch (error) {
+          // Capture preferences must not change native WebRTC promise behavior.
+        }
+        return value;
+      });
+    };
+  }
+}
+// CAPTURE_PREFERENCE_HOOK_END
+
+const CAPTURE_PREFERENCES_ARGUMENT = '--electron-capture-preferences=';
+
+function installCapturePreferenceHooksInPageWorld() {
+  const preferences = {
+    hideCursorCapture: Boolean(capturePreferences.hideCursorCapture),
+    playoutDelay: capturePreferences.playoutDelay
+  };
+  if (process.contextIsolated && contextBridge && typeof contextBridge.executeInMainWorld === 'function') {
+    try {
+      contextBridge.executeInMainWorld({
+        func: installCapturePreferenceHooks,
+        args: [preferences]
+      });
+    } catch (error) {
+      console.warn('[Electron Capture] Failed to install capture preferences in the page:', error);
+    }
+    return;
+  }
+  installCapturePreferenceHooks(preferences);
+}
+
+const serializedCapturePreferences = process.argv.find((argument) =>
+  typeof argument === 'string' && argument.startsWith(CAPTURE_PREFERENCES_ARGUMENT)
+);
+if (serializedCapturePreferences) {
+  try {
+    const parsedPreferences = JSON.parse(
+      decodeURIComponent(serializedCapturePreferences.slice(CAPTURE_PREFERENCES_ARGUMENT.length))
+    );
+    capturePreferences.hideCursorCapture = Boolean(parsedPreferences.hideCursorCapture);
+    capturePreferences.playoutDelay = Number(parsedPreferences.playoutDelay) || 0;
+  } catch (error) {
+    console.warn('[Electron Capture] Ignoring invalid capture preferences argument:', error);
+  }
+}
+installCapturePreferenceHooksInPageWorld();
+
 // Load capture preferences from main process
 ipcRenderer.invoke('capture:get-preferences').then((prefs) => {
   if (prefs) {
     Object.assign(capturePreferences, prefs);
+    installCapturePreferenceHooksInPageWorld();
     if (capturePreferences.hideCursorCapture) {
       console.log('[Electron Capture] Cursor suppression enabled for screen capture');
     }
@@ -630,20 +763,6 @@ function installDisplayMediaHook() {
   const originalGetDisplayMedia = navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices);
 
   navigator.mediaDevices.getDisplayMedia = async (...args) => {
-    // Apply cursor suppression if enabled and not already specified
-    if (capturePreferences.hideCursorCapture && args.length > 0 && args[0]) {
-      const constraints = args[0];
-      if (constraints.video && typeof constraints.video === 'object') {
-        if (typeof constraints.video.cursor === 'undefined') {
-          constraints.video.cursor = 'never';
-          console.log('[Electron Capture] Applied cursor suppression to getDisplayMedia');
-        }
-      } else if (constraints.video === true) {
-        constraints.video = { cursor: 'never' };
-        console.log('[Electron Capture] Applied cursor suppression to getDisplayMedia');
-      }
-    }
-
     const stream = await originalGetDisplayMedia(...args);
     if (appAudioTarget) {
       await attachApplicationAudio(stream);
@@ -744,16 +863,6 @@ function createElectronApi() {
     'getPlayoutDelay': () => capturePreferences.playoutDelay,
     'isAdaptiveScalingDisabled': () => capturePreferences.disableAdaptiveScaling,
     'isCursorSuppressionEnabled': () => capturePreferences.hideCursorCapture,
-    // Helper to apply playout delay to an RTCRtpReceiver
-    'applyPlayoutDelay': (receiver, delaySeconds) => {
-      const delay = typeof delaySeconds === 'number' ? delaySeconds : capturePreferences.playoutDelay;
-      if (receiver && typeof receiver.playoutDelayHint !== 'undefined' && delay > 0) {
-        receiver.playoutDelayHint = delay;
-        console.log('[Electron Capture] Applied playout delay:', delay, 'seconds');
-        return true;
-      }
-      return false;
-    },
     // ASIO Audio Capture (Windows only) - supports both direct and IPC modes
     'isAsioAvailable': () => {
       if (!useIpcForAsio) {

@@ -4,6 +4,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 const asar = require('@electron/asar');
 const {
   FuseState,
@@ -12,6 +13,9 @@ const {
 } = require('@electron/fuses');
 
 const PE_MACHINE_X64 = 0x8664;
+const isWindows11 = process.argv.includes('--win11');
+const expectedElectronVersion = isWindows11 ? '43.3.0-qp20' : '39.2.16-qp20';
+const expectedElectronReleaseTag = isWindows11 ? 'v43.3.0-qp20' : 'v39.2.16-qp20.1';
 const projectRoot = path.resolve(__dirname, '..');
 const distDir = process.env.ELECTRON_CAPTURE_DIST_DIR
   ? path.resolve(process.env.ELECTRON_CAPTURE_DIST_DIR)
@@ -42,6 +46,7 @@ async function main() {
 
   const unpackedDir = path.dirname(unpackedExecutable);
   assertPeMachine(unpackedExecutable, PE_MACHINE_X64, 'x64');
+  verifyElectronVersion(unpackedExecutable);
   verifyNativeModule(unpackedDir, 'window_audio_capture.node', process.env.WINDOW_AUDIO_CAPTURE_SKIP === '1');
   verifyNativeModule(unpackedDir, 'electron_asio.node', process.env.ELECTRON_ASIO_SKIP === '1');
   verifyNativeModule(unpackedDir, 'portaudio_x64.dll', process.env.ELECTRON_ASIO_SKIP === '1');
@@ -49,16 +54,18 @@ async function main() {
   await verifyFuses(unpackedExecutable);
   verifyArtifacts();
 
-  console.log(`Verified custom Windows x64 Electron executable: ${path.relative(projectRoot, unpackedExecutable)}`);
+  console.log(`Verified Electron ${expectedElectronVersion} Windows x64 executable: ${path.relative(projectRoot, unpackedExecutable)}`);
   console.log('Verified x64 native modules, security fuses, package contents, and release artifacts.');
 }
 
 function assertCustomElectronConfiguration() {
-  const build = require('../package.json').build;
+  const build = isWindows11
+    ? require('../electron-builder.win11.js')
+    : require('../package.json').build;
   const expected = {
-    electronVersion: '39.2.16-qp20',
+    electronVersion: expectedElectronVersion,
     mirror: 'https://github.com/steveseguin/electron/releases/download/',
-    customDir: 'v39.2.16-qp20',
+    customDir: expectedElectronReleaseTag,
   };
   if (build.electronVersion !== expected.electronVersion) {
     throw new Error(`Custom Windows Electron version changed: ${build.electronVersion}`);
@@ -68,6 +75,25 @@ function assertCustomElectronConfiguration() {
   }
   if (build.electronDownload.customDir !== expected.customDir) {
     throw new Error(`Custom Windows Electron directory changed: ${build.electronDownload.customDir}`);
+  }
+}
+
+function verifyElectronVersion(executablePath) {
+  const output = execFileSync(executablePath, ['--version'], {
+    encoding: 'utf8',
+    timeout: 15000,
+    windowsHide: true,
+  }).trim();
+  const startupMatch = output.match(/^\[startup\].*?\| Electron ([^ |]+) \|/m);
+  const actualElectronVersion = startupMatch && startupMatch[1];
+  if (actualElectronVersion !== expectedElectronVersion) {
+    throw new Error(`Expected Electron ${expectedElectronVersion}, got: ${actualElectronVersion || '(no startup version)'}`);
+  }
+  if (process.env.WINDOW_AUDIO_CAPTURE_SKIP !== '1' && !output.includes('Module loaded successfully')) {
+    throw new Error('window-audio-capture did not load during the packaged runtime probe');
+  }
+  if (process.env.ELECTRON_ASIO_SKIP !== '1' && !output.includes('ASIO IPC handlers registered')) {
+    throw new Error('electron-asio did not load during the packaged runtime probe');
   }
 }
 
@@ -92,6 +118,7 @@ function verifyPackagedFiles(unpackedDir) {
     'CLAUDE.md', 'CODE_SIGNING.md', 'code-signing-cert.pem', 'customSign.js',
     'afterPack.js', 'afterPackArm64.js', 'afterPackHook.js', 'afterSign.js',
     'docs', 'electron-builder.env', 'electron-builder.win-arm64.js',
+    'electron-builder.win11.js',
     'installer.nsh', 'package-lock.json', 'scripts', 'setFuses.js', 'test',
     'tests', 'vdoninja',
   ];
@@ -99,8 +126,16 @@ function verifyPackagedFiles(unpackedDir) {
   if (leaked.length > 0) {
     throw new Error(`Build-only or sensitive files leaked into app.asar:\n${leaked.join('\n')}`);
   }
-  if (!entries.includes('portable-data-paths.js')) {
-    throw new Error('portable-data-paths.js is missing from app.asar');
+  const requiredAppFiles = [
+    'main.js',
+    'preload.js',
+    'capture-preference-hooks.js',
+    'portable-data-paths.js',
+  ];
+  for (const requiredFile of requiredAppFiles) {
+    if (!entries.includes(requiredFile)) {
+      throw new Error(`${requiredFile} is missing from app.asar`);
+    }
   }
 
   const undiciIndexEntry = archiveEntries.find(
@@ -131,11 +166,14 @@ async function verifyFuses(executablePath) {
 
 function verifyArtifacts() {
   const version = require('../package.json').version;
+  const installerName = isWindows11 ? `elecap-${version}-win11.exe` : `elecap-${version}.exe`;
+  const portableName = isWindows11 ? 'elecap-win11.exe' : 'elecap.exe';
+  const zipPrefix = isWindows11 ? 'elecap_win11' : 'elecap_win';
   const expectedArtifacts = [
-    { filePath: path.join(distDir, `elecap-${version}.exe`), type: 'exe' },
-    { filePath: path.join(distDir, 'elecap.exe'), type: 'exe' },
-    { filePath: path.join(distDir, `elecap_win_v${version}_installer.zip`), type: 'zip' },
-    { filePath: path.join(distDir, `elecap_win_v${version}_portable.zip`), type: 'zip' },
+    { filePath: path.join(distDir, installerName), type: 'exe' },
+    { filePath: path.join(distDir, portableName), type: 'exe' },
+    { filePath: path.join(distDir, `${zipPrefix}_v${version}_installer.zip`), type: 'zip' },
+    { filePath: path.join(distDir, `${zipPrefix}_v${version}_portable.zip`), type: 'zip' },
   ];
   for (const artifact of expectedArtifacts) {
     const stats = fs.statSync(artifact.filePath, { throwIfNoEntry: false });

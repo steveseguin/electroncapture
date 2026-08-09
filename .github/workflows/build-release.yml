@@ -24,6 +24,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.12.0'
+          cache: 'npm'
+
       - name: Validate release version
         shell: bash
         env:
@@ -96,6 +102,21 @@ jobs:
         shell: powershell
         run: .\scripts\verify-windows-signatures.ps1 -Architecture x64
 
+      - name: Build Windows 11 x64
+        run: npm run build:win11
+        env:
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          WINDOW_AUDIO_CAPTURE_SKIP: ${{ secrets.SUBMODULE_SSH_KEY == '' && '1' || '0' }}
+
+      - name: Verify Windows 11 x64 package
+        run: npm run verify:win11
+        env:
+          WINDOW_AUDIO_CAPTURE_SKIP: ${{ secrets.SUBMODULE_SSH_KEY == '' && '1' || '0' }}
+
+      - name: Verify Windows 11 x64 signatures
+        shell: powershell
+        run: .\scripts\verify-windows-signatures.ps1 -Architecture x64 -Variant win11
+
       - name: Submit executables to VirusTotal
         continue-on-error: true
         run: node scripts/submit-virustotal.js --dir dist --require-api-key --fail-on-error
@@ -110,6 +131,8 @@ jobs:
           files: |
             dist/elecap_win_*_portable.zip
             dist/elecap_win_*_installer.zip
+            dist/elecap_win11_*_portable.zip
+            dist/elecap_win11_*_installer.zip
             dist/elecap-*.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -124,6 +147,8 @@ jobs:
           path: |
             dist/elecap_win_*_portable.zip
             dist/elecap_win_*_installer.zip
+            dist/elecap_win11_*_portable.zip
+            dist/elecap_win11_*_installer.zip
             dist/elecap-*.exe
 
   build-windows-arm64:
