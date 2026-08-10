@@ -2,8 +2,6 @@ name: Enhance Commit Messages
 on:
   push:
     branches: [ main, master, beta, develop ]
-  pull_request:
-    types: [ opened, synchronize ]
 jobs:
   enhance-commits:
     runs-on: ubuntu-latest
@@ -19,13 +17,12 @@ jobs:
       !contains(github.event.head_commit.message, 'Release v')
     permissions:
       contents: write
-      pull-requests: write
     concurrency:
       group: enhance-commits-${{ github.ref }}
       cancel-in-progress: true
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 5
           token: ${{ secrets.COMMIT_ENHANCER_PAT }}
@@ -56,14 +53,9 @@ jobs:
       
       - name: Setup Node.js
         if: steps.check_time.outputs.skip != 'true'
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: '18'
-          cache: 'npm'
-      
-      - name: Install dependencies
-        if: steps.check_time.outputs.skip != 'true'
-        run: npm install axios
+          node-version: '22.12.0'
       
       - name: Configure Git
         if: steps.check_time.outputs.skip != 'true'

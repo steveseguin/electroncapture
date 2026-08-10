@@ -3,7 +3,7 @@ const path = require("path");
 
 const baseBuild = require("./package.json").build;
 
-const OFFICIAL_ELECTRON_VERSION = "39.2.7";
+const OFFICIAL_ELECTRON_VERSION = "43.3.0";
 const PE_MACHINE_ARM64 = 0xaa64;
 const ELECTRON_ASIO_BINARY_PATH = "native-modules/electron-asio/build/Release";
 const WINDOW_AUDIO_PATH = "native-modules/window-audio-capture";

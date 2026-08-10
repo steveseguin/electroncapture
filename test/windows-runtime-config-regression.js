@@ -22,14 +22,14 @@ assert.strictEqual(
 assert.throws(() => resolveWindowsVariant([], { CUSTOM_ELECTRON_WINDOWS_VARIANT: 'future' }), /expected win10 or win11/);
 
 const windows10 = resolvePlatformTarget('win32', [], {});
-assert.strictEqual(windows10.version, '39.2.16-qp20');
-assert.strictEqual(windows10.releaseTag, 'v39.2.16-qp20.1');
-assert.strictEqual(windows10.artifacts.get('x64'), 'electron-v39.2.16-qp20-win32-x64.zip');
+assert.strictEqual(windows10.version, '39.8.10-qp20');
+assert.strictEqual(windows10.releaseTag, 'v39.8.10-qp20');
+assert.strictEqual(windows10.artifacts.get('x64'), 'electron-v39.8.10-qp20-win32-x64.zip');
 assert.strictEqual(
-  windows10.checksums.get('electron-v39.2.16-qp20-win32-x64.zip'),
-  '7cbe59bef11ed33f125ecca9176d978ea9b814e19d83505b63ce4c9393ad8784'
+  windows10.checksums.get('electron-v39.8.10-qp20-win32-x64.zip'),
+  'cd8e11cbb51b742de0a1db617f286d65efed0e2d248b1854544ccb5f13258fa7'
 );
-assert.strictEqual(windows10Build.electronDownload.customDir, 'v39.2.16-qp20.1');
+assert.strictEqual(windows10Build.electronDownload.customDir, 'v39.8.10-qp20');
 
 const windows11 = resolvePlatformTarget('win32', ['--windows-variant=win11'], {});
 assert.strictEqual(windows11.version, '43.3.0-qp20');
@@ -45,7 +45,7 @@ assert.strictEqual(windows11Build.nsis.artifactName, 'elecap-${version}-win11.${
 assert.strictEqual(windows11Build.portable.artifactName, 'elecap-win11.exe');
 
 const linux = resolvePlatformTarget('linux', [], { CUSTOM_ELECTRON_WINDOWS_VARIANT: 'future' });
-assert.strictEqual(linux.version, '39.2.7');
+assert.strictEqual(linux.version, '43.3.0');
 
 const outputDir = path.resolve('test-output');
 const fallbackArtifacts = getWindowsArtifactFiles(outputDir, '2.23.3', false);
@@ -72,9 +72,9 @@ const currentMarker = buildMarkerValue(
   'x64',
   windows10.artifacts.get('x64')
 );
-assert.notStrictEqual(currentMarker, '39.2.16-qp20:win32:x64');
-assert.ok(currentMarker.includes('v39.2.16-qp20.1'));
-assert.ok(currentMarker.endsWith(windows10.checksums.get('electron-v39.2.16-qp20-win32-x64.zip')));
+assert.notStrictEqual(currentMarker, '39.8.10-qp20:win32:x64');
+assert.ok(currentMarker.includes('v39.8.10-qp20'));
+assert.ok(currentMarker.endsWith(windows10.checksums.get('electron-v39.8.10-qp20-win32-x64.zip')));
 
 const checksumEntries = parseChecksumManifest([
   `${'a'.repeat(64)}  text-mode.zip`,

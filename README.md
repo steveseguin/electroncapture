@@ -25,14 +25,14 @@ Lastly, since playback is agnostic, you can window-capture the same video multip
 
 ## Electron Builds and ARM64 Support
 
-- Windows 10 x64 keeps the verified custom `v39.2.16-qp20` fallback. Build it with `npm run build:win32`.
+- Windows 10 x64 keeps the verified custom `v39.8.10-qp20` fallback. Build it with `npm run build:win32`.
 - Windows 11 x64 can use the custom `v43.3.0-qp20` runtime with current Chromium security fixes and the Electron Capture transparency, QP, cursor, scaling, and delay patches. Build it with `npm run build:win11`.
 - These are alternative installers for the same app. Installing one replaces the other; keep the v39 installer available for rollback.
-- Windows ARM64 uses the official Electron `v39.2.7` ARM64 runtime and is built independently with `npm run build:win-arm64`. It does not replace or modify the custom Windows x64 build.
+- Windows ARM64 uses the official Electron `v43.3.0` ARM64 runtime and is built independently with `npm run build:win-arm64`. It does not replace or modify the custom Windows x64 build.
 - The Windows ARM64 package excludes the x64-only ASIO/PortAudio binary. Process/window audio capture is rebuilt natively when the private module is available.
-- macOS uses official Electron `v39.2.7` and `npm run build:darwin` produces a universal Intel/Apple Silicon package.
-- Linux ARM64, including the base architecture used by NVIDIA DGX Spark, uses official Electron `v39.2.7` and is built with `npm run build:arm64`.
-- Requirements: Node.js ≥ 18, git, and network access to GitHub Releases. The Electron installer and `postinstall` hook (`scripts/install-custom-electron.js`) select the configured runtime for the current platform and architecture.
+- macOS uses official Electron `v43.3.0` and `npm run build:darwin` produces a universal Intel/Apple Silicon package.
+- Linux uses official Electron `v43.3.0`; ARM64, including the base architecture used by NVIDIA DGX Spark, is built with `npm run build:arm64`.
+- Requirements: Node.js 20.17 or newer, git, and network access to GitHub Releases. The Electron installer and `postinstall` hook (`scripts/install-custom-electron.js`) select the configured runtime for the current platform and architecture.
 - To fall back to stock Electron during local installation, set `CUSTOM_ELECTRON_SKIP=1` before installing, or delete `node_modules/electron/dist` and reinstall.
 
 ### Windows installer and portable data

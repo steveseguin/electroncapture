@@ -14,8 +14,8 @@ const {
 
 const PE_MACHINE_X64 = 0x8664;
 const isWindows11 = process.argv.includes('--win11');
-const expectedElectronVersion = isWindows11 ? '43.3.0-qp20' : '39.2.16-qp20';
-const expectedElectronReleaseTag = isWindows11 ? 'v43.3.0-qp20' : 'v39.2.16-qp20.1';
+const expectedElectronVersion = isWindows11 ? '43.3.0-qp20' : '39.8.10-qp20';
+const expectedElectronReleaseTag = isWindows11 ? 'v43.3.0-qp20' : 'v39.8.10-qp20';
 const projectRoot = path.resolve(__dirname, '..');
 const distDir = process.env.ELECTRON_CAPTURE_DIST_DIR
   ? path.resolve(process.env.ELECTRON_CAPTURE_DIST_DIR)

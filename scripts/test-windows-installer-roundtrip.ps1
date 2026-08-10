@@ -118,9 +118,9 @@ function Install-And-VerifyRuntime {
 }
 
 try {
-    Install-And-VerifyRuntime -Installer $fallbackPath -ExpectedElectronVersion '39.2.16-qp20'
+    Install-And-VerifyRuntime -Installer $fallbackPath -ExpectedElectronVersion '39.8.10-qp20'
     Install-And-VerifyRuntime -Installer $currentPath -ExpectedElectronVersion '43.3.0-qp20'
-    Install-And-VerifyRuntime -Installer $fallbackPath -ExpectedElectronVersion '39.2.16-qp20'
+    Install-And-VerifyRuntime -Installer $fallbackPath -ExpectedElectronVersion '39.8.10-qp20'
 } finally {
     $entries = @(Get-ElecapUninstallEntries)
     $entry = $entries | Where-Object { $_.KeyName -eq $script:expectedRegistryKey } | Select-Object -First 1

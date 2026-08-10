@@ -112,6 +112,9 @@ async function runNpmInstall(cwd) {
   if (npmCliPath && fs.existsSync(npmCliPath)) {
     command = process.execPath;
     args = [npmCliPath, ...npmArgs];
+  } else if (process.platform === 'win32') {
+    command = process.env.ComSpec || 'cmd.exe';
+    args = ['/d', '/s', '/c', 'npm.cmd install'];
   }
 
   await new Promise((resolve, reject) => {

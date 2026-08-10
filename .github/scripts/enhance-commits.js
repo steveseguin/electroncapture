@@ -1,7 +1,6 @@
 const { exec } = require('child_process');
 const fs = require('fs').promises;
 const path = require('path');
-const axios = require('axios');
 
 // Configuration
 const MAX_DIFF_SIZE = 20000; // Characters - truncate if larger
@@ -52,15 +51,24 @@ async function callZaiApi(systemPrompt, userPrompt) {
     stream: false
   };
 
-  const response = await axios.post(ZAI_API_ENDPOINT, requestBody, {
+  const response = await fetch(ZAI_API_ENDPOINT, {
+    method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${process.env.ZAI_API_KEY}`
     },
-    timeout: 60000
+    body: JSON.stringify(requestBody),
+    signal: AbortSignal.timeout(60000)
   });
 
-  return response.data?.choices?.[0]?.message?.content?.trim() || null;
+  const responseBody = await response.json();
+  if (!response.ok) {
+    const error = new Error(`Z.AI API request failed with status ${response.status}`);
+    error.response = { status: response.status, data: responseBody };
+    throw error;
+  }
+
+  return responseBody?.choices?.[0]?.message?.content?.trim() || null;
 }
 
 // --- Git Operations ---
@@ -615,18 +623,23 @@ async function updatePRDescription() {
     const apiUrl = `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`;
     log('info', `Sending PATCH request to update PR #${prNumber} description.`);
 
-    await axios({
+    const response = await fetch(apiUrl, {
       method: 'patch',
-      url: apiUrl,
       headers: {
         'Authorization': `token ${process.env.GITHUB_TOKEN}`,
         'Accept': 'application/vnd.github.v3+json',
-        'User-Agent': 'GitHub-Action-Enhance-Commits' // Good practice
+        'Content-Type': 'application/json',
+        'User-Agent': 'GitHub-Action-Enhance-Commits'
       },
-      data: {
-        body: enhancedDescription // Send the generated description
-      }
+      body: JSON.stringify({ body: enhancedDescription })
     });
+
+    if (!response.ok) {
+      const responseBody = await response.text();
+      const error = new Error(`GitHub API request failed with status ${response.status}`);
+      error.response = { status: response.status, data: responseBody };
+      throw error;
+    }
 
     log('info', `PR #${prNumber} description updated successfully.`);
 

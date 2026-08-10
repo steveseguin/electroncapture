@@ -10,14 +10,14 @@ const { Readable } = require('stream');
 const CHECKSUM_MANIFEST = 'SHASUMS256.txt';
 const WINDOWS_TARGETS = new Map([
   ['win10', {
-    version: '39.2.16-qp20',
-    releaseTag: 'v39.2.16-qp20.1',
+    version: '39.8.10-qp20',
+    releaseTag: 'v39.8.10-qp20',
     mirrorBase: 'https://github.com/steveseguin/electron/releases/download/',
     artifacts: new Map([
-      ['x64', 'electron-v39.2.16-qp20-win32-x64.zip']
+      ['x64', 'electron-v39.8.10-qp20-win32-x64.zip']
     ]),
     checksums: new Map([
-      ['electron-v39.2.16-qp20-win32-x64.zip', '7cbe59bef11ed33f125ecca9176d978ea9b814e19d83505b63ce4c9393ad8784']
+      ['electron-v39.8.10-qp20-win32-x64.zip', 'cd8e11cbb51b742de0a1db617f286d65efed0e2d248b1854544ccb5f13258fa7']
     ])
   }],
   ['win11', {
@@ -34,21 +34,21 @@ const WINDOWS_TARGETS = new Map([
 ]);
 const PLATFORM_TARGETS = new Map([
   ['linux', {
-    version: '39.2.7',
-    releaseTag: 'v39.2.7',
+    version: '43.3.0',
+    releaseTag: 'v43.3.0',
     mirrorBase: 'https://github.com/electron/electron/releases/download/',
     artifacts: new Map([
-      ['x64', 'electron-v39.2.7-linux-x64.zip'],
-      ['arm64', 'electron-v39.2.7-linux-arm64.zip']
+      ['x64', 'electron-v43.3.0-linux-x64.zip'],
+      ['arm64', 'electron-v43.3.0-linux-arm64.zip']
     ])
   }],
   ['darwin', {
-    version: '39.2.7',
-    releaseTag: 'v39.2.7',
+    version: '43.3.0',
+    releaseTag: 'v43.3.0',
     mirrorBase: 'https://github.com/electron/electron/releases/download/',
     artifacts: new Map([
-      ['x64', 'electron-v39.2.7-darwin-x64.zip'],
-      ['arm64', 'electron-v39.2.7-darwin-arm64.zip']
+      ['x64', 'electron-v43.3.0-darwin-x64.zip'],
+      ['arm64', 'electron-v43.3.0-darwin-arm64.zip']
     ])
   }]
 ]);

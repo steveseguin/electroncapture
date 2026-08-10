@@ -51,7 +51,7 @@ const encoderPreferences = {
   maxBitrate: 0
 };
 
-// Custom Electron capture preferences (v39.2.7+)
+// Custom Electron capture preferences
 const capturePreferences = {
   hideCursorCapture: false,
   playoutDelay: 0,
@@ -858,7 +858,7 @@ function createElectronApi() {
         return result && result.success !== false;
       } catch { return false; }
     },
-    // Custom Electron capture preferences (v39.2.7+)
+    // Custom Electron capture preferences
     'getCapturePreferences': () => ({ ...capturePreferences }),
     'getPlayoutDelay': () => capturePreferences.playoutDelay,
     'isAdaptiveScalingDisabled': () => capturePreferences.disableAdaptiveScaling,

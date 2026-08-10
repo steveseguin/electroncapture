@@ -101,13 +101,13 @@ async function main() {
 
 function assertOfficialElectronConfiguration() {
   const config = require("../electron-builder.win-arm64.js");
-  if (config.electronVersion !== "39.2.7") {
+  if (config.electronVersion !== "43.3.0") {
     throw new Error(`Unexpected Windows ARM64 Electron version: ${config.electronVersion}`);
   }
   if (!config.electronDownload || config.electronDownload.mirror !== "https://github.com/electron/electron/releases/download/") {
     throw new Error(`Unexpected Windows ARM64 Electron mirror: ${config.electronDownload && config.electronDownload.mirror}`);
   }
-  if (config.electronDownload.customDir !== "v39.2.7") {
+  if (config.electronDownload.customDir !== "v43.3.0") {
     throw new Error(`Unexpected Windows ARM64 Electron directory: ${config.electronDownload.customDir}`);
   }
 }

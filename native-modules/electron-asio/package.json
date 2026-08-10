@@ -14,10 +14,10 @@
     "clean": "node-gyp clean"
   },
   "dependencies": {
-    "node-addon-api": "^7.0.0"
+    "node-addon-api": "^8.9.1"
   },
   "devDependencies": {
-    "node-gyp": "^10.0.0"
+    "node-gyp": "^12.4.0"
   },
   "gypfile": true
 }
