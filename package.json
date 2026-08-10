@@ -6,7 +6,7 @@
   "license": "GPL-3.0-only",
   "main": "main.js",
   "scripts": {
-    "test": "npm run test:portable-paths && npm run test:linux-app-identity && npm run test:windows-runtimes && npm run test:capture-preferences",
+    "test": "npm run test:portable-paths && npm run test:linux-app-identity && npm run test:windows-runtimes && npm run test:capture-preferences && npm run test:security",
     "prestart": "node ./scripts/install-window-audio-capture.js && node ./scripts/install-electron-asio.js",
     "start": "electron .",
     "build": "run-os",
@@ -33,6 +33,7 @@
     "test:linux-app-identity": "node ./test/linux-app-identity-regression.js",
     "test:windows-runtimes": "node ./test/windows-runtime-config-regression.js",
     "test:capture-preferences": "node ./test/capture-preference-hooks-regression.js",
+    "test:security": "node ./test/security-regression.js",
     "audit:dependencies": "npm audit --package-lock-only --audit-level=low && npm --prefix native-modules/electron-asio audit --package-lock-only --audit-level=low",
     "audit:signatures": "npm audit signatures && npm --prefix native-modules/electron-asio audit signatures",
     "verify:win32": "node ./scripts/verify-windows-x64-build.js",

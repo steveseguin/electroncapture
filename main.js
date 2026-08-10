@@ -27,6 +27,10 @@ const {
 	resolveWindowCapturePreferences,
 	serializeCapturePreferences
 } = require('./capture-preference-hooks');
+const {
+	escapeHtmlWithLineBreaks,
+	isUrlWithinDomain
+} = require('./security-helpers');
 
 let earlyDataPaths = resolveEarlyDataPaths();
 let portableMigrationPending = null;
@@ -162,7 +166,6 @@ ipcMain.on('test-log', (event, { type, msg }) => {
 const { Readable } = require('stream');
 const { fetch: undiciFetch } = require('undici');
 const activeStreams = new Map();
-const https = require('https');
 const { execSync } = require('child_process');
 
 let windowAudioCapture = null;
@@ -2097,10 +2100,8 @@ app.commandLine.appendSwitch('webrtc-max-cpu-consumption-percentage', '100');
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
 app.commandLine.appendSwitch('max-web-media-player-count', '5000');
 app.commandLine.appendSwitch('disable-site-isolation-trials');
-app.commandLine.appendSwitch('ignore-certificate-errors');
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
 app.commandLine.appendSwitch('disable-http-cache');
-app.commandLine.appendSwitch('ignore-certificate-errors-spki-list');
 app.commandLine.appendSwitch('unsafely-treat-insecure-origin-as-secure', 'http://insecure.vdo.ninja,http://insecure.rtc.ninja,http://whip.vdo.ninja,https://whip.vdo.ninja,http://whep.vdo.ninja,https://whep.vdo.ninja,http://insecure.versus.cam,http://dev.versus.cam,http://127.0.0.1,https://vdo.ninja,https://versus.cam,https://rtc.ninja');
 
 
@@ -2165,10 +2166,6 @@ function sleep(ms) {
   });
 }
 
-const httpsAgent = new https.Agent({
-  rejectUnauthorized: false
-});
-
 function formatURL(inputURL) {
   if (!inputURL.startsWith("http://") && !inputURL.startsWith("https://") && !inputURL.startsWith("file://")) {
     return "https://" + inputURL;
@@ -2181,22 +2178,12 @@ ipcMain.handle('noCORSFetch', async (event, args) => {
   const streamId = Date.now().toString();
   
   try {
-    const isHttps = args.url.toLowerCase().startsWith('https://');
     const fetchOptions = {
       method: args.method || 'GET',
       headers: {
         ...args.headers
       }
     };
-
-    // Add dispatcher with SSL verification disabled for HTTPS URLs
-    if (isHttps) {
-      fetchOptions.dispatcher = new (require('undici').Agent)({
-        connect: {
-          rejectUnauthorized: false
-        }
-      });
-    }
 
     const response = await undiciFetch(args.url, fetchOptions);
     
@@ -2482,7 +2469,7 @@ ipcMain.handle('windowAudio:stopStreamCapture', async (event) => {
 ipcMain.handle('prompt', async (event, arg) => {
   try {
     arg.val = arg.val || '';
-    arg.title = arg.title.replace("\n","<br /><br />");
+    arg.title = escapeHtmlWithLineBreaks(arg.title);
     const result = await prompt({
       title: "",
       label: arg.title,
@@ -3084,7 +3071,7 @@ async function createWindow(args, reuse=false) {
 		if (tainted){
 			tainted=false;
 		}
-		if (mainWindow && mainWindow.webContents.getURL().includes('youtube.com')){
+		if (mainWindow && isUrlWithinDomain(mainWindow.webContents.getURL(), 'youtube.com')){
 			console.log("Youtube ad skipper inserted");
 			setInterval(function(mw){
 				try {
@@ -4181,7 +4168,7 @@ contextMenu({
 						}\
 					})();');
 
-					if (browserWindow.webContents.getURL().includes('youtube.com')){
+					if (isUrlWithinDomain(browserWindow.webContents.getURL(), 'youtube.com')){
 						browserWindow.webContents.executeJavaScript('(function () {\
 							if (!xxxxxx){\
 								var xxxxxx = setInterval(function(){\
