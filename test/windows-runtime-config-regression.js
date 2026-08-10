@@ -11,7 +11,15 @@ const {
 } = require('../scripts/install-custom-electron');
 const { getWindowsArtifactFiles } = require('../afterPack');
 const windows11Build = require('../electron-builder.win11');
-const windows10Build = require('../package.json').build;
+const packageMetadata = require('../package.json');
+const windows10Build = packageMetadata.build;
+
+assert.strictEqual(packageMetadata.engines.node, '>=22.12.0');
+for (const installer of ['install-electron-asio.js', 'install-window-audio-capture.js']) {
+  const installerSource = fs.readFileSync(path.resolve('scripts', installer), 'utf8');
+  assert.match(installerSource, /const npmArgs = \['ci'\];/);
+  assert.doesNotMatch(installerSource, /npm\.cmd install/);
+}
 
 assert.strictEqual(resolveWindowsVariant([], {}), 'win10');
 assert.strictEqual(resolveWindowsVariant([], { CUSTOM_ELECTRON_WINDOWS_VARIANT: 'win11' }), 'win11');

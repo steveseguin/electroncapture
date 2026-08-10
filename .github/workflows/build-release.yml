@@ -104,7 +104,7 @@ jobs:
 
       - name: Audit installed dependencies
         run: |
-          npm --prefix native-modules/window-audio-capture audit --audit-level=low
+          npm --prefix native-modules/window-audio-capture audit --package-lock-only --audit-level=low
           npm run audit:signatures
           npm --prefix native-modules/window-audio-capture audit signatures
 

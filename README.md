@@ -32,7 +32,7 @@ Lastly, since playback is agnostic, you can window-capture the same video multip
 - The Windows ARM64 package excludes the x64-only ASIO/PortAudio binary. Process/window audio capture is rebuilt natively when the private module is available.
 - macOS uses official Electron `v43.3.0` and `npm run build:darwin` produces a universal Intel/Apple Silicon package.
 - Linux uses official Electron `v43.3.0`; ARM64, including the base architecture used by NVIDIA DGX Spark, is built with `npm run build:arm64`.
-- Requirements: Node.js 20.17 or newer, git, and network access to GitHub Releases. The Electron installer and `postinstall` hook (`scripts/install-custom-electron.js`) select the configured runtime for the current platform and architecture.
+- Requirements: Node.js 22.12 or newer, git, and network access to GitHub Releases. The Electron installer and `postinstall` hook (`scripts/install-custom-electron.js`) select the configured runtime for the current platform and architecture.
 - To fall back to stock Electron during local installation, set `CUSTOM_ELECTRON_SKIP=1` before installing, or delete `node_modules/electron/dist` and reinstall.
 
 ### Windows installer and portable data

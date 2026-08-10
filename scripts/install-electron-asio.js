@@ -105,7 +105,7 @@ async function ensureDllCopied(moduleDir, dllPath) {
 
 async function runNpmInstall(cwd) {
   const npmCliPath = process.env.npm_execpath;
-  const npmArgs = ['install'];
+  const npmArgs = ['ci'];
   let command = process.platform === 'win32' ? 'npm.cmd' : 'npm';
   let args = npmArgs;
 
@@ -114,7 +114,7 @@ async function runNpmInstall(cwd) {
     args = [npmCliPath, ...npmArgs];
   } else if (process.platform === 'win32') {
     command = process.env.ComSpec || 'cmd.exe';
-    args = ['/d', '/s', '/c', 'npm.cmd install'];
+    args = ['/d', '/s', '/c', 'npm.cmd ci'];
   }
 
   await new Promise((resolve, reject) => {
@@ -129,7 +129,7 @@ async function runNpmInstall(cwd) {
         resolve();
         return;
       }
-      reject(new Error(`npm install exited with code ${code}`));
+      reject(new Error(`npm ci exited with code ${code}`));
     });
 
     install.on('error', reject);
