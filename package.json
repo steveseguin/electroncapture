@@ -6,7 +6,7 @@
   "license": "GPL-3.0-only",
   "main": "main.js",
   "scripts": {
-    "test": "npm run test:portable-paths && npm run test:linux-app-identity && npm run test:windows-runtimes && npm run test:capture-preferences && npm run test:security && npm run test:lifecycle && npm run test:window-audio && npm run test:audio-sessions && npm run test:device-list && npm run test:shortcuts && npm run test:shutdown && npm run test:audio-attachment && npm run test:page-operations && npm run test:window-dpi && npm run test:window-bounds && npm run test:audio-output && npm run test:navigation && npm run test:resolution",
+    "test": "npm run test:portable-paths && npm run test:linux-app-identity && npm run test:windows-runtimes && npm run test:capture-preferences && npm run test:security && npm run test:lifecycle && npm run test:window-audio && npm run test:audio-sessions && npm run test:device-list && npm run test:shortcuts && npm run test:shutdown && npm run test:audio-attachment && npm run test:page-operations && npm run test:window-dpi && npm run test:window-bounds && npm run test:audio-output && npm run test:navigation && npm run test:resolution && npm run test:runtime-zip",
     "prestart": "node ./scripts/install-window-audio-capture.js && node ./scripts/install-electron-asio.js",
     "start": "electron .",
     "build": "run-os",
@@ -63,7 +63,8 @@
     "verify:darwin": "node ./scripts/verify-macos-build.js",
     "submit:virustotal": "node ./scripts/submit-virustotal.js",
     "native-modules:rebuild": "node ./scripts/install-window-audio-capture.js --force && node ./scripts/install-electron-asio.js --force",
-    "postinstall": "node ./scripts/install-custom-electron.js && node ./scripts/install-window-audio-capture.js && node ./scripts/install-electron-asio.js"
+    "postinstall": "node ./scripts/install-custom-electron.js && node ./scripts/install-window-audio-capture.js && node ./scripts/install-electron-asio.js",
+    "test:runtime-zip": "node ./test/runtime-zip-regression.js"
   },
   "repository": {
     "type": "git",
@@ -333,7 +334,7 @@
     "npm": ">=9.0.0"
   },
   "overrides": {
-    "@xmldom/xmldom": "0.8.13",
+    "@xmldom/xmldom": "0.8.15",
     "ajv": "8.20.0",
     "brace-expansion@^1.0.0": "1.1.18",
     "brace-expansion@^2.0.0": "2.1.4",

@@ -42,7 +42,15 @@ function resizeWindow(window, width, height, getScale) {
     window.once('closed', cleanup);
     try { window.setFullScreen(false); }
     catch (error) { cleanup(); console.warn('Unable to exit fullscreen:', error); }
-  } else apply();
+  } else {
+    // Transparent Windows windows can fill the display while Electron reports
+    // false. The app tracks this state for its fullscreen menu and shortcuts.
+    if (window.full) {
+      try { window.setFullScreen(false); }
+      catch (error) { console.warn('Unable to exit fullscreen:', error); return; }
+    }
+    apply();
+  }
 }
 
 module.exports = { parseResolution, physicalResolution, resizeWindow };

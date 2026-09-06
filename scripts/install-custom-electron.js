@@ -157,6 +157,7 @@ async function main () {
     }
 
     const extractZip = require(require.resolve('extract-zip', { paths: [electronDir] }));
+    await require('./validate-runtime-zip').validateRuntimeZip(zipPath);
     await extractZip(zipPath, { dir: distDir });
   } finally {
     await cleanup();

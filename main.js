@@ -2919,13 +2919,15 @@ async function createWindow(args, reuse=false) {
 				 if (process.platform == "darwin"){
 					mainWindow.maximize();
 				 } else {
-					mainWindow.setFullScreen(true);
+					mainWindow.full = true;
+				mainWindow.setFullScreen(true);
 				 }
 			}
 		} else if (FULLSCREEN){
 			 if (process.platform == "darwin"){
 				mainWindow.maximize();
 			 } else {
+				mainWindow.full = true;
 				mainWindow.setFullScreen(true);
 			 }
 		}

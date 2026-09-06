@@ -16,11 +16,12 @@ camera/microphone recordings or a VDO.Ninja end-to-end test.
    `usingProcessSpecificLoopback` field and retains compatibility with the older
    `usingProcessLoopback` field. Real native capture reports true and the frequency
    check confirms isolation of each generated source.
-3. **Fullscreen state discrepancy.** On the available Windows monitor, requesting
+3. **Fullscreen fallback fixed.** On the available Windows monitor, requesting
    fullscreen expands the capture window to 1920×1080, while `isFullScreen()` remains
-   false. Reproduced after explicitly showing/restoring the window. Manual exit
-   followed by resizing works. Actual menu toggle/resolution behavior in this state
-   requires investigation; this is not claimed to be a confirmed user-visible failure.
+   false. Resolution changes now use the app's existing `window.full` fallback to
+   exit fullscreen before sizing, and startup fullscreen initializes that flag.
+   The real-device validation now exercises this path without manually exiting
+   fullscreen first and passes. The underlying Electron getter discrepancy remains.
 4. **Short close-path recording timestamp warning.** All three short recordings
    decode, but FFmpeg reports one duplicate/non-monotonic video timestamp in the
    close-path canvas fixture. The analyzer conservatively flags this recording.
@@ -147,3 +148,38 @@ and 6 ms. Evidence: `%TEMP%/elecap-recording-validation-3orLqj/analysis.json` an
 and real-Electron smoke test passed again after the native rebuild. Signing remains
 unavailable; these local builds are unsigned.
 The unchanged intentional permissions and capture capabilities remain available.
+
+## Remaining-concern follow-up
+
+The full suite now includes 19 groups, including runtime ZIP preflight tests.
+Real Windows device/download/fullscreen-resize validation passed at
+`%TEMP%/elecap-device-validation-v3yBkN/result.json`, followed by the Electron smoke.
+
+Dependency patches: `@xmldom/xmldom` 0.8.13 → 0.8.15 and `fast-uri` 3.1.5 → 3.1.6.
+Both native-module lockfiles audit clean. The root audit retains one high advisory:
+[extract-zip symlink traversal](https://github.com/advisories/GHSA-jmr9-qjv8-65gv),
+for which no upstream patched version is listed. This is installation tooling,
+not a permission setting or the app's arbitrary URL/no-CORS feature. The sole
+application-owned extraction call now checks all link targets and link chains
+before extraction. Internal macOS framework links remain supported; escaping,
+absolute, cyclic, and duplicate file paths are rejected. Existing download checksums
+remain in use. Synthetic valid/malicious ZIP tests and a real cached Windows
+Electron archive pass the preflight. This mitigates this installer's usage; it
+does not patch the upstream package or suppress the audit finding. Locally selected
+runtime archives remain supported. Full macOS archive/runtime validation is pending.
+
+Timestamp investigation confirmed the FFmpeg warning persists with a finer output
+time base. It is not merely output rounding. Detailed counts from concurrent
+showinfo/ashowinfo logging proved unreliable, so the analyzer's conservative
+warning-based result is retained. The generated canvas source and encoder need a
+separate controlled reproduction before attributing this to the capture app or
+changing user recordings. No automatic re-encoding or timestamp rewriting was added.
+
+Physical USB reconnect, mixed-DPI monitors, macOS, signing, and subjective media
+quality still require unavailable devices/credentials or human observation. These
+are validation gaps, not silently passed tests. The prior Linux endurance result
+remains unverified because its temporary evidence no longer exists.
+
+The follow-up unpacked Windows build succeeded in `dist/validation-followup`.
+Its 10-second generated recording decoded without warnings, with a 3 ms stream
+end offset: `%TEMP%/elecap-recording-validation-UJWCZq/analysis.json`.
