@@ -15,6 +15,7 @@ async function testWindowAudio() {
   let resolveStart;
   let delayed = false;
   let failStop = false;
+  let stopResult = { success: true };
   const backend = {
     startStreamCapture(target, callback) {
       calls.push(`start:${target}`);
@@ -25,7 +26,7 @@ async function testWindowAudio() {
     stopStreamCapture() {
       calls.push('stop');
       if (failStop) throw new Error('device busy');
-      return { success: true };
+      return stopResult;
     },
   };
   const forwarded = [];
@@ -75,6 +76,13 @@ async function testWindowAudio() {
   assert.ok(!calls.includes('start:50'), 'a failed stop must prevent overlapping native capture');
   assert.equal(a.listenerCount('destroyed'), 0);
   failStop = false;
+  stopResult = false;
+  assert.equal((await sessions.stop()).success, false, 'boolean false is a native stop failure');
+  assert.equal((await start(a, 51)).success, false);
+  assert.ok(!calls.includes('start:51'));
+  stopResult = { success: false, error: 'device unavailable' };
+  assert.equal((await sessions.stop()).success, false);
+  stopResult = true;
   await sessions.stop();
   assert.equal((await start(a, 60)).success, true, 'queue recovers after a backend failure');
   a.emit('render-process-gone');
@@ -142,7 +150,33 @@ function testAsio() {
   assert.equal(a.listenerCount('destroyed'), 0);
 }
 
-testWindowAudio().then(() => {
+async function testNativeWrapperStop() {
+  let result = false, attempts = 0;
+  const native = { stopCapture() { attempts++; if (result instanceof Error) throw result; return result; } };
+  const module = { exports: {} };
+  const source = fs.readFileSync(path.join(__dirname, '../native-modules/window-audio-capture/index.js'), 'utf8');
+  vm.runInNewContext(source, {
+    module, __dirname: path.join(__dirname, '../native-modules/window-audio-capture'),
+    require: name => name === 'bindings' ? () => native : require(name),
+    console, process, setInterval, clearInterval,
+  });
+  const capture = module.exports;
+  capture.isCapturing = true;
+  for (result of [false, { success: false }, new Error('stop failed')]) {
+    assert.equal(await capture.stopStreamCapture(), false);
+    assert.equal(capture.isCapturing, true, 'failed native stop retains state for retry');
+    await assert.rejects(capture.startStreamCapture(123, () => {}), /Unable to stop/);
+  }
+  result = true;
+  assert.equal(await capture.stopStreamCapture(), true);
+  assert.equal(attempts, 7, 'every failed stop can be retried');
+  assert.equal(capture.isCapturing, false);
+  capture.isCapturing = true;
+  result = false;
+  assert.equal((await capture.startCapture(123)).success, false, 'polling API preserves failure result shape');
+}
+
+testWindowAudio().then(testNativeWrapperStop).then(() => {
   testAsio();
   console.log('Native audio session lifecycle regression checks passed');
 }).catch(error => { console.error(error); process.exitCode = 1; });

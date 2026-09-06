@@ -2,21 +2,24 @@
 
 // Opt-in real Electron test with generated media, not a hardware capture test.
 // node test/recording-endurance.js [seconds]; defaults to one hour.
+// Set VALIDATION_CAMERA_LABEL to an exact enumerated label for opt-in camera recording.
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 
-async function recordingFixture(name) {
+async function recordingFixture(name, cameraLabel = '') {
   const canvas = document.createElement('canvas');
   canvas.width = 640; canvas.height = 360;
   document.body.append(canvas);
   const context = canvas.getContext('2d');
   let frames = 0;
+  let canvasTrack;
   const timer = setInterval(() => {
     context.fillStyle = frames % 60 < 30 ? '#224466' : '#662244';
     context.fillRect(0, 0, 640, 360);
     context.fillStyle = 'white'; context.font = '30px sans-serif';
     context.fillText(`${name}: frame ${frames++}`, 20, 100);
+    canvasTrack?.requestFrame();
   }, 1000 / 30);
   const audio = new AudioContext({ sampleRate: 48000 });
   await audio.resume();
@@ -24,7 +27,18 @@ async function recordingFixture(name) {
   oscillator.frequency.value = 440;
   const destination = audio.createMediaStreamDestination();
   oscillator.connect(destination); oscillator.start();
-  const video = canvas.captureStream(30);
+  let video;
+  if (cameraLabel) {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const camera = devices.find(device => device.kind === 'videoinput' && device.label === cameraLabel);
+    if (!camera) throw new Error(`Requested validation camera unavailable: ${cameraLabel}`);
+    video = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: camera.deviceId } }, audio: false });
+  } else {
+    // One capture request per completed drawing avoids racing an independent
+    // canvas capture clock against the fixture's drawing timer.
+    video = canvas.captureStream(0);
+    canvasTrack = video.getVideoTracks()[0];
+  }
   const stream = new MediaStream([...video.getTracks(), ...destination.stream.getTracks()]);
   const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8,opus', videoBitsPerSecond: 250000 });
   let pending = Promise.resolve();
@@ -46,7 +60,7 @@ async function recordingFixture(name) {
       await pending;
       clearInterval(timer); oscillator.stop(); stream.getTracks().forEach(track => track.stop());
       await audio.close();
-      const result = { name, chunks, frames, elapsedSeconds: (performance.now() - started) / 1000 };
+      const result = { name, chunks, frames, videoSource: cameraLabel || 'generated canvas', elapsedSeconds: (performance.now() - started) / 1000 };
       await fetch(`/done/${name}`, { method: 'POST', body: JSON.stringify(result) });
       resolveDone(result);
     } catch (error) { rejectDone(error); }
@@ -89,7 +103,7 @@ if (!process.versions.electron) {
     delete env.ELECTRON_RUN_AS_NODE;
     const packaged = process.env.VALIDATION_EXECUTABLE;
     const fixture = path.join(root, 'packaged-fixture.js');
-    if (packaged) fs.writeFileSync(fixture, `(${recordingFixture.toString()})('normal').then(() => setTimeout(async () => { await window.stopValidationRecording(); window.close(); }, ${seconds * 1000}));`);
+    if (packaged) fs.writeFileSync(fixture, `(${recordingFixture.toString()})('normal', ${JSON.stringify(process.env.VALIDATION_CAMERA_LABEL || '')}).then(() => setTimeout(async () => { await window.stopValidationRecording(); window.close(); }, ${seconds * 1000}));`);
     const args = ['--multiinstance', '--minimized', '--no-node', '--nodpi', `--url=${url}`];
     if (packaged) args.push(`--js=${fixture}`);
     else args.unshift(__filename);
@@ -123,7 +137,7 @@ if (!process.versions.electron) {
       await waitFor(() => !first.webContents.isLoading());
       const devices = await first.webContents.executeJavaScript('navigator.mediaDevices.enumerateDevices().then(d => d.map(x => ({kind:x.kind,label:x.label})))');
       fs.writeFileSync(path.join(process.env.VALIDATION_ROOT, 'environment.json'), JSON.stringify({ versions: process.versions, displays: screen.getAllDisplays(), devices }, null, 2));
-      const start = (window, name) => window.webContents.executeJavaScript(`(${recordingFixture.toString()})(${JSON.stringify(name)})`);
+      const start = (window, name) => window.webContents.executeJavaScript(`(${recordingFixture.toString()})(${JSON.stringify(name)}, ${JSON.stringify(process.env.VALIDATION_CAMERA_LABEL || '')})`);
       assert.equal((await start(first, 'normal')).state, 'recording');
       const deadline = Date.now() + Number(process.env.VALIDATION_SECONDS) * 1000;
       let cycle = 0;

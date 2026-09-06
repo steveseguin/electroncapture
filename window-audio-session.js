@@ -17,6 +17,7 @@ function createWindowAudioSession(getBackend, forward) {
     const session = active;
     try {
       const result = await getBackend().stopStreamCapture();
+      if (result === false) return failure('Native audio capture could not be stopped');
       if (result && result.success === false) return result;
       active = null;
       session.detach();

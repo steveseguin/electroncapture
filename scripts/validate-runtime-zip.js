@@ -8,6 +8,9 @@ const yauzl = require(require.resolve('yauzl', { paths: [require.resolve('extrac
 // complete link graph before extraction so those remain supported while links
 // cannot redirect extraction outside the new runtime directory.
 function validateLinks(entries, links) {
+  // ZIPs can spell the same path with './' or redundant separators. Match links
+  // using the canonical destination rather than their raw archive spelling.
+  links = new Map([...links].map(([name, target]) => [path.normalize(name).replace(/\/$/, ''), target]));
   function resolve(name, seen = new Set()) {
     if (/^[a-z]:|^[\\/]/i.test(name) || name.includes('\\')) throw new Error(`Unsafe ZIP path: ${name}`);
     const parts = name.split('/');
@@ -45,7 +48,8 @@ async function validateRuntimeZip(file) {
       zip.on('end', resolve);
       zip.on('entry', entry => {
         (async () => {
-          const name = process.platform === 'win32' ? entry.fileName.toLowerCase() : entry.fileName;
+          const rawName = process.platform === 'win32' ? entry.fileName.toLowerCase() : entry.fileName;
+          const name = path.normalize(rawName);
           // Multiple records for one path could overwrite a validated link.
           if (names.has(name) && !name.endsWith('/')) throw new Error(`Duplicate ZIP path: ${name}`);
           names.add(name);

@@ -99,9 +99,6 @@ async function main () {
     return;
   }
 
-  await fs.promises.rm(distDir, { recursive: true, force: true });
-  await fs.promises.mkdir(distDir, { recursive: true });
-
   const localArtifact = resolveLocalArtifact(filename);
   let cleanup = async () => {};
   let zipPath;
@@ -158,6 +155,9 @@ async function main () {
 
     const extractZip = require(require.resolve('extract-zip', { paths: [electronDir] }));
     await require('./validate-runtime-zip').validateRuntimeZip(zipPath);
+    // A failed download, checksum, or ZIP preflight must preserve the working runtime.
+    await fs.promises.rm(distDir, { recursive: true, force: true });
+    await fs.promises.mkdir(distDir, { recursive: true });
     await extractZip(zipPath, { dir: distDir });
   } finally {
     await cleanup();

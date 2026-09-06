@@ -183,3 +183,52 @@ remains unverified because its temporary evidence no longer exists.
 The follow-up unpacked Windows build succeeded in `dist/validation-followup`.
 Its 10-second generated recording decoded without warnings, with a 3 ms stream
 end offset: `%TEMP%/elecap-recording-validation-UJWCZq/analysis.json`.
+
+## Further Windows validation and fixes
+
+- GitHub's Dependabot API now reports only one open alert, number 187 for
+  `extract-zip`. The production-only root audit reports zero vulnerabilities.
+  The advisory remains open because the upstream version remains unpatched;
+  the installer mitigation is not represented as an upstream dependency fix.
+- Native audio stop failures now retain capture ownership for retry. The session
+  manager recognizes boolean `false` as failure as well as failure objects/errors.
+  Both streaming and polling starts refuse to replace a capture whose stop failed;
+  their existing failure return conventions are preserved. Regression tests inject
+  boolean, object, and thrown failures through the real JavaScript wrapper.
+- The real native test still passes repeated switches and now terminates the active
+  generated source process before capturing the other source. Recovery delivers
+  packets: `%TEMP%/elecap-native-audio-IMtTYR/result.json`. This is process-exit
+  recovery, not a physical USB unplug test.
+- Installer download/checksum/ZIP preflight failures no longer delete the currently
+  installed Electron runtime. A subprocess regression with a corrupt local archive
+  verifies the original runtime remains intact. Extraction/disk failures after
+  replacement starts can still require reinstalling; this is not a full transaction.
+- ZIP preflight canonicalizes alternate path spellings before matching links and
+  duplicate destinations, covering `./dir/link` and redundant separators.
+- OBS Virtual Camera plus generated audio recorded for approximately 62 seconds,
+  followed by 10-second close and quit recordings. All three files decoded without
+  warnings; stream end offsets were within 37 ms. Evidence:
+  `%TEMP%/elecap-recording-validation-BENBsr/analysis.json`. This shorter source-specific
+  pass does not dismiss the earlier long canvas-source warnings or establish
+  subjective camera/speech quality.
+
+To repeat this explicitly selected camera test in PowerShell:
+
+```powershell
+$env:VALIDATION_CAMERA_LABEL = 'OBS Virtual Camera'
+node test/recording-endurance.js 60
+Remove-Item Env:VALIDATION_CAMERA_LABEL
+```
+
+The test fails if the exact camera label is unavailable; it never silently selects
+a different camera. It retains the resulting video files in its printed temporary
+directory. All 19 regression suites and Electron smoke passed, and the updated
+unpacked Windows build succeeded in `dist/validation-stop-retry-final`.
+
+The initial 10-second packaged canvas fixture reproduced duplicate timestamp
+warnings (`%TEMP%/elecap-recording-validation-1IsqgK/analysis.json`). The fixture now
+requests a canvas frame immediately after each completed drawing instead of using
+an independent capture timer. A fresh 10-second packaged recording passed without
+warnings (`%TEMP%/elecap-recording-validation-FJOGxD/analysis.json`, 42 ms stream end
+offset). This improves the test source, not the app's recording pipeline. A longer
+run is required before claiming the earlier intermittent canvas warnings resolved.

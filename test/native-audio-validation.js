@@ -103,6 +103,14 @@ if (!process.versions.electron) {
           assert.ok(packets > 0, `restart ${i} must deliver audio`);
           report.restarts.push({ packets, processLoopback: result.usingProcessSpecificLoopback });
         }
+        // The active source process exits unexpectedly; replacement must still work.
+        children[1].kill();
+        await sleep(500);
+        report.afterSourceExit = await start(first, children[0].pid);
+        assert.equal(report.afterSourceExit.success, true);
+        await sleep(500);
+        report.recoveryPackets = await first.webContents.executeJavaScript('stats.packets');
+        assert.ok(report.recoveryPackets > 0, 'capture recovers after the previous source exits');
         report.passed = true;
       } catch (error) { report.error = String(error); }
       finally {
