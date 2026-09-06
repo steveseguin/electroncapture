@@ -2,6 +2,12 @@
 const electron = require('electron')
 const process = require('process')
 const prompt = require('electron-prompt');
+const { showCustomCodePrompt } = require('./custom-code-prompt');
+const { showWindowPrompt } = require('./window-prompt');
+const { parseResolution, physicalResolution, resizeWindow } = require('./window-resolution');
+const { runPageOperation, setCursorHidden } = require('./page-operations');
+const { installWindowDpi } = require('./window-dpi');
+const { formatURL, iframeNavigationScript } = require('./navigation-helpers');
 const unhandled = require('electron-unhandled');
 const fs = require('fs');
 const path = require('path');
@@ -153,7 +159,10 @@ ipcMain.on('getSources', async function(eventRet, args) {
 	try{
 		const sources = await desktopCapturer.getSources({ types: args.types });
 		eventRet.returnValue = sources;
-	} catch(e){console.error(e);}
+	} catch(e){
+		console.error(e);
+		eventRet.returnValue = [];
+	}
 });
 
 // Test logging handler - forwards renderer logs to main process console
@@ -165,12 +174,16 @@ ipcMain.on('test-log', (event, { type, msg }) => {
 
 const { Readable } = require('stream');
 const { fetch: undiciFetch } = require('undici');
-const activeStreams = new Map();
+const { setupFetchStreams } = require('./fetch-streams');
+const { onWindowIpc, installDownloadHandler, requestDeviceList } = require('./window-lifecycle');
+const { createWindowShortcuts, pushToTalkAccelerator } = require('./window-shortcuts');
+const windowShortcuts = createWindowShortcuts(globalShortcut);
 const { execSync } = require('child_process');
 
 let windowAudioCapture = null;
 const WINDOW_AUDIO_EVENT_CHANNEL = 'windowAudioStreamData';
-let activeWindowAudioSession = null;
+const { createWindowAudioSession } = require('./window-audio-session');
+const windowAudioSession = createWindowAudioSession(() => windowAudioCapture, forwardWindowAudioData);
 let cachedElevationState;
 
 const namedWindowRegistry = new Map();
@@ -301,27 +314,10 @@ function immutablePreferencesMatch(existingWindow, requestedPreferences) {
 // Window bounds persistence for remembering size between sessions
 const BOUNDS_FILE = path.join(app.getPath('userData'), 'window-bounds.json');
 
-function saveWindowBounds(bounds) {
-	try {
-		fs.writeFileSync(BOUNDS_FILE, JSON.stringify(bounds));
-	} catch (e) {
-		// Ignore write errors
-	}
-}
-
-function loadWindowBounds() {
-	try {
-		const data = fs.readFileSync(BOUNDS_FILE, 'utf8');
-		const bounds = JSON.parse(data);
-		// Validate bounds have required properties
-		if (bounds && typeof bounds.width === 'number' && typeof bounds.height === 'number') {
-			return bounds;
-		}
-	} catch (e) {
-		// File doesn't exist or invalid - return null
-	}
-	return null;
-}
+const { createBoundsStore, installBoundsPersistence } = require('./window-bounds');
+const boundsStore = createBoundsStore(BOUNDS_FILE);
+const saveWindowBounds = boundsStore.save;
+const loadWindowBounds = boundsStore.load;
 
 function getScaleFactorForWindow(targetWindow) {
 	const fallbackScale = () => {
@@ -764,7 +760,9 @@ function applyArgsToExistingWindow(windowInstance, args) {
 			...(windowInstance.args || {}),
 			...args
 		};
+		const cursorChanged = windowInstance.args?.hidecursor !== mergedArgs.hidecursor;
 		windowInstance.args = mergedArgs;
+		if (cursorChanged) setCursorHidden(windowInstance.webContents, !!mergedArgs.hidecursor);
 		if (typeof mergedArgs.defaultDragRegion === 'boolean') {
 			windowInstance.__defaultDragRegionEnabled = mergedArgs.defaultDragRegion;
 		}
@@ -792,7 +790,7 @@ function applyArgsToExistingWindow(windowInstance, args) {
 		if (typeof mergedArgs.url === 'string' && mergedArgs.url.length) {
 			const currentUrl = windowInstance.webContents.getURL();
 			if (currentUrl !== mergedArgs.url) {
-				windowInstance.webContents.loadURL(mergedArgs.url);
+				runPageOperation(windowInstance.webContents, 'loadURL', mergedArgs.url);
 			}
 		}
 
@@ -869,6 +867,8 @@ function applyArgsToExistingWindow(windowInstance, args) {
 			windowInstance.full = mergedArgs.fullscreen;
 		}
 	}
+
+		windowInstance.__updateDpiCompensation?.();
 
 		const shouldMinimize = mergedArgs.min === true;
 		if (shouldMinimize) {
@@ -1724,7 +1724,7 @@ function openGpuDiagnosticsWindow() {
 		gpuDiagnosticsWindow.on('closed', () => {
 			gpuDiagnosticsWindow = null;
 		});
-		gpuDiagnosticsWindow.loadURL('chrome://gpu');
+		runPageOperation(gpuDiagnosticsWindow, 'loadURL', 'chrome://gpu');
 		return true;
 	} catch (error) {
 		console.error('Failed to open GPU diagnostics window:', error);
@@ -2142,7 +2142,7 @@ try {
 			ttt.forEach(d=>{
 				try {
 					var ddd = getDirectories(dir+"/"+d);
-					var fd = fs.readFileSync(dir+"."+d+"/"+ddd[0]+"/manifest.json", 'utf8');
+					var fd = fs.readFileSync(path.join(dir, d, ddd[0], "manifest.json"), 'utf8');
 					var json = JSON.parse(fd);
 					
 					if (json.name.startsWith("_")){
@@ -2166,94 +2166,7 @@ function sleep(ms) {
   });
 }
 
-function formatURL(inputURL) {
-  if (!inputURL.startsWith("http://") && !inputURL.startsWith("https://") && !inputURL.startsWith("file://")) {
-    return "https://" + inputURL;
-  }
-  return inputURL;
-}
-
-
-ipcMain.handle('noCORSFetch', async (event, args) => {
-  const streamId = Date.now().toString();
-  
-  try {
-    const fetchOptions = {
-      method: args.method || 'GET',
-      headers: {
-        ...args.headers
-      }
-    };
-
-    const response = await undiciFetch(args.url, fetchOptions);
-    
-    if (!response.ok) {
-      return {
-        ok: false,
-        status: response.status,
-        statusText: response.statusText
-      };
-    }
-
-    const contentType = response.headers.get('content-type') || '';
-    const boundaryMatch = contentType.match(/boundary=([^;]+)/i);
-    const boundary = boundaryMatch ? boundaryMatch[1] : null;
-    const reader = response.body.getReader();
-    
-    activeStreams.set(streamId, {
-      reader,
-      buffer: Buffer.alloc(0)
-    });
-
-    return {
-      ok: true,
-      status: response.status,
-      streamId,
-      contentType,
-      boundary: boundary ? `${boundary}` : null
-    };
-  } catch (error) {
-    console.error('Fetch error:', error);
-    return {
-      ok: false,
-      error: error.message
-    };
-  }
-});
-
-// Rest of the code remains unchanged
-ipcMain.handle('readStreamChunk', async (event, streamId) => {
-  const stream = activeStreams.get(streamId);
-  if (!stream) return { done: true };
-  try {
-    const { done, value } = await stream.reader.read();
-    if (done) {
-      activeStreams.delete(streamId);
-      return { done: true };
-    }
-    return { 
-      done: false, 
-      value: Array.from(value)
-    };
-  } catch (error) {
-    console.error('Stream read error:', error);
-    activeStreams.delete(streamId);
-    throw error;
-  }
-});
-
-ipcMain.handle('closeStream', async (event, streamId) => {
-  const stream = activeStreams.get(streamId);
-  if (stream?.reader) {
-    try {
-      await stream.reader.cancel();
-    } catch (e) {
-      console.error('Error closing stream:', e);
-    }
-    activeStreams.delete(streamId);
-  }
-  return true;
-});
+setupFetchStreams(ipcMain, undiciFetch);
 
 function normalizeAudioCaptureTarget(rawTarget) {
 	if (rawTarget === null || rawTarget === undefined) {
@@ -2280,7 +2193,7 @@ function normalizeAudioCaptureTarget(rawTarget) {
 			}
 			return {
 				requestTarget: numericValue,
-				clientId: trimmed
+				clientId: String(numericValue)
 			};
 		}
 		return {
@@ -2289,35 +2202,6 @@ function normalizeAudioCaptureTarget(rawTarget) {
 		};
 	}
 	return null;
-}
-
-async function stopActiveWindowAudioCapture(reason = 'unknown', expectedWebContentsId = null) {
-	if (!windowAudioCapture || typeof windowAudioCapture.stopStreamCapture !== 'function') {
-		activeWindowAudioSession = null;
-		return { success: false, error: 'window-audio-capture module unavailable' };
-	}
-	if (!activeWindowAudioSession) {
-		return { success: true };
-	}
-	if (expectedWebContentsId !== null && activeWindowAudioSession.webContentsId !== expectedWebContentsId) {
-		return { success: true };
-	}
-
-	const { webContents, destroyListener } = activeWindowAudioSession;
-
-	if (webContents && !webContents.isDestroyed() && typeof destroyListener === 'function') {
-		webContents.removeListener('destroyed', destroyListener);
-	}
-
-	activeWindowAudioSession = null;
-
-	try {
-		await windowAudioCapture.stopStreamCapture();
-		return { success: true };
-	} catch (error) {
-		console.warn('Error stopping window audio capture (' + reason + '):', error);
-		return { success: false, error: error.message || 'Failed to stop window audio capture' };
-	}
 }
 
 function forwardWindowAudioData(webContents, clientId, baseSampleRate, baseChannels, payload) {
@@ -2388,82 +2272,14 @@ ipcMain.handle('windowAudio:getSessions', async () => {
 	}
 });
 
-ipcMain.handle('windowAudio:startStreamCapture', async (event, rawTarget) => {
-	if (!windowAudioCapture || typeof windowAudioCapture.startStreamCapture !== 'function') {
-		return { success: false, error: 'window-audio-capture module unavailable' };
-	}
-
+ipcMain.handle('windowAudio:startStreamCapture', (event, rawTarget) => {
 	const normalized = normalizeAudioCaptureTarget(rawTarget);
-	if (!normalized) {
-		return { success: false, error: 'Invalid window audio capture target' };
-	}
-
-	const webContents = event.sender;
-
-	await stopActiveWindowAudioCapture('pre-start cleanup');
-
-	const baseSampleRateFallback = 48000;
-	const baseChannelFallback = 2;
-
-	const forwarder = (payload) => {
-		if (!activeWindowAudioSession || activeWindowAudioSession.webContentsId !== webContents.id) {
-			return;
-		}
-		const sampleRate = activeWindowAudioSession.sampleRate || baseSampleRateFallback;
-		const channels = activeWindowAudioSession.channels || baseChannelFallback;
-		forwardWindowAudioData(webContents, normalized.clientId, sampleRate, channels, payload);
-	};
-
-	let startResult;
-	try {
-		startResult = await windowAudioCapture.startStreamCapture(normalized.requestTarget, forwarder);
-	} catch (error) {
-		console.error('Error starting window audio capture:', error);
-		return { success: false, error: error.message || 'Failed to start window audio capture' };
-	}
-
-	if (!startResult || startResult.success === false) {
-		return { success: false, error: startResult && startResult.error ? startResult.error : 'Failed to start window audio capture' };
-	}
-
-	const destroyListener = () => {
-		stopActiveWindowAudioCapture('renderer destroyed', webContents.id).catch(err => {
-			console.warn('Error stopping window audio capture after renderer destroyed:', err);
-		});
-	};
-
-	if (!webContents.isDestroyed()) {
-		webContents.once('destroyed', destroyListener);
-	}
-
-	activeWindowAudioSession = {
-		webContents,
-		webContentsId: webContents.id,
-		clientId: normalized.clientId,
-		destroyListener,
-		sampleRate: startResult.sampleRate || baseSampleRateFallback,
-		channels: startResult.channels || baseChannelFallback
-	};
-
-	return {
-		success: true,
-		sampleRate: activeWindowAudioSession.sampleRate,
-		channels: activeWindowAudioSession.channels,
-		usingProcessSpecificLoopback: !!(startResult && startResult.usingProcessSpecificLoopback)
-	};
+	if (!normalized) return { success: false, error: 'Invalid window audio capture target' };
+	return windowAudioSession.start(event.sender, normalized);
 });
 
-ipcMain.handle('windowAudio:stopStreamCapture', async (event) => {
-	if (!windowAudioCapture || typeof windowAudioCapture.stopStreamCapture !== 'function') {
-		return { success: false, error: 'window-audio-capture module unavailable' };
-	}
-
-	const result = await stopActiveWindowAudioCapture('renderer request', event && event.sender ? event.sender.id : null);
-	if (!result.success && result.error) {
-		return result;
-	}
-
-	return { success: true };
+ipcMain.handle('windowAudio:stopStreamCapture', (event) => {
+	return windowAudioSession.stop(event.sender.id);
 });
 
 ipcMain.handle('prompt', async (event, arg) => {
@@ -2556,7 +2372,7 @@ async function createWindow(args, reuse=false) {
 	if (!nodeExplicitFlag && typeof URL === 'string') {
 		let preferenceResolved = false;
     try {
-      const parsedUrl = new URL(URL);
+      const parsedUrl = new globalThis.URL(URL);
       const nodeParamKeys = ['node', 'nodeintegration', 'nodeIntegration', 'enableNode'];
       for (const key of nodeParamKeys) {
         if (!parsedUrl.searchParams.has(key)) {
@@ -2687,10 +2503,8 @@ async function createWindow(args, reuse=false) {
   }
   
   try {
-    if (URL.startsWith("file:")){
+    if (/^file:/i.test(URL)){
       webSecurity = false;
-    } else if (!(URL.startsWith("http"))){
-      URL = "https://"+URL.toString();
     }
   } catch(e){
     URL = "https://vdo.ninja/electron?version="+ver;
@@ -2811,7 +2625,7 @@ async function createWindow(args, reuse=false) {
 		setWindowIgnoreMouseEvents(mainWindow, mainWindow.mouseEvent, 'initial unclickable');
 	}
 	
-	ipcMain.on("vdonVersion", function(eventRet, arg) {  // this enables a PROMPT pop up , which is used to BLOCK the main thread until the user provides input. VDO.Ninja uses prompt for passwords, etc.
+	onWindowIpc(ipcMain, mainWindow, "vdonVersion", function(eventRet, arg) {  // this enables a PROMPT pop up , which is used to BLOCK the main thread until the user provides input. VDO.Ninja uses prompt for passwords, etc.
 		if (mainWindow){
 			mainWindow.vdonVersion = arg.ver || false;
 		}
@@ -2819,73 +2633,11 @@ async function createWindow(args, reuse=false) {
 	});
 	
 	
-	ipcMain.on('PPTHotkey', function(eventRet, value) { // 
-		console.log("updatePPT recieved 2:", value);
-		if (!mainWindow){return;}
-		
-		if (mainWindow.PPTHotkey){
-			try {
-				if (globalShortcut.isRegistered(mainWindow.PPTHotkey)){
-					globalShortcut.unregister(mainWindow.PPTHotkey);
-				}
-			} catch(e){
-			}
-		} 
-		
-		if (!value){
-			mainWindow.PPTHotkey=false;
-			return;
-		}
-		mainWindow.PPTHotkey = "";
-		if (value.ctrl){
-			mainWindow.PPTHotkey += "CommandOrControl";
-		}
-		if (value.alt){
-			if (mainWindow.PPTHotkey){mainWindow.PPTHotkey+="+";}
-			mainWindow.PPTHotkey += "Alt";
-		}
-		if (value.meta){
-			if (mainWindow.PPTHotkey){mainWindow.PPTHotkey+="+";}
-			mainWindow.PPTHotkey += "Meta";
-		}
-		if (value.key){
-			if (mainWindow.PPTHotkey){mainWindow.PPTHotkey+="+";}		
-			var matched = false;
-			if (value.key === "+"){
-				mainWindow.PPTHotkey += "Plus";
-				matched = true;
-			} else if (value.key === " "){
-				mainWindow.PPTHotkey += "Space";
-				matched = true;
-			} else if (value.key.length === 1){
-				mainWindow.PPTHotkey += value.key.toUpperCase();
-				matched = true;
-			} else {
-				var possibleKeyCodes = ["Space","Backspace","Tab","Capslock","Return","Enter","Plus","Numlock","Scrolllock","Delete","Insert","Return","Up","Down","Left","Right","Home","End","PageUp","PageDown","Escape","Esc","VolumeUp","VolumeDown","VolumeMute","MediaNextTrack","MediaPreviousTrack","MediaStop","MediaPlayPause","PrintScreen","num0","num1","num2","num3","num4","num5","num6","num7","num8","num9","numdec","numadd","numsub","nummult","numdiv"];
-				for (var i = 0;i<possibleKeyCodes.length;i++){
-					if (possibleKeyCodes[i].toLowerCase() === value.key.toLowerCase()){
-						mainWindow.PPTHotkey += possibleKeyCodes[i];
-						matched = true;
-						break;
-					}
-				}
-			}
-			if (!matched){
-				 mainWindow.PPTHotkey += value.key.toUpperCase(); // last resort
-			}
-		} else {
-			//console.log("Can't register just a control button; needs a key for global hotkeys");
-			return;
-		}
-		console.log("mainWindow.PPTHotkey:"+mainWindow.PPTHotkey);
-		const ret_ppt = globalShortcut.register(mainWindow.PPTHotkey, function(){
-			if (mainWindow) {
-				mainWindow.webContents.send('postMessage', {'PPT':true, "node":mainWindow.node})
-			}
+	onWindowIpc(ipcMain, mainWindow, 'PPTHotkey', function(eventRet, value) {
+		mainWindow.PPTHotkey = pushToTalkAccelerator(value) || false;
+		windowShortcuts.set(mainWindow, 'ppt', mainWindow.PPTHotkey, () => {
+			mainWindow.webContents.send('postMessage', { PPT: true, node: mainWindow.node });
 		});
-		if (!ret_ppt) {
-			//console.log('registration failed3')
-		};
 	});
 	
 
@@ -2901,12 +2653,12 @@ async function createWindow(args, reuse=false) {
 	
 	mainWindow.on('blur', () => {
 		mainWindow.setBackgroundColor('#00000000'); // tmp fix for bug in e.js
-		globalShortcut.unregister('Alt+Enter');
+		windowShortcuts.remove(mainWindow, 'fullscreen');
 	});
 	
 	mainWindow.on('focus', () => {
 		mainWindow.setBackgroundColor('#00000000'); // tmp fix for bug in e.js
-		globalShortcut.register('Alt+Enter', () => {
+		windowShortcuts.set(mainWindow, 'fullscreen', 'Alt+Enter', () => {
 			if (mainWindow && mainWindow.isFocused()) {
 				if (process.platform == "darwin"){ // On certain electron builds, fullscreen fails on macOS; this is in case it starts happening again
 					mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize();
@@ -2923,33 +2675,7 @@ async function createWindow(args, reuse=false) {
 		});
 	});
 
-	// Save window bounds on resize (debounced) for persistence between sessions
-	let saveBoundsTimeout = null;
-	mainWindow.on('resize', () => {
-		if (saveBoundsTimeout) {
-			clearTimeout(saveBoundsTimeout);
-		}
-		saveBoundsTimeout = setTimeout(() => {
-			if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isMinimized() && !mainWindow.isMaximized() && !mainWindow.isFullScreen()) {
-				const bounds = mainWindow.getBounds();
-				saveWindowBounds(bounds);
-			}
-		}, 500);
-	});
-
-	// Also save on move for position persistence
-	mainWindow.on('move', () => {
-		if (saveBoundsTimeout) {
-			clearTimeout(saveBoundsTimeout);
-		}
-		saveBoundsTimeout = setTimeout(() => {
-			if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isMinimized() && !mainWindow.isMaximized() && !mainWindow.isFullScreen()) {
-				const bounds = mainWindow.getBounds();
-				saveWindowBounds(bounds);
-			}
-		}, 500);
-	});
-
+	installBoundsPersistence(mainWindow, saveWindowBounds);
 
 	mainWindow.webContents.on('will-prevent-unload', (event) => {
 		const options = {
@@ -2963,6 +2689,7 @@ async function createWindow(args, reuse=false) {
 	});
 
 	mainWindow.on('close', function(e) {
+		if (global.closing === 2) return; // The app-wide recording grace period has elapsed.
 		e.preventDefault();
 		if (!mainWindow || mainWindow.isDestroyed()) {
 			return;
@@ -3021,14 +2748,14 @@ async function createWindow(args, reuse=false) {
 		mainWindow.webContents.mainFrame.frames.forEach(frame => {
 			if (frame.url === referrer.url) {
 				event.preventDefault();
-				frame.executeJavaScript('(function () {\
+				runPageOperation(frame, 'executeJavaScript', '(function () {\
 					window.location = "'+url+'";\
 				})();');
 			} else if (frame.frames){
 				frame.frames.forEach(subframe => {
 					if (subframe.url === referrer.url) {
 						event.preventDefault();
-						subframe.executeJavaScript('(function () {\
+						runPageOperation(subframe, 'executeJavaScript', '(function () {\
 							window.location = "'+url+'";\
 						})();');
 					} 
@@ -3039,41 +2766,26 @@ async function createWindow(args, reuse=false) {
 	
 	
 	
-	mainWindow.webContents.session.on('will-download', (event, item, webContents) => {
-		console.log("will-download");
-	  if (mainWindow.webContents){
-		var currentURL = mainWindow.webContents.getURL();
-	  } else if (webContents.getURL){
-		  var currentURL = webContents.getURL();
-	  }
-	  if (currentURL.includes("autorecord") || (args.savefolder!==null)){
-		  var dir = args.savefolder;
-		  if (!dir && (process.platform == 'darwin')){ //process.env.USERPROFILE
-				dir = process.env.HOME + "/Downloads/";
-		  } else if (!dir && (process.platform == 'win32')){ //process.env.USERPROFILE
-				dir = process.env.USERPROFILE + "\\Downloads\\";
-		  } else if (!dir && process.env.HOME){ //process.env.USERPROFILE
-				dir = process.env.HOME + "/";
-		  } else if (!dir && process.env.USERPROFILE){ //process.env.USERPROFILE
-				dir = process.env.USERPROFILE + "/";
-		  }
-		  
-		  if (dir!==null){
-			console.log("Auto saving too "+dir + item.getFilename());
-			item.setSavePath(dir + item.getFilename())
-		  }
-	  }
+	installDownloadHandler(mainWindow, args, app);
+	let youtubeAdTimer = null;
+	const clearYoutubeAdTimer = () => {
+		clearInterval(youtubeAdTimer);
+		youtubeAdTimer = null;
+	};
+	mainWindow.once('closed', clearYoutubeAdTimer);
+	mainWindow.webContents.on('did-start-navigation', (_event, _url, inPlace, mainFrame) => {
+		if (mainFrame && !inPlace) clearYoutubeAdTimer();
 	});
-		
 	
 	mainWindow.webContents.on('did-finish-load', function(e){
+		clearYoutubeAdTimer();
 		console.log("did-finish-load");
 		if (tainted){
 			tainted=false;
 		}
 		if (mainWindow && isUrlWithinDomain(mainWindow.webContents.getURL(), 'youtube.com')){
 			console.log("Youtube ad skipper inserted");
-			setInterval(function(mw){
+			youtubeAdTimer = setInterval(function(mw){
 				try {
 					mw.webContents.executeJavaScript('\
 						if (typeof xxxxxx == "undefined") {\
@@ -3083,9 +2795,9 @@ async function createWindow(args, reuse=false) {
 							}\
 							},500);\
 						}\
-					');
+					').catch(clearYoutubeAdTimer);
 				} catch(e){
-					clearInterval(this);
+					clearYoutubeAdTimer();
 					return;
 				}
 			},5000, mainWindow);
@@ -3103,7 +2815,7 @@ async function createWindow(args, reuse=false) {
 				}
 			  })();
 			`;
-			mainWindow.webContents.executeJavaScript(safeJS);
+			runPageOperation(mainWindow.webContents, 'executeJavaScript', safeJS);
 			console.log("Injecting specified JavaScript contained in the file");
 		  } catch(e){
 			console.log('Error preparing JS injection:', e);
@@ -3112,7 +2824,7 @@ async function createWindow(args, reuse=false) {
 		
 		if (CSSCONTENT && mainWindow && mainWindow.webContents){
 			try {
-				mainWindow.webContents.insertCSS(CSSCONTENT, {cssOrigin: 'user'});
+				runPageOperation(mainWindow.webContents, 'insertCSS', CSSCONTENT, {cssOrigin: 'user'});
 				console.log("Inserting specified CSS contained in the file");
 			} catch(e){
 				console.log(e);
@@ -3126,7 +2838,7 @@ async function createWindow(args, reuse=false) {
 	//    console.log('We received a postMessage from the preload script')
 	//})
 
-	ipcMain.on('getAppVersion', function(eventRet) {
+	onWindowIpc(ipcMain, mainWindow, 'getAppVersion', function(eventRet) {
 		try{
 			if (mainWindow) {
 				mainWindow.webContents.send('appVersion', app.getVersion());
@@ -3135,7 +2847,7 @@ async function createWindow(args, reuse=false) {
 	});
 	
 	if (mainWindow){
-		const ret = globalShortcut.register('CommandOrControl+M', () => {
+		const ret = windowShortcuts.set(mainWindow, 'mute', 'CommandOrControl+M', () => {
 			console.log('CommandOrControl+M is pressed')
 			if (mainWindow.node && mainWindow.vdonVersion){
 				mainWindow.webContents.send('postMessage', {'micOld':'toggle'})
@@ -3148,7 +2860,7 @@ async function createWindow(args, reuse=false) {
 		}
 	}
 	
-	const ret_refresh = globalShortcut.register('CommandOrControl+Shift+Alt+R', () => {
+	const ret_refresh = windowShortcuts.set(mainWindow, 'reload', 'CommandOrControl+Shift+Alt+R', () => {
 		console.log('CommandOrControl+Shift+Alt+R')
 		if (mainWindow) {
 			mainWindow.reload();
@@ -3160,7 +2872,7 @@ async function createWindow(args, reuse=false) {
 	
 	
 	
-	const socialstream = globalShortcut.register('CommandOrControl+Shift+Alt+X', () => {
+	const socialstream = windowShortcuts.set(mainWindow, 'clickthrough', 'CommandOrControl+Shift+Alt+X', () => {
 		console.log('CommandOrControl+Shift+Alt+X')
 		if (mainWindow) {
 			if (mainWindow.mouseEvent){
@@ -3250,7 +2962,7 @@ async function createWindow(args, reuse=false) {
             mainWindow.show();
         }
 		if (mainWindow && mainWindow.isFocused()) {
-			globalShortcut.register('Alt+Enter', () => {
+			windowShortcuts.set(mainWindow, 'fullscreen', 'Alt+Enter', () => {
 				console.log("PRESSED")
 				if (process.platform == "darwin"){ // On certain electron builds, fullscreen fails on macOS; this is in case it starts happening again
 					mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize();
@@ -3271,14 +2983,14 @@ async function createWindow(args, reuse=false) {
 	
   try {
     var HTML = '<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" /><style>body {padding:0;height:100%;width:100%;margin:0;}</style></head><body><div style="-webkit-app-region: drag;height:25px;width:100%"></div></body></html>';
-    mainWindow.loadURL("data:text/html;charset=utf-8," + encodeURI(HTML));
+    runPageOperation(mainWindow, 'loadURL', "data:text/html;charset=utf-8," + encodeURI(HTML));
   } catch(e){
     console.error(e);
   }
   
   // Load the actual URL
   try {
-    mainWindow.loadURL(URL);
+    runPageOperation(mainWindow, 'loadURL', URL);
   } catch (e){
     console.error(e);
   }
@@ -3288,37 +3000,10 @@ async function createWindow(args, reuse=false) {
 		mainWindow.webContents.on('dom-ready', async (event)=> {
 			console.log('dom-ready');
 
-			if (mainWindow.args.hidecursor){
-				mainWindow.webContents.insertCSS(`
-				  * {
-					cursor: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=), none !important;
-					user-select: none!important;
-				  }
-				  :root {
-					  --electron-drag-fix: none!important;
-
-				  }
-				`);
-			}
+			setCursorHidden(mainWindow.webContents, !!mainWindow.args.hidecursor);
 		});
 
-		// DPI compensation: scale content inversely to system DPI for 1:1 pixel rendering
-		if (!mainWindow.args.nodpi) {
-			const applyDpiCompensation = () => {
-				try {
-					const scaleFactor = getScaleFactorForWindow(mainWindow);
-					if (scaleFactor > 1) {
-						mainWindow.webContents.setZoomFactor(1 / scaleFactor);
-						console.log(`DPI compensation applied: zoom factor = ${(1 / scaleFactor).toFixed(3)} (scale: ${scaleFactor})`);
-					}
-				} catch (e) {
-					console.warn('Failed to apply DPI compensation:', e);
-				}
-			};
-
-			mainWindow.webContents.on('did-finish-load', applyDpiCompensation);
-			mainWindow.webContents.on('did-navigate', applyDpiCompensation);
-		}
+		mainWindow.__updateDpiCompensation = installWindowDpi(mainWindow, screen, getScaleFactorForWindow);
 	} catch (e){
 		console.error(e);
 		//app.quit();
@@ -3430,9 +3115,8 @@ contextMenu({
 						
 						
 						// browserWindow.inspectElement(params.x, params.y)
-						browserWindow.webContents.send('postMessage', {'getDeviceList':true, 'params':params});
 						
-						ipcMain.once('deviceList', (event, data) => {
+						requestDeviceList(ipcMain, browserWindow, params, (event, data) => {
 							console.log(data);
 							var deviceList = data.deviceInfos;
 							
@@ -3455,7 +3139,7 @@ contextMenu({
 							};
 							
 							let response = dialog.showMessageBoxSync(options);
-							if (response){
+							if (Number.isInteger(response) && response > 0 && response < details.length && !browserWindow.isDestroyed() && !browserWindow.webContents.isDestroyed()){
 								browserWindow.webContents.send('postMessage', {'changeAudioOutputDevice':details[response], data:data});
 							}
 								
@@ -3472,9 +3156,8 @@ contextMenu({
 						var details = [false];
 						
 						// browserWindow.inspectElement(params.x, params.y)
-						browserWindow.webContents.send('postMessage', {'getDeviceList':true, 'params':params});
 						
-						ipcMain.once('deviceList', (event, data) => {
+						requestDeviceList(ipcMain, browserWindow, params, (event, data) => {
 							console.log(data);
 							var deviceList = data.deviceInfos;
 							
@@ -3497,7 +3180,7 @@ contextMenu({
 							};
 							
 							let response = dialog.showMessageBoxSync(options);
-							if (response){
+							if (Number.isInteger(response) && response > 0 && response < details.length && !browserWindow.isDestroyed() && !browserWindow.webContents.isDestroyed()){
 								browserWindow.webContents.send('postMessage', {'changeAudioOutputDevice':details[response]});
 							}
 								
@@ -3539,9 +3222,8 @@ contextMenu({
 						var buttons = ["Cancel"];
 						var details = [false];
 						
-						browserWindow.webContents.send('postMessage', {'getDeviceList':true, 'params':params});
 						
-						ipcMain.once('deviceList', (event, data) => {
+						requestDeviceList(ipcMain, browserWindow, params, (event, data) => {
 							console.log(data);
 							var deviceList = data.deviceInfos;
 							
@@ -3573,7 +3255,7 @@ contextMenu({
 							
 							
 							let response = dialog.showMessageBoxSync(options);
-							if (response){
+							if (Number.isInteger(response) && response > 0 && response < details.length && !browserWindow.isDestroyed() && !browserWindow.webContents.isDestroyed()){
 								browserWindow.webContents.send('postMessage', {'changeAudioDevice':details[response]});
 							}
 						})
@@ -3612,9 +3294,8 @@ contextMenu({
 						var buttons = ["Cancel"];
 						var details = [false];
 						
-						browserWindow.webContents.send('postMessage', {'getDeviceList':true, 'params':params});
 						
-						ipcMain.once('deviceList', (event, data) => {
+						requestDeviceList(ipcMain, browserWindow, params, (event, data) => {
 							console.log(data);
 							var deviceList = data.deviceInfos;
 							
@@ -3643,7 +3324,7 @@ contextMenu({
 							};
 							
 							let response = dialog.showMessageBoxSync(options);
-							if (response){
+							if (Number.isInteger(response) && response > 0 && response < details.length && !browserWindow.isDestroyed() && !browserWindow.webContents.isDestroyed()){
 								browserWindow.webContents.send('postMessage', {'changeVideoDevice':details[response]});
 							}
 						})
@@ -3670,15 +3351,11 @@ contextMenu({
 			
 			
 				let idx = dialog.showMessageBoxSync(options);
-				if (idx){
-					idx -= 1;
-					console.log(idx, extensions[idx].location);
-					
-					browserWindow.webContents.session.loadExtension(extensions[idx].location+"").then(({ id }) => {
-						console.log("loadExtension");
-					});
-					// extensions
-				}
+                const extension = Number.isInteger(idx) && idx > 0 ? extensions[idx - 1] : null;
+                if (!extension || browserWindow.isDestroyed()) return;
+                const contents = browserWindow.webContents;
+                if (contents.isDestroyed()) return;
+                runPageOperation(contents.session, 'loadExtension', String(extension.location));
 			}
 		},
 		{
@@ -3709,66 +3386,10 @@ contextMenu({
 			label: '✏️ Edit URL', 
 			// Only show it when right-clicking text
 			visible: true,
-			click: () => {
-				var URL = browserWindow.webContents.getURL();
-				var onTop = browserWindow.isAlwaysOnTop();
-				if (onTop) {
-					browserWindow.setAlwaysOnTop(false);
-				}
-				prompt({
-					title: 'Edit the URL',
-					label: 'URL:',
-					value: URL,
-					inputAttrs: {
-						type: 'url'
-					},
-					resizable: true,
-					type: 'input',
-					alwaysOnTop: true
-				})
-				.then((r) => {
-					if(r === null) {
-						console.log('user cancelled');
-						  if (onTop) {
-							browserWindow.setAlwaysOnTop(true);
-						  }
-					} else {
-						console.log('result', r);
-						try {
-							browserWindow.loadURL(formatURL(r));
-						} catch(e){
-							console.error(e);
-						}
-						if (onTop) {
-							browserWindow.setAlwaysOnTop(true);
-						}
-						console.log(browserWindow);
-						console.log(formatURL(r));
-						
-						// var args = browserWindow.args; // reloading doesn't work otherwise
-						// args.url = r;
-						// var title = browserWindow.getTitle();
-						
-						// var size = browserWindow.getSize();
-						// args.width = size[0];
-						// args.height = size[1];
-						
-						// if (process.platform !== "darwin"){
-							// args.fullscreen = browserWindow.isFullScreen();
-						// } else {
-							// args.fullscreen = browserWindow.isMaximized();
-						// }
-						
-						// args.fullscreen = true;
-						
-						// browserWindow.destroy();
-						// createWindow(args, title); // we close the window and open it again; a faked refresh
-						// DoNotClose = false;
-						
-					}
-				})
-				.catch(console.error);
-			}
+			click: () => showWindowPrompt(browserWindow, prompt, () => ({
+				title: 'Edit the URL', label: 'URL:',
+				value: browserWindow.webContents.getURL(), inputAttrs: { type: 'url' }
+			}), r => runPageOperation(browserWindow, 'loadURL', formatURL(r)))
 		},
 		{
 			label: '🪟 IFrame Options',
@@ -3779,57 +3400,11 @@ contextMenu({
 				label: '✏️ Edit IFrame URL',
 				// Only show it when right-clicking text
 				visible: true,
-				click: () => {
-					console.log(browserWindow.webContents);
-					console.log(params);
-					
-					var URL = params.frameURL;
-					var onTop = browserWindow.isAlwaysOnTop();
-					if (onTop) {
-						browserWindow.setAlwaysOnTop(false);
-					}
-					prompt({
-						title: 'Edit the target IFrame URL',
-						label: 'URL:',
-						value: URL,
-						inputAttrs: {
-							type: 'url'
-						},
-						resizable: true,
-						type: 'input',
-						alwaysOnTop: true
-					})
-					.then((r) => {
-						if(r === null) {
-							console.log('user cancelled');
-							  if (onTop) {
-								browserWindow.setAlwaysOnTop(true);
-							  }
-						} else {
-							console.log('result', r);
-							if (onTop) {
-								browserWindow.setAlwaysOnTop(true);
-							}
-							
-							browserWindow.webContents.executeJavaScript('(function () {\
-								var ele = document.elementFromPoint('+params.x+', '+params.y+');\
-								if (ele.tagName !== "IFRAME"){\
-									ele = false;\
-									document.querySelectorAll("iframe").forEach(ee=>{\
-										if (ee.src == "'+URL+'"){\
-											ele = ee;\
-										}\
-									});\
-								}\
-								if (ele && (ele.tagName == "IFRAME")){\
-									ele.src = "'+r+'";\
-								}\
-							})();');
-							
-						}
-					})
-					.catch(console.error);
-				}
+				click: () => showWindowPrompt(browserWindow, prompt, () => ({
+					title: 'Edit the target IFrame URL', label: 'URL:',
+					value: params.frameURL, inputAttrs: { type: 'url' }
+				}), r => runPageOperation(browserWindow.webContents, 'executeJavaScript',
+					iframeNavigationScript(params.x, params.y, params.frameURL, r)))
 			},{
 				label: '♻ Reload IFrame',
 				// Only show it when right-clicking text
@@ -3848,7 +3423,7 @@ contextMenu({
 				click: () => {
 					browserWindow.webContents.mainFrame.frames.forEach(frame => {
 					  if (frame.url === params.frameURL) {
-						frame.executeJavaScript('(function () {window.history.back();})();');
+						runPageOperation(frame, 'executeJavaScript', '(function () {window.history.back();})();');
 					  }
 					});
 				}
@@ -3859,7 +3434,7 @@ contextMenu({
 				click: () => {
 					browserWindow.webContents.mainFrame.frames.forEach(frame => {
 					  if (frame.url === params.frameURL) {
-						frame.executeJavaScript('(function () {window.history.forward();})();');
+						runPageOperation(frame, 'executeJavaScript', '(function () {window.history.forward();})();');
 					  }
 					});
 				}
@@ -3869,121 +3444,25 @@ contextMenu({
 		label: '📑 Insert CSS',
 		// Only show it when right-clicking text
 		visible: true,
-		click: async () => {
-		  var onTop = browserWindow.isAlwaysOnTop();
-		  if (onTop) {
-			browserWindow.setAlwaysOnTop(false);
-		  }
-		  const savedValue = await browserWindow.webContents.executeJavaScript(`localStorage.getItem('insertCSS');`);
-		  
-		  console.log(savedValue);
-		  prompt({
-			title: 'Insert Custom CSS',
-			label: 'CSS:',
-			value: savedValue || "body {background-color:#0000;}",
-			inputAttrs: {
-			  type: 'text'
-			},
-			resizable: true,
-			type: 'input',
-			alwaysOnTop: true
-		  })
-		  .then((r) => {
-			if(r === null) {
-			  console.log('user cancelled');
-			  if (onTop) {
-				browserWindow.setAlwaysOnTop(true);
-			  }
-			} else {
-			  console.log('result', r);
-			  browserWindow.webContents.executeJavaScript(`localStorage.setItem('insertCSS', '${r}');`);
-			  if (onTop) {
-				browserWindow.setAlwaysOnTop(true);
-			  }
-			  browserWindow.webContents.insertCSS(r, {cssOrigin: 'user'});
-			}
-		  })
-		  .catch(console.error);
-		}
-	  },
+		click: () => showCustomCodePrompt(browserWindow, prompt, 'css')
+		},
 		{
 		  label: '📝 Insert JavaScript',
 		  visible: true,
-		  click: async () => {
-			var onTop = browserWindow.isAlwaysOnTop();
-			if (onTop) {
-			  browserWindow.setAlwaysOnTop(false);
-			}
-			const savedValue = await browserWindow.webContents.executeJavaScript(`localStorage.getItem('insertJS');`);
-			
-			prompt({
-			  title: 'Insert Custom JavaScript',
-			  label: 'JavaScript:',
-			  value: savedValue || "console.log('Custom JavaScript loaded');",
-			  inputAttrs: {
-				type: 'text'
-			  },
-			  resizable: true,
-			  type: 'input',
-			  alwaysOnTop: true
-			})
-			.then((r) => {
-			  if(r === null) {
-				console.log('user cancelled');
-				if (onTop) {
-				  browserWindow.setAlwaysOnTop(true);
-				}
-			  } else {
-				console.log('result', r);
-				browserWindow.webContents.executeJavaScript(`
-				  localStorage.setItem('insertJS', ${JSON.stringify(r)});
-				`);
-				if (onTop) {
-				  browserWindow.setAlwaysOnTop(true);
-				}
-				browserWindow.webContents.executeJavaScript(r);
-			  }
-			})
-			.catch(console.error);
-		  }
+		  click: () => showCustomCodePrompt(browserWindow, prompt, 'js')
 		},
 		{
 			label: '✏️ Edit Window Title',
 			// Only show it when right-clicking text
 			visible: true,
-			click: () => {
-				var title2 = browserWindow.getTitle();
-				var onTop = browserWindow.isAlwaysOnTop();
-				if (onTop) {
-					browserWindow.setAlwaysOnTop(false);
-				}
-				prompt({
-					title: 'Edit  Window Title',
-					label: 'Title:',
-					value: title2,
-					inputAttrs: {
-							type: 'string'
-					},
-					resizable: true,
-					type: 'input',
-					alwaysOnTop: true
-				}).then((r) => {
-					if(r === null) {
-						if (onTop) {
-						  browserWindow.setAlwaysOnTop(true);
-						}
-						console.log('user cancelled');
-					} else {
-						if (onTop) {
-							browserWindow.setAlwaysOnTop(true);
-						}
-						console.log('result', r);
-						browserWindow.args.title = r;
-						browserWindow.setTitle(r);
-					}
-				})
-				.catch(console.error);
-			}
+			click: () => showWindowPrompt(browserWindow, prompt, () => ({
+				title: 'Edit Window Title', label: 'Title:',
+				value: browserWindow.getTitle(), inputAttrs: { type: 'text' }
+			}), r => {
+				browserWindow.setTitle(r);
+				browserWindow.args.title = r;
+				browserWindow.args.t = r;
+			})
 		},
 		{
 			label: '↔️ Resize window',
@@ -3992,7 +3471,7 @@ contextMenu({
 			type: 'submenu',
 			submenu: [
 				{
-					label: 'Fullscreen (alt+tab)',
+					label: 'Fullscreen (Alt+Enter)',
 					// Only show if not already full-screen
 					visible: !browserWindow.isMaximized(),
 					click: () => {
@@ -4017,100 +3496,36 @@ contextMenu({
 					label: '1920x1080',
 					// Only show it when right-clicking text
 					visible: true,
-					click: () => {
-						if (process.platform !== "darwin"){
-							if (browserWindow.isFullScreen()){browserWindow.setFullScreen(false);}
-						} else {
-							if (browserWindow.isMaximized()){browserWindow.unmaximize();}
-						}
-						//let factor = screen.getPrimaryDisplay().scaleFactor;
-						//browserWindow.setSize(1920/factor, 1080/factor);
-						let point =  screen.getCursorScreenPoint();
-						let factor = screen.getDisplayNearestPoint(point).scaleFactor || 1;
-						browserWindow.setSize(parseInt(1920/factor), parseInt(1080/factor));
-						browserWindow.full = false;
-					}
+					click: () => resizeWindow(browserWindow, 1920, 1080, getScaleFactorForWindow)
 				},
 				{
 					label: '1280x720',
 					// Only show it when right-clicking text
 					visible: true,
-					click: () => {
-						if (process.platform !== "darwin"){
-							if (browserWindow.isFullScreen()){browserWindow.setFullScreen(false);}
-						} else {
-							if (browserWindow.isMaximized()){browserWindow.unmaximize();}
-						}	
-						let point =  screen.getCursorScreenPoint();
-						let factor = screen.getDisplayNearestPoint(point).scaleFactor || 1;
-						browserWindow.setSize(parseInt(1280/factor), parseInt(720/factor));
-						browserWindow.full = false;
-					}
+					click: () => resizeWindow(browserWindow, 1280, 720, getScaleFactorForWindow)
 				},
 				{
 					label: '640x360',
 					// Only show it when right-clicking text
 					visible: true,
-					click: () => {
-						if (process.platform !== "darwin"){
-							if (browserWindow.isFullScreen()){browserWindow.setFullScreen(false);}
-						} else {
-							if (browserWindow.isMaximized()){browserWindow.unmaximize();}
-						}
-						let point =  screen.getCursorScreenPoint();
-						let factor = screen.getDisplayNearestPoint(point).scaleFactor || 1;
-						browserWindow.setSize(parseInt(640/factor), parseInt(360/factor));
-						browserWindow.full = false;
-					}
+					click: () => resizeWindow(browserWindow, 640, 360, getScaleFactorForWindow)
 				},
 				{
 					label: 'Custom resolution',
 					// Only show it when right-clicking text
 					visible: true,
-					click: () => {
-						var URL = browserWindow.webContents.getURL();
-						var onTop = browserWindow.isAlwaysOnTop();
-						if (onTop) {
-							browserWindow.setAlwaysOnTop(false);
+					click: () => showWindowPrompt(browserWindow, prompt, () => ({
+						title: 'Custom window resolution', label: 'Enter a resolution in physical pixels:',
+						value: physicalResolution(browserWindow, getScaleFactorForWindow),
+						inputAttrs: { type: 'text', placeholder: '1280x720' }
+					}), value => {
+						const size = parseResolution(value);
+						if (!size) {
+							dialog.showErrorBox('Invalid resolution', 'Enter positive whole-number dimensions, such as 1280x720.');
+							return;
 						}
-						
-						prompt({
-							title: 'Custom window resolution',
-							label: 'Enter a resolution:',
-							value: browserWindow.getSize()[0] + 'x' + browserWindow.getSize()[1],
-							inputAttrs: {
-								type: 'string',
-								placeholder: '1280x720'
-							},
-							type: 'input',
-							alwaysOnTop: true
-						})
-						.then((r) => {
-							if(r === null) {
-								console.log('user cancelled');
-								if (onTop) {
-									browserWindow.setAlwaysOnTop(true);
-								}
-							} else {
-								console.log('Window resized to ', r);
-								browserWindow.full = false;
-								if (onTop) {
-									browserWindow.setAlwaysOnTop(true);
-								}
-								if (process.platform !== "darwin"){
-									if (browserWindow.isFullScreen()){browserWindow.setFullScreen(false);}
-								} else {
-									if (browserWindow.isMaximized()){browserWindow.unmaximize();}
-								}	
-								let point =  screen.getCursorScreenPoint();
-								let factor = screen.getDisplayNearestPoint(point).scaleFactor || 1;
-								console.log(r);
-								console.log(factor);
-								browserWindow.setSize(parseInt(r.split('x')[0]/factor), parseInt(r.split('x')[1]/factor));
-							}
-						})
-						.catch(console.error);
-					}
+						resizeWindow(browserWindow, size.width, size.height, getScaleFactorForWindow);
+					})
 				}
 			]
 		},
@@ -4150,8 +3565,8 @@ contextMenu({
 						body {\
 							overflow: hidden!important;\
 						}";
-					browserWindow.webContents.insertCSS(css, {cssOrigin: 'user'});
-					browserWindow.webContents.executeJavaScript('(function () {\
+					runPageOperation(browserWindow.webContents, 'insertCSS', css, {cssOrigin: 'user'});
+					runPageOperation(browserWindow.webContents, 'executeJavaScript', '(function () {\
 						var videos = document.querySelectorAll("video");\
 						if (videos.length>1){\
 							var video = videos[0];\
@@ -4169,7 +3584,7 @@ contextMenu({
 					})();');
 
 					if (isUrlWithinDomain(browserWindow.webContents.getURL(), 'youtube.com')){
-						browserWindow.webContents.executeJavaScript('(function () {\
+						runPageOperation(browserWindow.webContents, 'executeJavaScript', '(function () {\
 							if (!xxxxxx){\
 								var xxxxxx = setInterval(function(){\
 								if (document.querySelector(".ytp-ad-skip-button")){\
@@ -4189,28 +3604,7 @@ contextMenu({
 			checked: browserWindow.args.hidecursor || false,
 			click: () => { 
 				browserWindow.args.hidecursor = !browserWindow.args.hidecursor || false;
-				if (browserWindow.args.hidecursor){
-					browserWindow.webContents.insertCSS(`
-					  * {
-						cursor: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=), none !important;
-						user-select: none!important;
-					  }
-					  :root {
-						  --electron-drag-fix: none!important;
-						  
-					  }
-					`);
-				} else {
-					browserWindow.webContents.insertCSS(`
-					  * {
-						cursor: auto!important;
-					  }
-					  :root {
-						  --electron-drag-fix: drag!important;
-						  
-					  }
-					`);
-				}
+				setCursorHidden(browserWindow.webContents, browserWindow.args.hidecursor);
 			}
 		},
 		{
@@ -4378,49 +3772,39 @@ app.on('window-all-closed', () => {
 var closing = 0;
 
 app.on('before-quit', (event) => {
-  console.log("Application 'before-quit' event triggered.");
+  if (global.closing === 2) return;
+  if (global.closing === 1) {
+    event.preventDefault();
+    return;
+  }
 
-  // Clean up ASIO streams
   if (asioIpcHandlers && asioIpcHandlers.cleanupAsio) {
+    try { asioIpcHandlers.cleanupAsio(); }
+    catch (error) { console.error('ASIO cleanup error:', error); }
+  }
+
+  const windows = BrowserWindow.getAllWindows();
+  if (!windows.length) return;
+  global.closing = 1;
+  event.preventDefault();
+
+  // Install the timer before notifying pages so a failing renderer cannot
+  // leave the application hidden with no way to finish shutting down.
+  setTimeout(() => {
+    global.closing = 2;
+    app.quit();
+  }, 1600);
+
+  for (const window of windows) {
     try {
-      asioIpcHandlers.cleanupAsio();
-      console.log('ASIO cleanup completed');
-    } catch (e) {
-      console.error('ASIO cleanup error:', e);
-    }
-  }
-
-  if (!BrowserWindow.getAllWindows().length) {
-    console.log("'before-quit': No windows open, quitting normally.");
-    return; // No need to preventDefault or delay if no windows.
-  }
-
-  // The 'closing' variable logic is from your original code.
-  if (global.closing !== 2) { // Assuming 'closing' is a global or appropriately scoped variable
-    global.closing = 1;
-    console.log("'before-quit': Preventing immediate quit to process windows.");
-    event.preventDefault(); // Prevent immediate quit
-
-    BrowserWindow.getAllWindows().forEach((bw) => {
-      if (bw && !bw.isDestroyed()) {
-        console.log(`'before-quit': Processing window ID ${bw.id}.`);
-        bw.hide();
-        if (bw.webContents && !bw.webContents.isDestroyed()) {
-          bw.webContents.send('postMessage', {'hangup':true});
-        }
-        // Note: The window's own 5-second destroy timer (from its 'close' event)
-        // might be initiated if bw.close() was called, but here we are directly
-        // hiding and sending hangup. The app's 1.6s quit timer will likely take precedence.
+      if (window.isDestroyed()) continue;
+      window.hide();
+      if (!window.webContents.isDestroyed()) {
+        window.webContents.send('postMessage', { hangup: true });
       }
-    });
-
-    setTimeout(() => {
-      console.log("'before-quit': 1.6-second app shutdown timer elapsed. Forcing quit.");
-      global.closing = 2;
-      app.quit();
-    }, 1600); // Your original 1.6-second timeout
-  } else {
-    console.log("'before-quit': Already in closing process (closing === 2).");
+    } catch (error) {
+      console.warn('Unable to notify window during shutdown:', error);
+    }
   }
 });
 

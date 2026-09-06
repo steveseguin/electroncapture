@@ -13,6 +13,7 @@ class WindowAudioStream {
         this.cleanupCallback = null;
         this.currentProcessId = null;
         this.currentRequestTarget = null;
+        this.operations = Promise.resolve();
         this.usingProcessLoopback = false;
     }
 
@@ -47,7 +48,7 @@ class WindowAudioStream {
                 }
                 return {
                     requestTarget: numericValue,
-                    clientId: trimmed
+                    clientId: String(numericValue)
                 };
             }
             return {
@@ -59,7 +60,24 @@ class WindowAudioStream {
         throw new Error(`WindowAudioStream: Invalid process identifier: ${targetId}`);
     }
 
-    async start(targetId) {
+    _enqueue(operation) {
+        const result = this.operations.then(operation);
+        this.operations = result.catch(() => {});
+        return result;
+    }
+
+    start(targetId) {
+        return this._enqueue(() => this._start(targetId));
+    }
+
+    stop(expectedStream) {
+        return this._enqueue(() => {
+            if (expectedStream !== undefined && this.audioStream !== expectedStream) return;
+            return this._stop();
+        });
+    }
+
+    async _start(targetId) {
         console.log(`WindowAudioStream: Starting capture for target ${targetId} (type: ${typeof targetId})`);
 
         const targetInfo = this._prepareTarget(targetId);
@@ -68,7 +86,7 @@ class WindowAudioStream {
         console.log(`WindowAudioStream: Normalized target ${targetId} -> ${clientId}`);
 
         if (this.captureActive) {
-            await this.stop();
+            await this._stop();
         }
 
         this.currentProcessId = clientId;
@@ -76,13 +94,6 @@ class WindowAudioStream {
         this.usingProcessLoopback = false;
 
         try {
-            if (!this.audioContext || this.audioContext.state === 'closed') {
-                this.audioContext = new (window.AudioContext || window.webkitAudioContext)({
-                    sampleRate: this.sampleRate,
-                    latencyHint: 'interactive'
-                });
-            }
-
             const result = await window.electronApi.startStreamCapture(requestTarget);
             if (!result || result.success !== true) {
                 throw new Error(result && result.error ? result.error : 'Failed to start window audio capture');
@@ -92,17 +103,27 @@ class WindowAudioStream {
 
             this.sampleRate = result.sampleRate || 48000;
             this.channels = result.channels || 2;
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                sampleRate: this.sampleRate,
+                latencyHint: 'interactive'
+            });
+            if (this.audioContext.state === 'suspended') {
+                await this.audioContext.resume();
+            }
             const processLoopbackActive = !!(result.usingProcessSpecificLoopback ?? result.usingProcessLoopback);
             this.usingProcessLoopback = processLoopbackActive;
             console.log(`WindowAudioStream: Process-specific loopback ${processLoopbackActive ? 'active' : 'unavailable; using system loopback'}`);
 
             const destination = this.audioContext.createMediaStreamDestination();
+            this.audioStream = destination.stream;
             this.scriptProcessor = this.audioContext.createScriptProcessor(this.bufferSize, this.channels, this.channels);
 
             let sampleBuffer = [];
             let lastProcessTime = performance.now();
 
-            this.cleanupCallback = window.electronApi.onAudioStreamData((payload) => {
+            let listening = true;
+            const unsubscribe = window.electronApi.onAudioStreamData((payload) => {
+                if (!listening) return;
                 if (!payload || (payload.clientId && payload.clientId !== this.currentProcessId)) {
                     return;
                 }
@@ -125,7 +146,17 @@ class WindowAudioStream {
                     this.sampleRate = sampleRate;
                 }
 
-                sampleBuffer.push(...samples);
+                // Bound latency after a suspended or overloaded renderer, and
+                // avoid exceeding the JS argument limit with large IPC chunks.
+                const maxSamples = Math.max(this.bufferSize * 2, this.sampleRate) * this.channels;
+                // Treat buffered and incoming samples as one interleaved stream.
+                // Drop whole frames so a chunk split inside a stereo frame does
+                // not swap the left/right channels after an overflow.
+                const overflow = Math.max(0, sampleBuffer.length + samples.length - maxSamples);
+                const drop = Math.floor(overflow / this.channels) * this.channels;
+                const start = Math.max(0, drop - sampleBuffer.length);
+                if (drop > 0) sampleBuffer.splice(0, Math.min(drop, sampleBuffer.length));
+                for (let i = start; i < samples.length; i++) sampleBuffer.push(samples[i]);
 
                 const now = performance.now();
                 if (now - lastProcessTime > 5000) {
@@ -134,45 +165,40 @@ class WindowAudioStream {
                 }
             });
 
+            this.cleanupCallback = () => {
+                listening = false;
+                if (typeof unsubscribe === 'function') unsubscribe();
+            };
+
             this.scriptProcessor.onaudioprocess = (audioProcessingEvent) => {
                 const outputBuffer = audioProcessingEvent.outputBuffer;
                 const numChannels = outputBuffer.numberOfChannels;
                 const frameCount = outputBuffer.length;
-                const samplesNeeded = frameCount * numChannels;
-
-                if (sampleBuffer.length >= samplesNeeded) {
-                    const frameSamples = sampleBuffer.splice(0, samplesNeeded);
-                    for (let channel = 0; channel < numChannels; channel++) {
-                        const outputData = outputBuffer.getChannelData(channel);
-                        for (let i = 0; i < frameCount; i++) {
-                            outputData[i] = frameSamples[i * numChannels + channel] || 0;
-                        }
-                    }
-                } else {
-                    for (let channel = 0; channel < numChannels; channel++) {
-                        const outputData = outputBuffer.getChannelData(channel);
-                        outputData.fill(0);
+                const availableFrames = Math.min(frameCount, Math.floor(sampleBuffer.length / numChannels));
+                const frameSamples = sampleBuffer.splice(0, availableFrames * numChannels);
+                for (let channel = 0; channel < numChannels; channel++) {
+                    const outputData = outputBuffer.getChannelData(channel);
+                    outputData.fill(0);
+                    for (let i = 0; i < availableFrames; i++) {
+                        outputData[i] = frameSamples[i * numChannels + channel] || 0;
                     }
                 }
             };
 
             this.scriptProcessor.connect(destination);
 
-            this.audioStream = destination.stream;
             this.captureActive = true;
 
             console.log('WindowAudioStream: Audio stream created successfully');
             return this.audioStream;
         } catch (error) {
             console.error('WindowAudioStream: Error starting capture:', error);
-            this.captureActive = false;
-            this.currentProcessId = null;
-            this.currentRequestTarget = null;
+            await this._stop();
             throw error;
         }
     }
 
-    async stop() {
+    async _stop() {
         if (!this.captureActive && !this.currentProcessId && !this.audioStream) {
             return;
         }
@@ -190,8 +216,9 @@ class WindowAudioStream {
 
         try {
             if (this.cleanupCallback) {
-                this.cleanupCallback();
+                const cleanup = this.cleanupCallback;
                 this.cleanupCallback = null;
+                cleanup();
             }
         } catch (error) {
             console.warn('WindowAudioStream: cleanup callback threw', error);
@@ -199,9 +226,10 @@ class WindowAudioStream {
 
         try {
             if (this.scriptProcessor) {
-                this.scriptProcessor.disconnect();
-                this.scriptProcessor.onaudioprocess = null;
+                const processor = this.scriptProcessor;
                 this.scriptProcessor = null;
+                processor.onaudioprocess = null;
+                processor.disconnect();
             }
         } catch (error) {
             console.warn('WindowAudioStream: Error disconnecting scriptProcessor', error);
@@ -209,14 +237,15 @@ class WindowAudioStream {
 
         try {
             if (this.audioStream) {
-                this.audioStream.getTracks().forEach((track) => {
+                const stream = this.audioStream;
+                this.audioStream = null;
+                stream.getTracks().forEach((track) => {
                     try {
                         track.stop();
                     } catch (err) {
                         console.warn('WindowAudioStream: Failed to stop track', err);
                     }
                 });
-                this.audioStream = null;
             }
         } catch (error) {
             console.warn('WindowAudioStream: Error stopping tracks', error);
@@ -228,6 +257,8 @@ class WindowAudioStream {
             }
         } catch (error) {
             console.warn('WindowAudioStream: Error closing AudioContext', error);
+        } finally {
+            this.audioContext = null;
         }
 
         this.captureActive = false;

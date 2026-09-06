@@ -679,76 +679,86 @@ function ensureWindowAudioStreamInstance() {
   return windowAudioStreamInstance;
 }
 
+let appAudioAttachmentGeneration = 0;
+
 function updateAppAudioTarget(value) {
   const sanitized = sanitizeAppAudioTarget(value);
-  if (sanitized === appAudioTarget) {
-    return appAudioTarget;
-  }
-
+  if (sanitized === appAudioTarget) return appAudioTarget;
   appAudioTarget = sanitized;
-
-  if (windowAudioStreamInstance && windowAudioStreamInstance.isCapturing()) {
-    windowAudioStreamInstance.stop().catch((error) => {
+  appAudioAttachmentGeneration++;
+  // Queue a stop even during startup; isCapturing() is false until startup ends.
+  if (windowAudioStreamInstance) {
+    windowAudioStreamInstance.stop().catch(error => {
       console.warn('Failed to stop window audio stream after retargeting:', error);
     });
   }
-
   return appAudioTarget;
 }
 
 async function attachApplicationAudio(stream) {
-  if (!appAudioTarget) {
-    return;
-  }
-
+  if (!appAudioTarget) return;
   const instance = ensureWindowAudioStreamInstance();
-  if (!instance) {
-    console.warn('WindowAudioStream unavailable; skipping application audio attachment.');
-    return;
-  }
+  if (!instance) return;
+  const generation = ++appAudioAttachmentGeneration;
+  const target = appAudioTarget;
+  const clonedTracks = [];
+  const listeners = [];
+  let audioStream = null;
+  let cleaned = false;
+
+  const cleanup = async () => {
+    if (cleaned) return;
+    cleaned = true;
+    for (const [target, event] of listeners) target.removeEventListener(event, onEnded);
+    for (const track of clonedTracks) {
+      try {
+        track.stop();
+        stream.removeTrack(track);
+      } catch (error) {
+        console.warn('Error cleaning up cloned application audio:', error);
+      }
+    }
+    // Check ownership when the queued stop executes, not only here: another
+    // share may already have queued its startup on the same audio instance.
+    if (audioStream) await instance.stop(audioStream);
+  };
+  const onEnded = () => {
+    cleanup().catch(error => console.warn('Application audio cleanup failed:', error));
+  };
+  const listen = (target, event) => {
+    target.addEventListener(event, onEnded, { once: true });
+    listeners.push([target, event]);
+  };
 
   try {
-    const audioStream = await instance.start(appAudioTarget);
-    if (!audioStream) {
-      console.warn('WindowAudioStream returned no audio stream for target:', appAudioTarget);
+    listen(stream, 'inactive');
+    const videoTracks = stream.getVideoTracks();
+    for (const track of videoTracks) listen(track, 'ended');
+    if (videoTracks.length && videoTracks.every(track => track.readyState === 'ended')) {
+      await cleanup();
       return;
     }
-
-    const clonedTracks = [];
-    audioStream.getAudioTracks().forEach((track) => {
+    audioStream = await instance.start(target);
+    if (!audioStream) { await cleanup(); return; }
+    if (cleaned) {
+      await instance.stop(audioStream);
+      return;
+    }
+    if (generation !== appAudioAttachmentGeneration ||
+        (videoTracks.length && videoTracks.every(track => track.readyState === 'ended'))) {
+      await cleanup();
+      return;
+    }
+    for (const track of audioStream.getAudioTracks()) {
       const clone = track.clone();
       clonedTracks.push(clone);
       stream.addTrack(clone);
-    });
-
-    const cleanup = async () => {
-      clonedTracks.forEach((track) => {
-        try {
-          track.stop();
-        } catch (error) {
-          console.warn('Error stopping cloned audio track:', error);
-        }
-      });
-      if (instance.isCapturing()) {
-        try {
-          await instance.stop();
-        } catch (error) {
-          console.warn('Failed to stop WindowAudioStream during cleanup:', error);
-        }
-      }
-    };
-
-    const onceCleanup = () => {
-      cleanup().catch((error) => console.error('Error cleaning up application audio tracks:', error));
-    };
-
-    if (typeof stream.addEventListener === 'function') {
-      stream.addEventListener('inactive', onceCleanup, { once: true });
+      listen(clone, 'ended');
     }
-    stream.getVideoTracks().forEach((track) => track.addEventListener('ended', onceCleanup, { once: true }));
-    clonedTracks.forEach((track) => track.addEventListener('ended', onceCleanup, { once: true }));
   } catch (error) {
     console.error('Failed to attach application audio to display stream:', error);
+    try { await cleanup(); }
+    catch (cleanupError) { console.warn('Application audio cleanup failed:', cleanupError); }
   }
 }
 
@@ -1035,7 +1045,7 @@ try {
 }
 
 
-var storedEle = null;
+const deviceListElements = new Map();
 var PPTTimeout = null;
 ipcRenderer.on('postMessage', (event, ...args) => {
 	console.log(args);
@@ -1164,50 +1174,30 @@ ipcRenderer.on('postMessage', (event, ...args) => {
 		}
 		
 		if ("getDeviceList" in args[0]) {
-			
-			var x = args[0].params.x;
-			var y = args[0].params.y;
-			var ele = document.elementFromPoint(x,y);
-			storedEle = ele;
-			var menu = ele.dataset.menu;
-			
-			var response = {};
-			response.menu = menu || false;
-			response.eleId = ele.id || false;
-			response.UUID = ele.dataset.UUID || false;
-			response.params = args[0].params;
-  
-			if (typeof enumerateDevices === "function"){
-				enumerateDevices().then(function(deviceInfos) {
-					response.deviceInfos = deviceInfos;
-					response = JSON.parse(JSON.stringify(response));
-					ipcRenderer.send('deviceList', response);
-				})
-			} else {
-				console.log("calling requestOutputAudioStream");
-				requestOutputAudioStream().then(function(deviceInfos) {
-					
-					response.deviceInfos = deviceInfos;
-					response = JSON.parse(JSON.stringify(response));
-					ipcRenderer.send('deviceList', response);
-					
-					//deviceInfos = JSON.parse(JSON.stringify(deviceInfos));
-					
-					/* var output = [];
-					for (var i=0;i<deviceInfos.length;i++){
-						if (deviceInfos[i].kind === "audiooutput"){
-							output.push(deviceInfos[i]);
-						}
-					} */
-					
-					console.log("Should only be audio output");
-					//console.log(output);
-					//ipcRenderer.send('deviceList', deviceInfos);
-				})
-			}
+			const request = args[0];
+			const ele = document.elementFromPoint(request.params.x, request.params.y);
+			deviceListElements.set(request.requestId, ele);
+			const response = {
+				requestId: request.requestId,
+				menu: ele?.dataset?.menu || false,
+				eleId: ele?.id || false,
+				UUID: ele?.dataset?.UUID || false,
+				params: request.params
+			};
+			Promise.resolve().then(() => {
+				return typeof enumerateDevices === "function" ? enumerateDevices() : requestOutputAudioStream();
+			}).then(deviceInfos => {
+				response.deviceInfos = deviceInfos;
+				if (deviceListElements.has(request.requestId)) ipcRenderer.send('deviceList', JSON.parse(JSON.stringify(response)));
+			}).catch(error => {
+				if (deviceListElements.has(request.requestId)) ipcRenderer.send('deviceList', { requestId: request.requestId, error: error.message || String(error) });
+			});
 		}
-		
-		
+
+		if ("releaseDeviceList" in args[0]) {
+			deviceListElements.delete(args[0].releaseDeviceList);
+		}
+
 		if ("changeVideoDevice" in args[0]) {
 			changeVideoDeviceById(args[0].changeVideoDevice);
 		}
@@ -1228,15 +1218,12 @@ ipcRenderer.on('postMessage', (event, ...args) => {
 			//args[0].deviceInfos;
 			//args[0].data.params = params;
 			if ("data" in args[0]){
-				setSink(storedEle, args[0].changeAudioOutputDevice);
-				storedEle.manualSink = args[0].changeAudioOutputDevice;
-				//storedEle.manualSink = args[0].changeAudioOutputDevice;
+				setSink(deviceListElements.get(args[0].data.requestId), args[0].changeAudioOutputDevice, true);
 			} else if (typeof changeAudioOutputDeviceById === "function"){
 				changeAudioOutputDeviceById(args[0].changeAudioOutputDevice);
 			} else {
 				changeAudioOutputDeviceByIdThirdParty(args[0].changeAudioOutputDevice);
 			}
-			storedEle = null;
 		} 
 	} catch(e){
 		console.error(e);
@@ -1244,40 +1231,40 @@ ipcRenderer.on('postMessage', (event, ...args) => {
 })
 
 
-function setSink(ele, id){
-	ele.setSinkId(id).then(() => {
-		console.log("New Output Device:" + id);
-	}).catch(error => {
-		console.error(error);
+const sinkUpdates = new WeakMap();
+
+function setSink(ele, id, remember = false) {
+	if (!ele || typeof ele.setSinkId !== 'function') return Promise.resolve(false);
+	const previous = sinkUpdates.get(ele) || Promise.resolve();
+	const update = previous.then(async () => {
+		try {
+			// Resolve the override when this operation runs so a pending manual
+			// selection is respected by a subsequent page-wide routing change.
+			const destination = !remember && typeof ele.manualSink === 'string' ? ele.manualSink : id;
+			await ele.setSinkId(destination);
+			if (remember) ele.manualSink = id;
+			return true;
+		} catch (error) {
+			console.warn('Unable to change audio output:', error);
+			return false;
+		}
 	});
+	sinkUpdates.set(ele, update);
+	return update;
 }
 
-function changeAudioOutputDeviceByIdThirdParty(deviceID){
-	console.log("Output deviceID: "+deviceID);
-	
-	document.querySelectorAll("audio, video").forEach(ele=>{
-		try {
-			if (ele.manualSink){
-				setSink(ele,ele.manualSink);
-			} else {
-				setSink(ele,deviceID);
-			}
-		} catch(e){}
-	});
-	document.querySelectorAll('iframe').forEach( item =>{
-		try{
-			item.contentWindow.document.body.querySelectorAll("audio, video").forEach(ele=>{
-				try {
-					if (ele.manualSink){
-						setSink(ele,ele.manualSink);
-					} else {
-						setSink(ele,deviceID);
-					}
-				} catch(e){}
-			});
-		} catch(e){}
-	});	
-	
+function changeAudioOutputDeviceByIdThirdParty(deviceID) {
+	const visited = new Set();
+	const route = doc => {
+		if (!doc || visited.has(doc)) return;
+		visited.add(doc);
+		doc.querySelectorAll('audio, video').forEach(ele => setSink(ele, deviceID));
+		doc.querySelectorAll('iframe').forEach(frame => {
+			try { route(frame.contentDocument || frame.contentWindow.document); }
+			catch { /* Frames inaccessible under the current page permissions are skipped. */ }
+		});
+	};
+	route(document);
 }
 
 function enumerateDevicesThirdParty() {
@@ -1308,21 +1295,18 @@ function enumerateDevicesThirdParty() {
 							};
 						}));
 				});
-			} catch (e) {}
+			} catch (e) { reject(e); }
 		});
 	}
 }
 
-function requestOutputAudioStream() {
-	console.log("requestOutputAudioStream");
-	return navigator.mediaDevices.getUserMedia({audio: true, video: false}).then(function(stream) { // Apple needs thi to happen before I can access EnumerateDevices. 
-		return enumerateDevicesThirdParty().then(function(deviceInfos) {
-			console.log("enumerateDevicesThirdParty");
-			stream.getTracks().forEach(function(track) { // We don't want to keep it without audio; so we are going to try to add audio now.
-				track.stop(); // I need to do this after the enumeration step, else it breaks firefox's labels
-			});
-			console.log(deviceInfos);
-			return deviceInfos;
-		});
-	});
+async function requestOutputAudioStream() {
+	const stream = await navigator.mediaDevices.getUserMedia({audio: true, video: false});
+	try {
+		// Keep the permission stream alive until enumeration finishes so device
+		// labels remain available, then release it even if enumeration fails.
+		return await enumerateDevicesThirdParty();
+	} finally {
+		stream.getTracks().forEach(track => track.stop());
+	}
 }

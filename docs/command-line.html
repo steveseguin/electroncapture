@@ -147,9 +147,12 @@
           <tr><td><code>--chroma</code></td><td><code>--color</code></td><td>Background color (hex)</td><td><code>"0F0"</code> or <code>"0000"</code></td></tr>
           <tr><td><code>--hidecursor</code></td><td><code>-hc</code></td><td>Hide mouse cursor</td><td></td></tr>
           <tr><td><code>--unclickable</code></td><td><code>--uc</code></td><td>Click-through mode</td><td></td></tr>
-          <tr><td><code>--hwa</code></td><td><code>-a</code></td><td>Hardware acceleration</td><td><code>0</code> to disable</td></tr>
+          <tr><td><code>--hwa</code></td><td><code>-a</code></td><td>Hardware acceleration</td><td><code>--hwa=false</code> to disable</td></tr>
         </tbody>
       </table>
+
+      <p>For boolean options, use explicit values such as <code>--hwa=false</code>, or <code>--no-hwa</code>. A separate value in <code>--hwa 0</code> does not disable hardware acceleration.</p>
+      <p><code>--node</code> enables Node integration for the loaded page. It does not request Windows administrator privileges.</p>
 
       <h2>Custom Build Parameters (Windows Only)</h2>
       <table>

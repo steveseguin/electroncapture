@@ -10,7 +10,45 @@ const asio = require('../lib/index.js');
 
 // Store active streams
 const streams = new Map();
+const owners = new Map();
 let streamIdCounter = 0;
+
+function closeStream(streamId) {
+    const entry = streams.get(streamId);
+    if (!entry) return;
+    // Remove first so callbacks already queued by the native module are ignored.
+    streams.delete(streamId);
+    const owner = owners.get(entry.sender);
+    owner.ids.delete(streamId);
+    if (!owner.ids.size) {
+        for (const [name, listener] of owner.listeners) entry.sender.removeListener(name, listener);
+        owners.delete(entry.sender);
+    }
+    entry.stream.close();
+}
+
+function trackStream(streamId, stream, sender) {
+    let owner = owners.get(sender);
+    if (!owner) {
+        const cleanup = () => {
+            for (const id of [...owner.ids]) {
+                try { closeStream(id); }
+                catch (error) { console.error(`Error closing ASIO stream ${id}:`, error); }
+            }
+        };
+        owner = { ids: new Set(), listeners: [
+            ['destroyed', cleanup],
+            ['render-process-gone', cleanup],
+            ['did-start-navigation', (_event, _url, inPlace, mainFrame) => {
+                if (mainFrame && !inPlace) cleanup();
+            }],
+        ] };
+        owners.set(sender, owner);
+        for (const [name, listener] of owner.listeners) sender.on(name, listener);
+    }
+    owner.ids.add(streamId);
+    streams.set(streamId, { stream, sender });
+}
 
 /**
  * Generate unique stream ID
@@ -43,40 +81,44 @@ function setupAsioIpc(ipcMain) {
 
     // Stream management
     ipcMain.handle('asio:createStream', (event, config) => {
+        if (event.sender.isDestroyed()) throw new Error('Capture window closed');
         const stream = asio.createStream(config);
         const streamId = generateStreamId();
 
-        streams.set(streamId, {
-            stream,
-            sender: event.sender
-        });
+        trackStream(streamId, stream, event.sender);
 
-        // Set up callback to forward audio data to renderer
-        stream.setProcessCallback((inputBuffers, outputBuffers) => {
-            // Only send input data to renderer (output should be handled via write)
-            if (inputBuffers.length > 0 && !event.sender.isDestroyed()) {
-                // Convert Float32Arrays to regular arrays for IPC
-                const serialized = inputBuffers.map(buf => Array.from(buf));
-                event.sender.send('asio:audioData', { streamId, buffers: serialized });
-            }
-        });
+        try {
+            // Set up callback to forward audio data to renderer
+            stream.setProcessCallback((inputBuffers, outputBuffers) => {
+                // Only send input data to renderer (output should be handled via write)
+                if (streams.has(streamId) && inputBuffers.length > 0 && !event.sender.isDestroyed()) {
+                    // Convert Float32Arrays to regular arrays for IPC
+                    const serialized = inputBuffers.map(buf => Array.from(buf));
+                    event.sender.send('asio:audioData', { streamId, buffers: serialized });
+                }
+            });
 
-        stream.on('error', (error) => {
-            if (!event.sender.isDestroyed()) {
-                event.sender.send('asio:error', { streamId, error: error.message });
-            }
-        });
+            stream.on('error', (error) => {
+                if (streams.has(streamId) && !event.sender.isDestroyed()) {
+                    event.sender.send('asio:error', { streamId, error: error.message });
+                }
+            });
 
-        return {
-            streamId,
-            inputLatency: stream.inputLatency,
-            outputLatency: stream.outputLatency,
-            totalLatency: stream.totalLatency,
-            sampleRate: stream.sampleRate,
-            bufferSize: stream.bufferSize,
-            inputChannelCount: stream.inputChannelCount,
-            outputChannelCount: stream.outputChannelCount
-        };
+            return {
+                streamId,
+                inputLatency: stream.inputLatency,
+                outputLatency: stream.outputLatency,
+                totalLatency: stream.totalLatency,
+                sampleRate: stream.sampleRate,
+                bufferSize: stream.bufferSize,
+                inputChannelCount: stream.inputChannelCount,
+                outputChannelCount: stream.outputChannelCount
+            };
+        } catch (error) {
+            try { closeStream(streamId); }
+            catch (closeError) { console.error('ASIO startup cleanup failed:', closeError); }
+            throw error;
+        }
     });
 
     ipcMain.handle('asio:startStream', (event, streamId) => {
@@ -92,10 +134,7 @@ function setupAsioIpc(ipcMain) {
     });
 
     ipcMain.handle('asio:closeStream', (event, streamId) => {
-        const entry = streams.get(streamId);
-        if (!entry) return;
-        entry.stream.close();
-        streams.delete(streamId);
+        closeStream(streamId);
     });
 
     ipcMain.handle('asio:getStreamStats', (event, streamId) => {
@@ -120,7 +159,7 @@ function setupAsioIpc(ipcMain) {
 function cleanupAsio() {
     for (const [streamId, entry] of streams) {
         try {
-            entry.stream.close();
+            closeStream(streamId);
         } catch (e) {
             console.error(`Error closing stream ${streamId}:`, e);
         }

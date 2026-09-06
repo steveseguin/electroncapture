@@ -75,6 +75,7 @@ Lastly, since playback is agnostic, you can window-capture the same video multip
 
 **Notes:**
 * Use the `--help` command to get the most recent available commands and options.
+* To disable hardware acceleration, use `--hwa=false` or `--no-hwa`. Avoid `--hwa 0`: the separate `0` is parsed as a positional argument and leaves acceleration enabled.
 * The default frameless resolution of the capture window is 1280x720. The app automatically accounts for high-DPI displays, so it is always 1:1 pixel-accurate with the specified resolution on even Apple Retina displays.
 * For screen-sharing and advanced features such as global hotkeys, you need to enable node integration with the `--node` parameter.
 
@@ -108,19 +109,7 @@ The above usage requires escaping ampersand (`&`) characters with a caret (`^`) 
 ```
 elecap.exe --node true --title feed2 --url "https://vdo.ninja/?view=ePz9hnx&scene&codec=h264&room=SOMETHINGTEST123"
 ```
-Note that the elecap.exe is the 'portable' version of Electron Capture; you can choose the installer or the single-file portable version. The portable one is easier to use via command line, with the installer version better without command line usage.
-As well, if running from Windows command prompt, without encapsulating quotes, any ampersand "&" characters will need to be escaped with a "^" character, as seen below:
-```
-elecap -t=feed2 --url https://vdo.ninja/?view=ePz9hnx^&scene^&codec=h264^&room=SOMETHINGTEST123
-```
-The above usage isn't probably ideally suited for windows users though, but it might work.
-
-
-You can also use it like this, if you are in the same folder as the app itself, and so long as the complex string value is last.
-```
-elecap.exe --node true --title feed2 --url "https://vdo.ninja/?view=ePz9hnx&scene&codec=h264&room=SOMETHINGTEST123"
-````
-Note that the elecap.exe is the 'portable' version of Electron Capture; you can choose the installer or the single-file portable version. I personally find the portable one easier to use via command line, with the installer version better without command line usage.
+The portable executable is convenient for command-line use; the installer also supports command-line arguments. Quote URLs containing ampersands in Windows shells.
 
 If running from a Windows batch file with the goal of launching multiple instances at a time, try the following as an example:
 ```
@@ -133,8 +122,8 @@ timeout /T 1
 start elecap.exe -w 640 -h 360 -x 640 -y 360 -u="https://vdo.ninja/?scene&fakeguests=1&room=SOMETHINGTEST123" -t="Guest 4" -p
 ```
 - If not using an equal sign (=) between the parameter and value, there may be issues with Windows command line
-- Please also note,the use ot timeout /T 1, as adding a delay between loading apps allows them to load correctly
-- x and y position is available in v1.5.2 and up; x or y values must be greater than 0.
+- Please also note the use of timeout /T 1, as adding a delay between loading apps allows them to load correctly
+- Zero is a valid x/y coordinate. Negative coordinates can address monitors to the left of or above the primary display; `-1` is reserved for automatic positioning.
 
 If you want each launch to operate as a completely separate process (instead of reusing the existing instance's windows), start it with the `--multiinstance` flag (alias: `--standalone`).
 
@@ -158,6 +147,8 @@ Starting with version 1.6.0, to enable screen-share support and some other featu
 
 You can enable Elevated Privileges for the app via the command line with `--node 1` or in the app by right-clicking and selecting "Elevate Privileges" from the context-menu. If right-clicking to enable this mode, the app may reload the page afterwards.
 
+The app's **Elevate Privileges** menu enables Node integration for the page. It does not run the process as a Windows administrator; OS-level elevation is a separate setting.
+
 A unique feature about the Electron Capture app is that it can auto-select a screen or window when screen-sharing with VDO.Ninja, without user-input. Adding to the VDO.Ninja URL, &ss=1 will select display 1, &ss=2 for the second display, etc.  Or specify a window with &ss=window_name_here.
 
 To select Screen 1 automatically on load, for example you can do:
@@ -175,6 +166,8 @@ It's also possible to select audio-only when screen sharing via Electron Capture
 #### global hotkeys
 
 Global Hotkeys, such as CTRL+M, are supported. CTRL+M will mute the mic, in the most recently opened window.  You can assign a custom global hot-key in VDO.Ninja, and it will be respected by Electron Capture. (VDO.Ninja Settings -> User -> Global Hotkey)
+
+When several windows share a global shortcut, the most recently registered window receives it; closing that window returns the shortcut to the previous open window. Custom push-to-talk shortcuts respect Ctrl, Alt, Shift, and Meta modifiers. Alt+Enter applies to the focused capture window.
 
 Youtube has a built-in automatic ad-skipper added, and for both Youtube, Twitch, and more, when watching a video, you can full-window the video, allowing for clean video capture. This option is available via the context menu of Electron Capture; just right-click somewhere on the page that is empty and select Clean Video Output.
 
@@ -379,14 +372,12 @@ If on version of Electron doesn't work for you all that well, try a different ve
 
 For most Linux users though, we're recommending Linux users build it themselves. Details below
 
-Getting the correct nodejs/npm versions can be hard on linux, but using snap can help there.
+Source builds require **Node.js 22.12.0 or newer** and **npm 9 or newer**, as specified in `package.json`. Install versions compatible with your operating system and CPU architecture, then verify them:
+
+```bash
+node --version
+npm --version
 ```
-sudo apt-get update
-sudo apt-get install snapd -y
-sudo snap install node --classic --channel=18
-# sudo snap refresh node --channel=20 ## If you need to update to a different version of node, to match the manifest's minimum ersion, you can do so like this I think
-```
-Next, close the shell and open a new one, to ensure the installation is completed.
 
 To get the actual app source code and to build a distributable version, see below
 ```
@@ -402,36 +393,28 @@ The file you need to run will be in the dist folder.
 - Newest version can be found here, whichi includes an AppImage specific for the RPI, but more generic ARM-Linux options exist, too.
 https://github.com/steveseguin/electroncapture/releases/
 
-If you want to compile on Raspberry Pi, it's possible, but keep in mind the GPU may not work without also patching Electron.js to support the GPU. Currently you'll need to run it without hardware-acceleration disabled, which is rather disappointing.  Contributions that can help fix this are welcomed.
+Source builds use the same Node.js and npm minimum versions listed above. Choose the build script for the architecture and artifact you need:
 
-Anyways, this is all much like with the Linux install, but we also need to install `fpm` before trying to build the app.
+| Script | Architecture | Output |
+| --- | --- | --- |
+| `npm run build:rpi` | ARMv7 | AppImage |
+| `npm run build:rpideb` | ARMv7 | DEB; requires system `fpm` |
+| `npm run build:arm64` | ARM64 | DEB, RPM, and AppImage |
 
-```
-sudo apt-get update
-sudo apt-get install snapd -y
-sudo apt-get remove nodejs -y
-sudo snap install node --classic --channel=14
-
- ## close the current terminal shell and open a new one here ##
-
-sudo apt install ruby ruby-dev -y
-sudo gem install fpm 
-```
-
-We also need to build the app using `build:rpi` instead of `build:linux`, as we need to target ARM versus x64.
-```
+```bash
 git clone https://github.com/steveseguin/electroncapture
 cd electroncapture
 npm install
 npm run build:rpi
 ```
-You should get a `.deb` file in the dist file with this option. If you install the deb file, it should appear in the Raspbian start menu, under `Other -> ElectronCapture`
 
-This will probably file if you do not disable the GPU / hardware-acceration within the Electron Capture app first, but who knows -- maybe you can get it working?
+Artifacts are written to `dist`. These are the configured targets; availability of compatible Electron binaries and platform build tools must also be checked when building. To install system `fpm` for `build:rpideb`, install Ruby and its development tools, then run `gem install fpm` with the permissions required by your Ruby installation.
+
+If hardware acceleration causes a runtime problem on your Pi, try launching with `--hwa=false`. This controls the app at startup; it does not configure the build process.
 
 ## Building from source on Windows
 
-You'll also need nodejs and npm installed. 
+Install Node.js 22.12.0 or newer and npm 9 or newer, matching the requirements in `package.json`.
 
 If on Windows, you can find the NPM/Nodejs install files here: https://nodejs.org/en/download/current/
 
@@ -448,10 +431,9 @@ npm install
 npm start
 ```
 
-If you get an error about node versions, you can install the required version with something like this:
+If installation reports an unsupported Node version, update Node.js to meet `package.json`'s `engines` requirements, reopen the terminal, and verify `node --version`. Then run:
 
-```
-npm install -g node@14.6.0
+```bash
 npm install
 npm run build:win32
 ```
@@ -479,12 +461,11 @@ npm install
 
 * For Mac, please also see this issue for building: https://github.com/electron-userland/electron-builder/issues/3828
 
-The basic idea is is to first install node, npm, and git.  Then to clone and build the folder:
+Install Node.js 22.12.0 or newer, npm 9 or newer, and git. Then clone and build:
 
 ```
 git clone https://github.com/steveseguin/electroncapture.git
 cd electroncapture
-npm install -g node@14.6.0
 npm install
 npm run build:darwin
 ```
@@ -732,3 +713,11 @@ Please understand the security implications of using the Electron Capture app, a
 ### Thank you
 
 "Electron capture is one process that unstable atoms can use to become more stable. " - https://education.jlab.org/glossary/electroncapture.html
+
+### Recording save paths
+
+Use `--savefolder="C:\Recordings"` to automatically save downloads from that window. The folder must already exist; a trailing slash is optional. Without `--savefolder`, URLs containing `autorecord` save to the system Downloads folder on Windows/macOS or the home directory on Linux. Other downloads keep the normal save dialog.
+
+### Language support
+
+The app menus, dialogs, and bundled documentation are currently in English. Loaded websites manage their own language settings independently. There is no app-wide language selector.
