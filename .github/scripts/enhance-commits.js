@@ -7,9 +7,13 @@ const MAX_DIFF_SIZE = 20000; // Characters - truncate if larger
 const MAX_FILES_TO_SAMPLE = 5; // Maximum number of files to include in the diff
 const SAMPLE_LINES_PER_FILE = 200; // Maximum lines to include per file
 
-// Z.AI GLM API Configuration
-const ZAI_API_ENDPOINT = 'https://api.z.ai/api/coding/paas/v4/chat/completions';
-const ZAI_MODEL = 'glm-4.7';
+const { createOpenCodeClient, FREE_MODELS } = require('./opencode-client.cjs');
+const ZEN_API_KEY = process.env.OPENCODE_API_KEY || process.env.ZEN_API_TOKEN;
+const openCodeClient = createOpenCodeClient({
+  apiKey: ZEN_API_KEY,
+  userAgent: 'electroncapture-commit-enhancer/1.0',
+  sessionId: [process.env.GITHUB_REPOSITORY || 'electroncapture', process.env.GITHUB_RUN_ID || require('node:crypto').randomUUID(), 'enhance'].join(':')
+});
 
 // --- Error Handling ---
 class ScriptError extends Error {
@@ -27,48 +31,19 @@ function log(level, message, context = {}) {
   console.log(`[${timestamp}] [${level.toUpperCase()}] ${message}`, context);
 }
 
-// Validate Z.AI API key
-if (!process.env.ZAI_API_KEY) {
-  log('error', 'ZAI_API_KEY environment variable is not set.');
-  process.exit(1);
+// Validate OpenCode API key
+if (!ZEN_API_KEY) {
+  log('warn', 'No OpenCode key configured; using free models only. Add OPENCODE_API_KEY to enable Go fallback.');
 }
-log('info', 'Z.AI API configuration loaded successfully.');
+log('info', 'OpenCode API configuration loaded successfully.');
 
-/**
- * Calls the Z.AI GLM API with system and user prompts.
- * @param {string} systemPrompt - The system instructions.
- * @param {string} userPrompt - The user message/data.
- * @returns {Promise<string|null>} - The API response content or null if failed.
- */
 async function callZaiApi(systemPrompt, userPrompt) {
-  const requestBody = {
-    model: ZAI_MODEL,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
-    ],
-    temperature: 0.7,
-    stream: false
-  };
-
-  const response = await fetch(ZAI_API_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.ZAI_API_KEY}`
-    },
-    body: JSON.stringify(requestBody),
-    signal: AbortSignal.timeout(60000)
-  });
-
-  const responseBody = await response.json();
-  if (!response.ok) {
-    const error = new Error(`Z.AI API request failed with status ${response.status}`);
-    error.response = { status: response.status, data: responseBody };
-    throw error;
-  }
-
-  return responseBody?.choices?.[0]?.message?.content?.trim() || null;
+  const result = await openCodeClient.complete({ models: ZEN_API_KEY ? undefined : FREE_MODELS, messages: [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userPrompt }
+  ] });
+  log('info', 'OpenCode generated a response.', { model: result.model });
+  return result.value;
 }
 
 // --- Git Operations ---
@@ -388,7 +363,7 @@ async function getRecentBranchCommits(branchName) {
 // --- AI Enhancement ---
 
 /**
- * Enhances the commit message using the Z.AI API.
+ * Enhances the commit message using the OpenCode API.
  * @param {string} originalMessage - The original commit message.
  * @param {string} diff - The summarized code diff.
  * @param {string} branchName - The current Git branch name.
@@ -446,12 +421,12 @@ ${recentCommitLines}
 **Generate the improved commit message now:**`;
 
   try {
-    log('debug', 'Sending prompt to Z.AI API.');
+    log('debug', 'Sending prompt to OpenCode API.');
     const enhancedMessage = await callZaiApi(systemPrompt, userPrompt);
     if (!enhancedMessage) {
-        throw new Error('Empty response from Z.AI API.');
+        throw new Error('Empty response from OpenCode API.');
     }
-    log('info', 'Successfully received enhanced commit message from Z.AI API.');
+    log('info', 'Successfully received enhanced commit message from OpenCode API.');
     log('debug', 'Enhanced Message:', { message: enhancedMessage });
     // Basic check if the response seems like a commit message (starts with a common type)
     if (!/^(feat|fix|chore|refactor|style|test|docs|build|ci)/.test(enhancedMessage)) {
@@ -459,9 +434,9 @@ ${recentCommitLines}
     }
     return enhancedMessage;
   } catch (error) {
-    log('error', 'Error calling Z.AI API', { errorMessage: error.message });
+    log('error', 'Error calling OpenCode API', { errorMessage: error.message });
     if (error.response) {
-        log('error', 'Z.AI API Error Response:', { data: error.response.data });
+        log('error', 'OpenCode API Error Response:', { data: error.response.data });
     }
     return null;
   }
@@ -474,56 +449,12 @@ ${recentCommitLines}
  * @param {string} newMessage - The new commit message.
  * @returns {Promise<boolean>} - True if successful, false otherwise.
  */
-async function updateCommitMessage(newMessage) {
-  log('info', 'Updating commit message...');
-  const tempFilePath = path.join(process.cwd(), `.git-commit-msg-${Date.now()}.tmp`); // Unique temp file
-
-  try {
-    // Configure Git user for the action (important for amend)
-    // Check if already configured to avoid redundant calls/warnings
-    try {
-        await runCommand('git config user.name');
-        await runCommand('git config user.email');
-        log('debug', 'Git user already configured.');
-    } catch {
-        log('info', 'Configuring Git user for commit amend...');
-        await runCommand('git config --global user.name "GitHub Action (Commit Enhancer)"');
-        await runCommand('git config --global user.email "actions@github.com"');
-    }
-
-    // Write the new message to a temporary file
-    log('debug', `Writing new commit message to temporary file: ${tempFilePath}`);
-    await fs.writeFile(tempFilePath, newMessage);
-
-    // Amend the commit using the message from the file
-    log('info', 'Amending commit with new message...');
-    await runCommand(`git commit --amend -F "${tempFilePath}"`); // Use quotes for path safety
-
-    // Force push the amended commit
-    // Use --force-with-lease as a slightly safer alternative if possible,
-    // but standard --force is often needed in this CI amend scenario.
-    // Adding --no-verify to skip any potential pre-push hooks.
-    log('info', 'Force-pushing amended commit (with --no-verify)...');
-    await runCommand('git push --force --no-verify');
-
-    log('info', 'Commit amended and pushed successfully.');
-    return true;
-  } catch (error) {
-    // Error is already logged by runCommand, just log the overall failure here
-    log('error', 'Failed to update commit message and push.');
-    return false;
-  } finally {
-    // Clean up the temporary file in all cases (success or failure)
-    try {
-      log('debug', `Cleaning up temporary file: ${tempFilePath}`);
-      await fs.unlink(tempFilePath);
-    } catch (cleanupError) {
-      // Log cleanup error but don't mask the original error
-      log('warn', `Failed to delete temporary commit message file: ${tempFilePath}`, { error: cleanupError.message });
-    }
-  }
+async function updateCommitMessage(newMessage, expectedSha, branchName) {
+  const { amendAndPush } = require('./safe-commit-push.cjs');
+  const pushed = await amendAndPush(newMessage, expectedSha, branchName);
+  if (!pushed) log('info', 'Enhancement skipped because the remote branch changed.');
+  return true; // A protected skip is a successful no-op.
 }
-
 
 // --- PR Description Update (Optional) ---
 
@@ -615,7 +546,7 @@ async function updatePRDescription() {
 
     const enhancedDescription = await callZaiApi(systemPrompt, userPrompt);
     if (!enhancedDescription) {
-        throw new Error('Empty response from Z.AI API for PR description.');
+        throw new Error('Empty response from OpenCode API for PR description.');
     }
 
     // Update PR description via GitHub API
@@ -720,7 +651,7 @@ async function main() {
     // Check if enhancement was successful (API returned something)
     // REMOVED: || enhancedMessage.toLowerCase().includes("error")
     if (!enhancedMessage || enhancedMessage.trim() === '') {
-      log('error', 'Failed to generate a valid enhanced commit message from Z.AI API (empty response). Aborting update.');
+      log('error', 'Failed to generate a valid enhanced commit message from OpenCode API (empty response). Aborting update.');
       process.exit(1); // Exit with error if enhancement failed critically
     }
 
@@ -731,7 +662,7 @@ async function main() {
     }
 
     // Update the commit message and force push
-    const updated = await updateCommitMessage(enhancedMessage);
+    const updated = await updateCommitMessage(enhancedMessage, commitSha, branchName);
 
     if (updated) {
       log('info', 'Commit message enhanced and pushed successfully.');
