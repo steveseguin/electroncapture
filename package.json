@@ -321,7 +321,7 @@
     "run-script-os-fix": "^1.0.4"
   },
   "dependencies": {
-    "electron-context-menu": "^3.6.1",
+    "electron-context-menu": "^5.0.0",
     "electron-is-dev": "^2.0.0",
     "electron-prompt": "^1.7.0",
     "electron-squirrel-startup": "^1.0.0",
