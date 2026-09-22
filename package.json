@@ -327,7 +327,7 @@
     "electron-squirrel-startup": "^1.0.0",
     "electron-unhandled": "5.0.0",
     "undici": "^7.29.0",
-    "yargs": "^17.7.3"
+    "yargs": "^18.1.0"
   },
   "engines": {
     "node": ">=22.12.0",
