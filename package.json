@@ -326,7 +326,7 @@
     "electron-prompt": "^1.7.0",
     "electron-squirrel-startup": "^1.0.0",
     "electron-unhandled": "5.0.0",
-    "undici": "^7.29.0",
+    "undici": "^7.30.0",
     "yargs": "^17.7.3"
   },
   "engines": {
