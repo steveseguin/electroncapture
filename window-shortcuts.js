@@ -26,6 +26,7 @@ function acceleratorKey(accelerator, platform) {
     commandorcontrol: platform === 'darwin' ? 'command' : 'control',
     cmdorctrl: platform === 'darwin' ? 'command' : 'control',
     ctrl: 'control', cmd: 'command', option: 'alt', return: 'enter',
+    meta: platform === 'darwin' ? 'command' : 'meta',
   };
   return parts.map(part => aliases[part] || part).sort().join('+');
 }
