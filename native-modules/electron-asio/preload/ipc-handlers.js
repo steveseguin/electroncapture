@@ -13,9 +13,10 @@ const streams = new Map();
 const owners = new Map();
 let streamIdCounter = 0;
 
-function closeStream(streamId) {
+function closeStream(streamId, sender) {
     const entry = streams.get(streamId);
     if (!entry) return;
+    if (sender && entry.sender !== sender) return;
     // Remove first so callbacks already queued by the native module are ignored.
     streams.delete(streamId);
     const owner = owners.get(entry.sender);
@@ -123,29 +124,29 @@ function setupAsioIpc(ipcMain) {
 
     ipcMain.handle('asio:startStream', (event, streamId) => {
         const entry = streams.get(streamId);
-        if (!entry) throw new Error(`Stream not found: ${streamId}`);
+        if (!entry || entry.sender !== event.sender) throw new Error(`Stream not found: ${streamId}`);
         return entry.stream.start();
     });
 
     ipcMain.handle('asio:stopStream', (event, streamId) => {
         const entry = streams.get(streamId);
-        if (!entry) throw new Error(`Stream not found: ${streamId}`);
+        if (!entry || entry.sender !== event.sender) throw new Error(`Stream not found: ${streamId}`);
         return entry.stream.stop();
     });
 
     ipcMain.handle('asio:closeStream', (event, streamId) => {
-        closeStream(streamId);
+        closeStream(streamId, event.sender);
     });
 
     ipcMain.handle('asio:getStreamStats', (event, streamId) => {
         const entry = streams.get(streamId);
-        if (!entry) throw new Error(`Stream not found: ${streamId}`);
+        if (!entry || entry.sender !== event.sender) throw new Error(`Stream not found: ${streamId}`);
         return entry.stream.stats;
     });
 
     ipcMain.handle('asio:writeStream', (event, streamId, buffers) => {
         const entry = streams.get(streamId);
-        if (!entry) throw new Error(`Stream not found: ${streamId}`);
+        if (!entry || entry.sender !== event.sender) throw new Error(`Stream not found: ${streamId}`);
 
         // Convert arrays back to Float32Arrays
         const float32Buffers = buffers.map(arr => new Float32Array(arr));
