@@ -2749,14 +2749,14 @@ async function createWindow(args, reuse=false) {
 			if (frame.url === referrer.url) {
 				event.preventDefault();
 				runPageOperation(frame, 'executeJavaScript', '(function () {\
-					window.location = "'+url+'";\
+					window.location = '+JSON.stringify(url)+';\
 				})();');
 			} else if (frame.frames){
 				frame.frames.forEach(subframe => {
 					if (subframe.url === referrer.url) {
 						event.preventDefault();
 						runPageOperation(subframe, 'executeJavaScript', '(function () {\
-							window.location = "'+url+'";\
+							window.location = '+JSON.stringify(url)+';\
 						})();');
 					} 
 				})
