@@ -56,6 +56,149 @@ const APP_AUDIO_PARAM_NAMES = ['appaudio', 'appAudio', 'appAudioTarget'];
 const GAME_CAPTURE_UPDATE_CHANNEL = 'gamecapture:update';
 const GAME_CAPTURE_HOST_PATTERNS = [/vdo\.ninja$/i, /versus\.cam$/i, /localhost$/i, /(^|\.)127\.0\.0\.1$/];
 
+function sendGameCaptureDebugLog(eventType, details) {
+  if (!ipcRenderer || typeof ipcRenderer.send !== 'function') {
+    return;
+  }
+  const payload = {
+    eventType: eventType || 'log',
+    timestamp: Date.now()
+  };
+  if (details && typeof details === 'object') {
+    Object.assign(payload, details);
+  } else if (details !== undefined) {
+    payload.message = details;
+  }
+  try {
+    ipcRenderer.send('gamecapture:debug-log', payload);
+  } catch (error) {
+    console.warn('Unable to emit game capture debug log:', error);
+  }
+}
+
+function summarizeDisplayMediaConstraints(constraints) {
+  if (!constraints || typeof constraints !== 'object') {
+    return null;
+  }
+  const summary = {};
+  if ('audio' in constraints) {
+    if (typeof constraints.audio === 'boolean') {
+      summary.audio = constraints.audio;
+    } else {
+      summary.audio = Boolean(constraints.audio);
+    }
+  }
+  if (constraints.video && typeof constraints.video === 'object') {
+    const video = constraints.video;
+    summary.cursor = typeof video.cursor !== 'undefined' ? video.cursor : null;
+    summary.displaySurface = typeof video.displaySurface !== 'undefined' ? video.displaySurface : null;
+    summary.logicalSurface = typeof video.logicalSurface !== 'undefined' ? video.logicalSurface : null;
+    summary.preferCurrentTab = typeof video.preferCurrentTab !== 'undefined' ? video.preferCurrentTab : null;
+    summary.selfBrowserSurface = typeof video.selfBrowserSurface !== 'undefined' ? video.selfBrowserSurface : null;
+    summary.systemAudio = typeof video.systemAudio !== 'undefined' ? video.systemAudio : null;
+    summary.monitorType = typeof video.monitorType !== 'undefined' ? video.monitorType : null;
+    summary.advancedCount = Array.isArray(video.advanced) ? video.advanced.length : 0;
+  }
+  return summary;
+}
+
+function simplifyTrackSettings(settings) {
+  if (!settings || typeof settings !== 'object') {
+    return null;
+  }
+  return {
+    cursor: typeof settings.cursor !== 'undefined' ? settings.cursor : null,
+    displaySurface: typeof settings.displaySurface !== 'undefined' ? settings.displaySurface : null,
+    logicalSurface: typeof settings.logicalSurface !== 'undefined' ? settings.logicalSurface : null,
+    restrictOwnAudio: typeof settings.restrictOwnAudio !== 'undefined' ? settings.restrictOwnAudio : null,
+    width: typeof settings.width === 'number' ? settings.width : null,
+    height: typeof settings.height === 'number' ? settings.height : null,
+    frameRate: typeof settings.frameRate === 'number' ? settings.frameRate : null
+  };
+}
+
+function simplifyTrackCapabilities(capabilities) {
+  if (!capabilities || typeof capabilities !== 'object') {
+    return null;
+  }
+  const summary = {};
+  if (typeof capabilities.cursor !== 'undefined') {
+    summary.cursor = Array.isArray(capabilities.cursor)
+      ? capabilities.cursor.slice(0, 5)
+      : capabilities.cursor;
+  }
+  return Object.keys(summary).length ? summary : null;
+}
+
+function simplifyTrackConstraints(constraints) {
+  if (!constraints || typeof constraints !== 'object') {
+    return null;
+  }
+  const summary = {};
+  if (constraints.cursor || (constraints.video && constraints.video.cursor)) {
+    const cursorValue = constraints.cursor || (constraints.video && constraints.video.cursor);
+    summary.cursor = cursorValue;
+  }
+  return Object.keys(summary).length ? summary : null;
+}
+
+function snapshotTrackDiagnostics(track) {
+  if (!track || typeof track !== 'object') {
+    return null;
+  }
+  const snapshot = {
+    id: track.id,
+    kind: track.kind,
+    label: track.label,
+    muted: track.muted,
+    readyState: track.readyState
+  };
+  try {
+    const settings = typeof track.getSettings === 'function' ? track.getSettings() : null;
+    snapshot.settings = simplifyTrackSettings(settings);
+  } catch (error) {
+    snapshot.settingsError = error && error.message ? error.message : String(error);
+  }
+  try {
+    const capabilities = typeof track.getCapabilities === 'function' ? track.getCapabilities() : null;
+    snapshot.capabilities = simplifyTrackCapabilities(capabilities);
+  } catch (error) {
+    snapshot.capabilitiesError = error && error.message ? error.message : String(error);
+  }
+  try {
+    const constraints = typeof track.getConstraints === 'function' ? track.getConstraints() : null;
+    snapshot.constraints = simplifyTrackConstraints(constraints);
+  } catch (error) {
+    snapshot.constraintsError = error && error.message ? error.message : String(error);
+  }
+  return snapshot;
+}
+
+function logDisplayMediaStream(stream, cursorMode, stage) {
+  try {
+    if (!stream || typeof stream.getVideoTracks !== 'function') {
+      sendGameCaptureDebugLog('displayMedia:stream-missing', { cursorMode, stage });
+      return;
+    }
+    const tracks = stream.getVideoTracks();
+    if (!tracks || !tracks.length) {
+      sendGameCaptureDebugLog('displayMedia:no-video-tracks', { cursorMode, stage });
+      return;
+    }
+    sendGameCaptureDebugLog('displayMedia:track-state', {
+      cursorMode,
+      stage,
+      track: snapshotTrackDiagnostics(tracks[0])
+    });
+  } catch (error) {
+    sendGameCaptureDebugLog('displayMedia:log-error', {
+      cursorMode,
+      stage,
+      error: error && error.message ? error.message : String(error)
+    });
+  }
+}
+
 let appAudioTarget = null;
 let windowAudioStreamInstance = null;
 let displayMediaHookInstalled = false;
@@ -371,10 +514,16 @@ function normalizeDisplayMediaConstraints(input) {
     const cloned = { ...input };
     if ('audio' in cloned && cloned.audio && typeof cloned.audio === 'object') {
       cloned.audio = { ...cloned.audio };
+      if (Array.isArray(cloned.audio.advanced)) {
+        cloned.audio.advanced = cloned.audio.advanced.map((entry) => ({ ...entry }));
+      }
     }
     if ('video' in cloned) {
       if (cloned.video && typeof cloned.video === 'object') {
         cloned.video = { ...cloned.video };
+        if (Array.isArray(cloned.video.advanced)) {
+          cloned.video.advanced = cloned.video.advanced.map((entry) => ({ ...entry }));
+        }
       }
     }
     return cloned;
@@ -385,6 +534,33 @@ function normalizeDisplayMediaConstraints(input) {
   return {};
 }
 
+function appendCursorAdvancedConstraint(target, cursorMode) {
+  if (!target || typeof target !== 'object' || !cursorMode) {
+    return;
+  }
+  const advancedList = Array.isArray(target.advanced) ? target.advanced.slice() : [];
+  advancedList.push({ cursor: cursorMode });
+  target.advanced = advancedList;
+}
+
+function enforceCursorPreferenceOnTrack(track, cursorMode) {
+  if (!track || typeof track.applyConstraints !== 'function' || !cursorMode) {
+    return;
+  }
+  const attempts = [
+    { cursor: cursorMode },
+    { advanced: [{ cursor: cursorMode }] }
+  ];
+  attempts.forEach((payload) => {
+    track.applyConstraints(payload).catch((error) => {
+      console.warn('Unable to enforce cursor preference on track with payload', payload, error);
+    });
+  });
+}
+
+// Streams/tracks that already have cursor listeners, so re-applying doesn't stack them.
+const cursorHookedTargets = new WeakSet();
+
 function applyCursorPreferenceToStream(stream, cursorMode) {
   if (!stream || !cursorMode) {
     return;
@@ -392,12 +568,19 @@ function applyCursorPreferenceToStream(stream, cursorMode) {
   try {
     const tracks = stream.getVideoTracks ? stream.getVideoTracks() : [];
     tracks.forEach((track) => {
-      if (track && typeof track.applyConstraints === 'function') {
-        track.applyConstraints({ advanced: [{ cursor: cursorMode }] }).catch((error) => {
-          console.warn('Unable to enforce cursor preference on track:', error);
-        });
+      enforceCursorPreferenceOnTrack(track, cursorMode);
+      if (track && typeof track.addEventListener === 'function' && !cursorHookedTargets.has(track)) {
+        cursorHookedTargets.add(track);
+        const onceApply = () => enforceCursorPreferenceOnTrack(track, cursorMode);
+        track.addEventListener('unmute', onceApply, { once: true });
       }
     });
+    if (typeof stream.addEventListener === 'function' && !cursorHookedTargets.has(stream)) {
+      cursorHookedTargets.add(stream);
+      stream.addEventListener('addtrack', (event) => {
+        enforceCursorPreferenceOnTrack(event && event.track, cursorMode);
+      });
+    }
   } catch (error) {
     console.warn('Failed to apply cursor preference to stream:', error);
   }
@@ -425,11 +608,49 @@ function installDisplayMediaHook() {
     }
     if (normalizedConstraints.video && typeof normalizedConstraints.video === 'object' && cursorMode) {
       normalizedConstraints.video.cursor = cursorMode;
-      console.log('[VersusGameCapture] Forcing displayMedia cursor mode to', cursorMode);
+      appendCursorAdvancedConstraint(normalizedConstraints.video, cursorMode);
+      sendGameCaptureDebugLog('displayMedia:request', {
+        cursorMode,
+        constraints: summarizeDisplayMediaConstraints(normalizedConstraints)
+      });
+    } else {
+      sendGameCaptureDebugLog('displayMedia:request', {
+        cursorMode: cursorMode || null,
+        constraints: summarizeDisplayMediaConstraints(normalizedConstraints)
+      });
     }
-    const stream = await originalGetDisplayMedia(normalizedConstraints);
+    let stream;
+    try {
+      stream = await originalGetDisplayMedia(normalizedConstraints);
+    } catch (error) {
+      sendGameCaptureDebugLog('displayMedia:error', {
+        cursorMode: cursorMode || null,
+        error: error && error.message ? error.message : String(error)
+      });
+      throw error;
+    }
+    logDisplayMediaStream(stream, cursorMode, 'post-getDisplayMedia');
     if (cursorMode) {
-      applyCursorPreferenceToStream(stream, cursorMode);
+      try {
+        applyCursorPreferenceToStream(stream, cursorMode);
+        logDisplayMediaStream(stream, cursorMode, 'post-applyCursorPreference');
+      } catch (error) {
+        sendGameCaptureDebugLog('displayMedia:apply-error', {
+          cursorMode,
+          error: error && error.message ? error.message : String(error)
+        });
+      }
+      setTimeout(() => {
+        try {
+          applyCursorPreferenceToStream(stream, cursorMode);
+          logDisplayMediaStream(stream, cursorMode, 'post-reapplyCursorPreference');
+        } catch (error) {
+          sendGameCaptureDebugLog('displayMedia:reapply-error', {
+            cursorMode,
+            error: error && error.message ? error.message : String(error)
+          });
+        }
+      }, 1500);
     }
     if (appAudioTarget) {
       await attachApplicationAudio(stream);
@@ -650,6 +871,8 @@ function createGameCaptureBridge() {
     regenerateStreamId: (payload) => ipcRenderer.invoke('gamecapture:regenerate-stream-id', payload || {}),
     windowAction: (payload) => ipcRenderer.invoke('gamecapture:window-action', payload || {}),
     resizeWindow: (payload) => ipcRenderer.invoke('gamecapture:window-resize', payload || {}),
+    openExternal: (url) => ipcRenderer.invoke('gamecapture:open-external', url),
+    copyText: (text) => ipcRenderer.invoke('gamecapture:copy-text', text),
     onUpdate: (callback) => {
       if (typeof callback !== 'function') {
         return () => {};
@@ -1168,10 +1391,17 @@ function copyTextToClipboard(value) {
   if (!value) {
     return Promise.reject(new Error('Nothing to copy.'));
   }
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    return navigator.clipboard.writeText(value);
-  }
-  return Promise.reject(new Error('Clipboard unavailable'));
+  // Main-process clipboard works even when the page isn't focused or lacks clipboard permission.
+  return ipcRenderer.invoke('gamecapture:copy-text', value).then((result) => {
+    if (!result || result.success === false) {
+      throw new Error((result && result.error) || 'Clipboard unavailable');
+    }
+  }).catch((error) => {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(value);
+    }
+    throw error;
+  });
 }
 
 function getOverlayViewerLinkValue() {
@@ -1215,13 +1445,15 @@ function openOverlayViewerLink() {
     announceOverlayStatus('Viewer link not ready yet.');
     return;
   }
-  try {
-    window.open(link, '_blank', 'noopener');
-    announceOverlayStatus('Viewer link opened.');
-  } catch (error) {
+  ipcRenderer.invoke('gamecapture:open-external', link).then((result) => {
+    if (!result || result.success === false) {
+      throw new Error((result && result.error) || 'open-failed');
+    }
+    announceOverlayStatus('Viewer link opened in your browser.');
+  }).catch((error) => {
     console.warn('Unable to open viewer link:', error);
     announceOverlayStatus('Unable to open viewer link.');
-  }
+  });
 }
 
 function isMicMuted() {

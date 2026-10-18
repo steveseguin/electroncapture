@@ -7,1212 +7,1408 @@
   <style>
     :root {
       color-scheme: dark;
-      font-family: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      background-color: #050505;
-      color: #f5f5f5;
+      --bg: #07080c;
+      --surface: #0e1017;
+      --surface-2: #151823;
+      --surface-3: #1c2030;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-strong: rgba(255, 255, 255, 0.16);
+      --text: #f3f4f7;
+      --text-2: rgba(243, 244, 247, 0.7);
+      --text-3: rgba(243, 244, 247, 0.5);
+      --accent: #6c63ff;
+      --accent-2: #2acbff;
+      --focus: #8f88ff;
+      --ok: #3ddc97;
+      --warn: #ffc857;
+      --danger: #ff7a90;
+      --radius: 14px;
+      --radius-sm: 10px;
+      --titlebar-h: 48px;
+      --font: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      --mono: "Cascadia Mono", "Cascadia Code", Consolas, ui-monospace, "SF Mono", Menlo, monospace;
     }
     * {
       box-sizing: border-box;
     }
+    html,
     body {
       margin: 0;
+      min-height: 100%;
+    }
+    body {
+      font-family: var(--font);
+      font-size: 15px;
+      line-height: 1.45;
+      color: var(--text);
+      background:
+        radial-gradient(900px 420px at 50% -120px, rgba(108, 99, 255, 0.16), transparent 70%),
+        var(--bg);
       min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 2.5rem 1.5rem 3.5rem;
-      background: radial-gradient(circle at top, rgba(108,99,255,0.18), transparent 60%), #03030a;
-      position: relative;
     }
-    body::after {
-      content: "";
-      position: fixed;
-      top: 12px;
-      left: 12px;
-      right: 12px;
-      bottom: 12px;
-      border-radius: 26px;
-      border: 1px solid rgba(255,255,255,0.08);
-      box-shadow:
-        0 0 0 1px rgba(7,7,12,0.65),
-        0 25px 80px rgba(0,0,0,0.55),
-        inset 0 0 40px rgba(255,255,255,0.02);
-      pointer-events: none;
+    [hidden] {
+      display: none !important;
     }
-    .shell {
-      width: min(1080px, 100%);
-      background: rgba(7, 7, 12, 0.88);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 22px;
-      padding: 2.5rem;
-      box-shadow: 0 30px 70px rgba(0,0,0,0.65);
-      backdrop-filter: blur(20px);
+    ::-webkit-scrollbar {
+      width: 10px;
     }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.14);
+      border-radius: 10px;
+      border: 2px solid var(--bg);
+    }
+
+    /* Title bar (frameless window) */
     .titlebar {
-      -webkit-app-region: drag;
+      position: fixed;
+      inset: 0 0 auto 0;
+      height: var(--titlebar-h);
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-      padding-bottom: 1rem;
-      margin-bottom: 1.5rem;
-      border-bottom: 1px solid rgba(255,255,255,0.08);
+      gap: 12px;
+      padding: 0 8px 0 16px;
+      background: rgba(7, 8, 12, 0.92);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      z-index: 20;
     }
-    .titlebar h1 {
-      margin: 0;
-      font-size: 1.1rem;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: rgba(255,255,255,0.7);
-    }
-    .titlebar-buttons {
+    .titlebar-drag {
+      flex: 1;
+      min-width: 0;
+      height: 100%;
       display: flex;
-      gap: 0.35rem;
+      align-items: center;
+      gap: 10px;
+      -webkit-app-region: drag;
+      user-select: none;
+    }
+    .brand-mark {
+      width: 18px;
+      height: 18px;
+      border-radius: 5px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      flex: none;
+    }
+    .titlebar-drag span.brand-name {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-2);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .window-controls {
+      display: flex;
+      align-items: center;
+      gap: 4px;
       -webkit-app-region: no-drag;
     }
-    .titlebar-buttons button,
-    .titlebar-buttons select {
+    .window-controls select {
       height: 32px;
-      border-radius: 10px;
-      border: 1px solid rgba(255,255,255,0.15);
-      background: rgba(255,255,255,0.1);
-      color: #fff;
-      font-size: 0.85rem;
-      padding: 0 0.6rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text-2);
+      font: inherit;
+      font-size: 13px;
+      padding: 0 8px;
+      margin-right: 4px;
+      cursor: pointer;
     }
-    .titlebar-buttons button {
-      width: 32px;
-      padding: 0;
+    .icon-btn {
+      width: 36px;
+      height: 32px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text-2);
       cursor: pointer;
+      padding: 0;
     }
-    .titlebar-buttons button.danger {
-      background: rgba(255,95,95,0.25);
-      color: #ffb0b0;
+    .icon-btn:hover {
+      background: var(--surface-3);
+      color: var(--text);
     }
-    .titlebar-buttons button.active {
-      background: rgba(108,99,255,0.65);
+    .icon-btn[aria-pressed="true"] {
+      background: rgba(108, 99, 255, 0.28);
+      color: var(--text);
     }
-    header.page-header {
+    .icon-btn.close:hover {
+      background: rgba(255, 90, 110, 0.85);
+      color: #fff;
+    }
+    .icon-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* Layout */
+    main {
+      width: min(980px, 100%);
+      margin: 0 auto;
+      padding: calc(var(--titlebar-h) + 16px) 24px 20px;
       display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 2rem;
+      flex-direction: column;
+      gap: 12px;
     }
-    .page-header h1 {
-      margin: 0 0 0.4rem;
-      font-size: clamp(1.6rem, 2.4vw, 2.2rem);
-      font-weight: 700;
-      letter-spacing: -0.02em;
-    }
-    .page-header .lede {
-      margin: 0;
-      color: rgba(255,255,255,0.68);
-      max-width: 42ch;
-      line-height: 1.4;
-    }
-    .header-actions {
-      display: flex;
-      gap: 0.6rem;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: flex-end;
-    }
-    .panels {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 1.5rem;
-    }
-    .panel {
-      border: 1px solid rgba(255,255,255,0.08);
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
       border-radius: 18px;
-      padding: 1.5rem;
-      background: rgba(255,255,255,0.02);
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
+      padding: 20px 24px;
     }
-    .panel-head {
+    .card-head {
       display: flex;
-      justify-content: space-between;
-      gap: 1rem;
       align-items: flex-start;
-    }
-    .panel h2 {
-      margin: 0;
-      font-size: 1.3rem;
-    }
-    .panel p {
-      margin: 0;
-      color: rgba(255,255,255,0.72);
-    }
-    .panel-kicker {
-      font-size: 0.85rem;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: rgba(255,255,255,0.55);
-      margin: 0 0 0.35rem;
-    }
-    .panel-actions {
-      display: flex;
-      gap: 0.4rem;
+      justify-content: space-between;
+      gap: 16px;
       flex-wrap: wrap;
-      -webkit-app-region: no-drag;
     }
-    .field-group {
+    h1,
+    h2 {
+      margin: 0;
+      letter-spacing: -0.01em;
+    }
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+    }
+    h2 {
+      font-size: 18px;
+      font-weight: 650;
+    }
+    .lede {
+      margin: 4px 0 0;
+      color: var(--text-2);
+      max-width: 52ch;
+    }
+
+    /* Status chip */
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 30px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text-2);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    .status .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-3);
+      flex: none;
+    }
+    .status[data-tone="ok"] .dot { background: var(--ok); }
+    .status[data-tone="busy"] .dot { background: var(--warn); }
+    .status[data-tone="error"] .dot { background: var(--danger); }
+    .status[data-tone="error"] { color: var(--danger); }
+
+    /* Share card */
+    .share-body {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 24px;
+      margin-top: 16px;
+      align-items: start;
+    }
+    .share-main {
       display: flex;
       flex-direction: column;
-      gap: 0.4rem;
+      gap: 14px;
+      min-width: 0;
     }
-    label {
-      font-size: 0.95rem;
-      font-weight: 500;
+    .go-live {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .go-live .hint {
+      flex: 1 1 200px;
+    }
+    .qr {
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .qr-box {
+      width: 184px;
+      height: 184px;
+      padding: 10px;
+      border-radius: 12px;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .qr-box img,
+    .qr-box canvas {
+      display: block;
+      width: 164px !important;
+      height: 164px !important;
+      image-rendering: pixelated;
+    }
+    .qr-box.empty {
+      background: var(--surface-2);
+      border: 1px dashed var(--border-strong);
+      color: var(--text-3);
+      font-size: 13px;
+      text-align: center;
+    }
+    .qr figcaption {
+      font-size: 12px;
+      color: var(--text-3);
+    }
+
+    /* Fields */
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+    }
+    label,
+    .label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-2);
+    }
+    .row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      min-width: 0;
+    }
+    .row > input {
+      flex: 1 1 auto;
+      min-width: 0;
     }
     input[type="text"],
+    input[type="password"],
+    input[type="number"],
     input[type="url"],
-    input[type="password"] {
+    select.input {
+      height: 44px;
       width: 100%;
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 12px;
-      padding: 0.85rem 1rem;
-      background: rgba(255,255,255,0.05);
-      color: inherit;
-      font-size: 1rem;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      background: var(--surface-2);
+      color: var(--text);
+      font: inherit;
+      padding: 0 12px;
     }
-    input:focus {
-      outline: 2px solid rgba(108,99,255,0.7);
-      border-color: transparent;
-    }
-    .input-row {
-      display: flex;
-      gap: 0.6rem;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-    button {
-      border: none;
-      border-radius: 12px;
-      padding: 0.8rem 1.1rem;
-      font-size: 0.95rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s ease, opacity 0.2s ease;
-    }
-    button.primary {
-      background: linear-gradient(120deg, #6c63ff, #2acbff);
-      color: #fff;
-    }
-    button.secondary {
-      background: rgba(255,255,255,0.12);
-      color: #fff;
-    }
-    button.ghost {
-      background: rgba(255,255,255,0.07);
-      color: rgba(255,255,255,0.9);
-    }
-    button.subtle {
-      background: rgba(255,255,255,0.08);
-      color: rgba(255,255,255,0.85);
-    }
-    button:disabled {
-      opacity: 0.55;
-      cursor: not-allowed;
-    }
-    .status-pill {
-      padding: 0.35rem 0.9rem;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.08);
-      font-size: 0.85rem;
-      color: rgba(255,255,255,0.75);
-    }
-    .share-status {
-      font-size: 0.95rem;
-      color: rgba(255,255,255,0.85);
-      margin: 0 0 0.45rem;
-    }
-    .share-summary {
-      display: flex;
-      gap: 1rem;
-      align-items: flex-start;
-      justify-content: space-between;
-      flex-wrap: wrap;
-    }
-    .share-summary-buttons {
-      display: flex;
-      flex-direction: column;
-      gap: 0.4rem;
-      min-width: 140px;
-    }
-    .share-summary-buttons button {
-      width: 100%;
-    }
-    .share-meta {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 0.75rem;
-      margin: 0;
-    }
-    .share-meta div {
-      padding: 0.75rem 0.9rem;
-      border-radius: 12px;
-      background: rgba(255,255,255,0.04);
-    }
-    .share-meta dt {
-      margin: 0;
-      font-size: 0.75rem;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: rgba(255,255,255,0.6);
-    }
-    .share-meta dd {
-      margin: 0.2rem 0 0;
-      font-size: 0.95rem;
-      font-weight: 600;
-    }
-    .share-meta.summary-meta {
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    }
-    .share-meta.summary-meta dd {
-      font-size: 0.9rem;
-      font-weight: 500;
-      color: rgba(255,255,255,0.85);
-    }
-    .advanced-toggle {
-      border: 1px solid rgba(255,255,255,0.15);
-      background: rgba(255,255,255,0.05);
-      color: rgba(255,255,255,0.9);
-      border-radius: 999px;
-      padding: 0.35rem 0.9rem;
-      font-size: 0.85rem;
-      align-self: flex-start;
+    select.input {
       cursor: pointer;
     }
-    .advanced-options {
-      display: none;
-      margin-top: 1rem;
-      padding-top: 1rem;
-      border-top: 1px solid rgba(255,255,255,0.08);
+    input[readonly] {
+      color: var(--text-2);
+      background: var(--bg);
     }
-    .advanced-options.visible {
-      display: block;
+    input.mono {
+      font-family: var(--mono);
+      font-size: 14px;
     }
-    .share-details,
-    .invite-details {
-      margin-top: 1.25rem;
-      padding-top: 1.25rem;
-      border-top: 1px solid rgba(255,255,255,0.08);
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
+    input::placeholder {
+      color: var(--text-3);
     }
-    .share-details[hidden],
-    .invite-details[hidden] {
-      display: none;
-    }
-    .invite-summary {
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-    }
-    .field-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 0.75rem;
-    }
-    .status-card {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 0.75rem;
-      margin: 0;
-      padding: 0.9rem 0.2rem 0.2rem;
-    }
-    .status-card dt {
-      font-size: 0.8rem;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: rgba(255,255,255,0.6);
-      margin-bottom: 0.2rem;
-    }
-    .status-card dd {
-      margin: 0;
-      font-size: 0.95rem;
-      font-weight: 600;
-    }
-    form {
-      display: flex;
-      flex-direction: column;
-      gap: 0.8rem;
+    input[aria-invalid="true"] {
+      border-color: var(--danger);
     }
     .hint {
-      font-size: 0.8rem;
-      color: rgba(255,255,255,0.65);
+      margin: 0;
+      font-size: 13px;
+      color: var(--text-3);
+    }
+    .hint.error-text {
+      color: var(--danger);
     }
     .error {
-      color: #ff89a9;
-      font-size: 0.9rem;
+      margin: 16px 0 0;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      background: rgba(255, 122, 144, 0.1);
+      border: 1px solid rgba(255, 122, 144, 0.3);
+      color: var(--danger);
+      font-size: 14px;
     }
-    .actions {
+
+    /* Buttons */
+    .btn {
+      height: 44px;
+      padding: 0 16px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-strong);
+      background: var(--surface-3);
+      color: var(--text);
+      font: inherit;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      flex: none;
+      transition: background 0.15s ease, opacity 0.15s ease;
+    }
+    .btn:hover {
+      background: #252a3c;
+    }
+    .btn.ghost {
+      background: transparent;
+    }
+    .btn.ghost:hover {
+      background: var(--surface-3);
+    }
+    .btn.primary {
+      border: none;
+      color: #fff;
+      background: linear-gradient(120deg, var(--accent), var(--accent-2));
+    }
+    .btn.primary:hover {
+      background: linear-gradient(120deg, #7d75ff, #4fd5ff);
+    }
+    .btn.xl {
+      height: 56px;
+      padding: 0 32px;
+      font-size: 17px;
+      border-radius: 12px;
+    }
+    .btn.confirm {
+      border-color: var(--warn);
+      color: var(--warn);
+    }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .link-btn {
+      border: none;
+      background: none;
+      padding: 4px 2px;
+      color: var(--text-2);
+      font: inherit;
+      font-size: 13px;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      cursor: pointer;
+    }
+    .link-btn:hover {
+      color: var(--text);
+    }
+    :focus-visible {
+      outline: 2px solid var(--focus);
+      outline-offset: 2px;
+    }
+    input:focus-visible,
+    select:focus-visible {
+      outline-offset: 0;
+    }
+
+    /* Collapsible sections */
+    details.section {
+      margin-top: 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.015);
+    }
+    details.section + details.section {
+      margin-top: 8px;
+    }
+    details.section > summary {
+      list-style: none;
       display: flex;
-      gap: 0.75rem;
-      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      min-height: 46px;
+      padding: 0 16px;
+      cursor: pointer;
+      font-weight: 600;
+      border-radius: var(--radius);
     }
-    @media (max-width: 720px) {
-      .shell {
-        padding: 1.75rem;
+    details.section > summary::-webkit-details-marker {
+      display: none;
+    }
+    details.section > summary::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-right: 2px solid var(--text-3);
+      border-bottom: 2px solid var(--text-3);
+      transform: rotate(-45deg);
+      transition: transform 0.15s ease;
+      flex: none;
+    }
+    details.section[open] > summary::before {
+      transform: rotate(45deg);
+    }
+    .summary-meta {
+      margin-left: auto;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-3);
+      text-align: right;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+    }
+    .section-body {
+      padding: 4px 16px 18px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 14px 16px;
+    }
+    .section-body .wide {
+      grid-column: 1 / -1;
+    }
+    .check {
+      align-self: end;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 44px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+      cursor: pointer;
+    }
+    .check input {
+      width: 18px;
+      height: 18px;
+      margin: 0;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    /* Invite card */
+    .invite-form {
+      margin-top: 16px;
+    }
+    .invite-meta {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      margin: 14px 0 0;
+    }
+    .invite-meta dt {
+      font-size: 12px;
+      color: var(--text-3);
+    }
+    .invite-meta dd {
+      margin: 2px 0 0;
+      font-weight: 600;
+    }
+
+    footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 0 4px;
+      color: var(--text-3);
+      font-size: 13px;
+    }
+    kbd {
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 1px 6px;
+      border-radius: 5px;
+      border: 1px solid var(--border-strong);
+      background: var(--surface-2);
+      color: var(--text-2);
+    }
+
+    @media (max-width: 760px) {
+      main {
+        padding-left: 16px;
+        padding-right: 16px;
       }
-      header.page-header {
-        flex-direction: column;
+      .card {
+        padding: 18px;
       }
-      .share-summary {
-        flex-direction: column;
+      .share-body {
+        grid-template-columns: minmax(0, 1fr);
       }
-      .share-summary-buttons {
-        flex-direction: row;
-        width: 100%;
+      .qr {
+        order: 2;
       }
-      .share-summary-buttons button {
-        flex: 1;
+      .window-controls select {
+        display: none;
       }
-      .panel {
-        padding: 1.2rem;
+    }
+    @media (max-width: 520px) {
+      .row.wrap-sm {
+        flex-wrap: wrap;
+      }
+      .row.wrap-sm > input {
+        flex-basis: 100%;
+      }
+      .row.wrap-sm > .btn {
+        flex: 1 1 0;
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        transition: none !important;
       }
     }
   </style>
 </head>
 <body>
-  <div class="shell">
-    <div class="titlebar">
-      <h1>Versus Game Capture</h1>
-      <div class="titlebar-buttons" aria-label="Window controls">
-        <button id="windowMinTitleBtn" title="Minimize window" type="button">—</button>
-        <button id="windowPinTitleBtn" title="Toggle always-on-top" type="button">📌</button>
-        <select id="windowSizeSelect" title="Window size preset">
-          <option value="custom">Window size</option>
-          <option value="1280x720">1280 × 720</option>
-          <option value="1600x900">1600 × 900</option>
-          <option value="1600x960">1600 × 960</option>
-          <option value="1920x1080">1920 × 1080</option>
-          <option value="2560x1440">2560 × 1440</option>
-        </select>
-        <button class="danger" id="windowCloseTitleBtn" title="Close window" type="button">✕</button>
-      </div>
+  <header class="titlebar">
+    <div class="titlebar-drag">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">Versus Game Capture</span>
     </div>
-    <header class="page-header">
-      <div>
-        <p class="status-pill">Quick share</p>
-        <h1>Ready when you are</h1>
-        <p class="lede">Start a Versus link or drop into an invite—no setup, no hidden menus.</p>
-      </div>
-      <div class="header-actions">
-        <button class="ghost" id="openClassicBtn" type="button">Open classic interface</button>
-        <button class="ghost subtle" id="openInvitePanelBtn" type="button">Join invite</button>
-        <button class="primary" id="sharePrimaryBtn" type="button">Share my game</button>
-      </div>
-    </header>
+    <div class="window-controls">
+      <select id="windowSizeSelect" aria-label="Window size">
+        <option value="" id="windowSizeCurrent" disabled>Window size</option>
+        <option value="1280x720">1280 × 720</option>
+        <option value="1536x1440">1536 × 1440</option>
+        <option value="1600x900">1600 × 900</option>
+        <option value="1600x960">1600 × 960</option>
+        <option value="1856x1728">1856 × 1728</option>
+        <option value="1920x1080">1920 × 1080</option>
+        <option value="2560x1440">2560 × 1440</option>
+      </select>
+      <button class="icon-btn" id="windowPinBtn" type="button" aria-label="Keep window on top" title="Keep window on top" aria-pressed="false">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 2.5l4 4M10.5 3.5L6.5 7.5 3.5 7.5 8.5 12.5 8.5 9.5 12.5 5.5M5.5 10.5L2.5 13.5"/></svg>
+      </button>
+      <button class="icon-btn" id="windowMinBtn" type="button" aria-label="Minimize" title="Minimize">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M3.5 8h9"/></svg>
+      </button>
+      <button class="icon-btn close" id="windowCloseBtn" type="button" aria-label="Close" title="Close">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+      </button>
+    </div>
+  </header>
 
-    <div class="panels">
-      <section class="panel share-panel" id="sharePanel">
-        <div class="panel-head">
-          <div>
-            <p class="panel-kicker">Quick share</p>
-            <h2>Share my game</h2>
-          </div>
-          <div class="panel-actions">
-            <button class="primary" id="shareGoLiveBtn" type="button">Go live</button>
-            <button class="ghost subtle" id="shareDetailsToggleBtn" type="button">Edit details</button>
-          </div>
+  <main>
+    <section class="card" id="shareCard" aria-labelledby="shareTitle">
+      <div class="card-head">
+        <div>
+          <h1 id="shareTitle">Share my game</h1>
+          <p class="lede">Go live, pick your game window and audio, then send the viewer link to friends or your producer.</p>
         </div>
-        <div class="share-summary">
-          <div class="share-summary-info">
-            <p class="share-status" id="shareStatusMessage">Generating stream ID…</p>
-            <dl class="share-meta summary-meta">
-              <div>
-                <dt>Stream ID</dt>
-                <dd id="shareSummaryStreamId">—</dd>
-              </div>
-              <div>
-                <dt>Viewer link</dt>
-                <dd id="shareSummaryViewerHint">—</dd>
-              </div>
-            </dl>
-          </div>
-          <div class="share-summary-buttons">
-            <button class="ghost" id="summaryCopyLinkBtn" type="button">Copy link</button>
-            <button class="ghost subtle" id="summaryOpenLinkBtn" type="button">Open</button>
-          </div>
+        <div class="status" id="shareStatus" role="status" aria-live="polite" data-tone="busy">
+          <span class="dot" aria-hidden="true"></span>
+          <span id="shareStatusText">Preparing your stream ID…</span>
         </div>
-        <div class="share-details" id="shareDetailsSection" hidden>
-          <div class="field-group">
-            <label for="streamIdField">Stream ID</label>
-            <div class="input-row">
-              <input id="streamIdField" type="text" readonly value="">
-              <button class="ghost" id="copyStreamIdBtn" type="button">Copy</button>
-              <button class="ghost" id="regenStreamIdBtn" type="button">Regenerate</button>
-            </div>
-            <small class="hint">Memorable IDs mix words, numbers, and underscores so friends can type them easily.</small>
+      </div>
+
+      <div class="share-body">
+        <div class="share-main">
+          <div class="go-live">
+            <button class="btn primary xl" id="goLiveBtn" type="button" disabled>Go live</button>
+            <p class="hint">You'll choose the window, game audio, and mic next.</p>
           </div>
-          <div class="field-group">
+
+          <div class="field">
             <label for="viewerLinkField">Viewer link</label>
-            <div class="input-row">
-              <input id="viewerLinkField" type="text" readonly value="">
-              <button class="ghost" id="copyViewerLinkBtn" type="button">Copy link</button>
-              <button class="ghost" id="openViewerLinkBtn" type="button">Open</button>
+            <div class="row wrap-sm">
+              <input id="viewerLinkField" class="mono" type="text" readonly value="" aria-describedby="viewerLinkHint">
+              <button class="btn" id="copyLinkBtn" type="button" disabled>Copy link</button>
+              <button class="btn ghost" id="openLinkBtn" type="button" disabled>Open</button>
             </div>
+            <p class="hint" id="viewerLinkHint">Paste it into OBS as a Browser Source, or open it in any browser.</p>
           </div>
-          <div class="field-grid">
-            <div class="field-group">
-              <label for="roomInput">Room (optional)</label>
-              <input id="roomInput" type="text" placeholder="versusLobby">
-            </div>
-            <div class="field-group">
-              <label for="roomPasswordInput">Password (optional)</label>
-              <input id="roomPasswordInput" type="text" placeholder="secret123">
-            </div>
-          </div>
-          <button class="advanced-toggle" id="advancedToggleBtn" type="button">Advanced options</button>
-          <div class="advanced-options" id="advancedOptions">
-            <dl class="share-meta">
-              <div>
-                <dt>Quality preset</dt>
-                <dd id="qualityPresetLabel">—</dd>
-              </div>
-              <div>
-                <dt>Bitrate</dt>
-                <dd id="bitrateLabel">—</dd>
-              </div>
-              <div>
-                <dt>Codec</dt>
-                <dd id="codecLabel">—</dd>
-              </div>
-            </dl>
-          </div>
-          <div class="error" id="shareErrorMessage" hidden></div>
-        </div>
-      </section>
 
-      <section class="panel invite-panel">
-        <div class="panel-head">
-          <div>
-            <p class="panel-kicker">Join with invite</p>
-            <h2>Producer guided</h2>
+          <div class="field">
+            <label for="streamIdField">Stream ID</label>
+            <div class="row wrap-sm">
+              <input id="streamIdField" class="mono" type="text" value="" maxlength="40" spellcheck="false" autocomplete="off" aria-describedby="streamIdHint">
+              <button class="btn ghost" id="copyIdBtn" type="button" disabled>Copy</button>
+              <button class="btn ghost" id="regenIdBtn" type="button" disabled>New ID</button>
+            </div>
+            <p class="hint" id="streamIdHint">Stays the same every time, so saved viewer links keep working.</p>
           </div>
-          <button class="ghost subtle" id="inviteDetailsToggleBtn" type="button">Paste invite</button>
         </div>
-        <div class="invite-summary">
-          <span class="status-pill" id="inviteStatusPill">Waiting for invite</span>
-          <dl class="status-card">
-            <div>
-              <dt>Pending invite</dt>
-              <dd id="pendingInviteLabel">—</dd>
-            </div>
-            <div>
-              <dt>Slot</dt>
-              <dd id="slotLabel">—</dd>
-            </div>
-            <div>
-              <dt>Preset</dt>
-              <dd id="presetLabel">—</dd>
-            </div>
-          </dl>
-        </div>
-        <div class="invite-details" id="inviteDetailsSection" hidden>
-          <form id="inviteForm" autocomplete="off">
-            <div class="field-group">
-              <label for="inviteInput">Paste invite or VDO link</label>
-              <input id="inviteInput" type="url" name="invite" placeholder="https://versus.cam/invite/abc123" spellcheck="false" autocomplete="off">
-            </div>
-            <div class="actions">
-              <button class="primary" id="connectBtn" type="submit">Connect to invite</button>
-              <button class="secondary" type="button" id="fallbackBtn">Open classic VDO.Ninja</button>
-            </div>
-            <small class="hint">Need to return to this dashboard? Use the Versus invite again or click “Share my game.”</small>
-            <div class="error" id="errorMessage" hidden></div>
-          </form>
-        </div>
-      </section>
-    </div>
-  </div>
 
+        <figure class="qr">
+          <div class="qr-box empty" id="qrCode" role="img" aria-label="QR code for the viewer link">No link yet</div>
+          <figcaption>Scan to watch on a phone</figcaption>
+        </figure>
+      </div>
+
+      <details class="section" id="roomSection">
+        <summary>Room &amp; password <span class="summary-meta" id="roomSummary">Off</span></summary>
+        <div class="section-body">
+          <div class="field">
+            <label for="roomInput">Room name</label>
+            <input id="roomInput" type="text" placeholder="Optional" maxlength="48" spellcheck="false" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="roomPasswordInput">Password</label>
+            <div class="row">
+              <input id="roomPasswordInput" type="password" placeholder="Optional" maxlength="64" spellcheck="false" autocomplete="new-password">
+              <button class="btn ghost" id="togglePasswordBtn" type="button" aria-pressed="false">Show</button>
+            </div>
+          </div>
+          <p class="hint wide">Room names can use letters, numbers, - and _. Both are built into the viewer link, so only share it with people you trust.</p>
+        </div>
+      </details>
+
+      <details class="section" id="qualitySection">
+        <summary>Quality &amp; advanced <span class="summary-meta" id="qualitySummary">—</span></summary>
+        <div class="section-body">
+          <div class="field">
+            <label for="qualityPresetSelect">Quality</label>
+            <select class="input" id="qualityPresetSelect">
+              <option value="versus-hq">Best (9 Mbps)</option>
+              <option value="balanced">Balanced (6 Mbps)</option>
+              <option value="low">Low bandwidth (2.5 Mbps)</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="bitrateInput">Video bitrate (kbps)</label>
+            <input id="bitrateInput" type="number" min="500" max="20000" step="100" inputmode="numeric">
+          </div>
+          <div class="field">
+            <label for="codecSelect">Video codec</label>
+            <select class="input" id="codecSelect">
+              <option value="h264">H.264 (best GPU support)</option>
+              <option value="vp9">VP9</option>
+              <option value="av1">AV1 (newer GPUs only)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="audioBitrateSelect">Audio bitrate</label>
+            <select class="input" id="audioBitrateSelect">
+              <option value="128">128 kbps</option>
+              <option value="192">192 kbps</option>
+              <option value="256">256 kbps</option>
+              <option value="320">320 kbps</option>
+            </select>
+          </div>
+          <label class="check"><input type="checkbox" id="stereoCheck"> Stereo audio</label>
+          <label class="check"><input type="checkbox" id="hideCursorCheck"> Hide mouse cursor</label>
+          <div class="field wide">
+            <label for="baseHostInput">Server</label>
+            <input id="baseHostInput" type="url" class="mono" spellcheck="false" autocomplete="off" aria-describedby="baseHostHint">
+            <p class="hint" id="baseHostHint">Leave empty to use the default server.</p>
+          </div>
+        </div>
+      </details>
+
+      <p class="error" id="shareError" role="alert" hidden></p>
+    </section>
+
+    <section class="card" id="inviteCard" aria-labelledby="inviteTitle">
+      <div class="card-head">
+        <div>
+          <h2 id="inviteTitle">Join an invite</h2>
+          <p class="lede">Got a link from a producer? Paste it here. Invites opened from Versus connect on their own.</p>
+        </div>
+        <div class="status" id="inviteStatus" role="status" aria-live="polite">
+          <span class="dot" aria-hidden="true"></span>
+          <span id="inviteStatusText">No invite</span>
+        </div>
+      </div>
+      <form class="row wrap-sm invite-form" id="inviteForm" autocomplete="off">
+        <input id="inviteInput" type="text" inputmode="url" placeholder="https://versus.cam/invite/…" spellcheck="false" aria-label="Invite or VDO.Ninja link">
+        <button class="btn" id="connectBtn" type="submit">Connect</button>
+      </form>
+      <dl class="invite-meta" id="inviteMeta" hidden>
+        <div><dt>Slot</dt><dd id="slotLabel">—</dd></div>
+        <div><dt>Preset</dt><dd id="presetLabel">—</dd></div>
+      </dl>
+      <p class="error" id="inviteError" role="alert" hidden></p>
+    </section>
+
+    <footer>
+      <button class="link-btn" id="openClassicBtn" type="button">Open classic interface</button>
+      <span>While live, <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>L</kbd> shows or hides the capture panel.</span>
+    </footer>
+  </main>
+
+  <script src="assets/vendor/qrcode.min.js"></script>
   <script>
     const bridge = window.electronGameCapture || null;
     const FALLBACK_URL = 'https://vdo.ninja/electron';
-
-    const sharePrimaryBtn = document.getElementById('sharePrimaryBtn');
-    const shareGoLiveBtn = document.getElementById('shareGoLiveBtn');
-    const shareStatusEl = document.getElementById('shareStatusMessage');
-    const shareErrorEl = document.getElementById('shareErrorMessage');
-    const streamIdField = document.getElementById('streamIdField');
-    const viewerLinkField = document.getElementById('viewerLinkField');
-    const copyStreamIdBtn = document.getElementById('copyStreamIdBtn');
-    const copyViewerLinkBtn = document.getElementById('copyViewerLinkBtn');
-    const openViewerLinkBtn = document.getElementById('openViewerLinkBtn');
-    const regenStreamIdBtn = document.getElementById('regenStreamIdBtn');
-    const roomInput = document.getElementById('roomInput');
-    const roomPasswordInput = document.getElementById('roomPasswordInput');
-    const shareDetailsSection = document.getElementById('shareDetailsSection');
-    const shareDetailsToggleBtn = document.getElementById('shareDetailsToggleBtn');
-    const shareSummaryStreamId = document.getElementById('shareSummaryStreamId');
-    const shareSummaryViewerHint = document.getElementById('shareSummaryViewerHint');
-    const summaryCopyLinkBtn = document.getElementById('summaryCopyLinkBtn');
-    const summaryOpenLinkBtn = document.getElementById('summaryOpenLinkBtn');
-    const openClassicBtn = document.getElementById('openClassicBtn');
-    const windowMinBtn = document.getElementById('windowMinTitleBtn');
-    const windowPinBtn = document.getElementById('windowPinTitleBtn');
-    const windowCloseBtn = document.getElementById('windowCloseTitleBtn');
-    const windowSizeSelect = document.getElementById('windowSizeSelect');
-    const advancedToggleBtn = document.getElementById('advancedToggleBtn');
-    const advancedOptions = document.getElementById('advancedOptions');
-
-    const qualityPresetLabel = document.getElementById('qualityPresetLabel');
-    const bitrateLabel = document.getElementById('bitrateLabel');
-    const codecLabel = document.getElementById('codecLabel');
-
-    const inviteStatusPill = document.getElementById('inviteStatusPill');
-    const pendingEl = document.getElementById('pendingInviteLabel');
-    const slotEl = document.getElementById('slotLabel');
-    const presetEl = document.getElementById('presetLabel');
-    const inviteDetailsSection = document.getElementById('inviteDetailsSection');
-    const inviteDetailsToggleBtn = document.getElementById('inviteDetailsToggleBtn');
-    const openInvitePanelBtn = document.getElementById('openInvitePanelBtn');
-    const inviteInput = document.getElementById('inviteInput');
-    const inviteForm = document.getElementById('inviteForm');
-    const connectBtn = document.getElementById('connectBtn');
-    const fallbackBtn = document.getElementById('fallbackBtn');
-    const errorEl = document.getElementById('errorMessage');
-
-    const shareState = {
-      profile: null
+    const STREAM_ID_PATTERN = /^[A-Za-z0-9_]{4,40}$/;
+    const STREAM_ID_HINT = 'Stays the same every time, so saved viewer links keep working.';
+    const QUALITY_PRESETS = {
+      'versus-hq': { label: 'Best', publish: 9000, view: 8500 },
+      balanced: { label: 'Balanced', publish: 6000, view: 6000 },
+      low: { label: 'Low bandwidth', publish: 2500, view: 2500 }
     };
-    const shareInputs = {
-      roomCode: '',
-      roomPassword: ''
+    const CODEC_LABELS = { h264: 'H.264', vp9: 'VP9', av1: 'AV1' };
+
+    const $ = (id) => document.getElementById(id);
+    const el = {
+      shareStatus: $('shareStatus'),
+      shareStatusText: $('shareStatusText'),
+      shareError: $('shareError'),
+      goLiveBtn: $('goLiveBtn'),
+      viewerLinkField: $('viewerLinkField'),
+      copyLinkBtn: $('copyLinkBtn'),
+      openLinkBtn: $('openLinkBtn'),
+      streamIdField: $('streamIdField'),
+      streamIdHint: $('streamIdHint'),
+      copyIdBtn: $('copyIdBtn'),
+      regenIdBtn: $('regenIdBtn'),
+      qrCode: $('qrCode'),
+      roomSection: $('roomSection'),
+      roomSummary: $('roomSummary'),
+      roomInput: $('roomInput'),
+      roomPasswordInput: $('roomPasswordInput'),
+      togglePasswordBtn: $('togglePasswordBtn'),
+      qualitySummary: $('qualitySummary'),
+      qualityPresetSelect: $('qualityPresetSelect'),
+      bitrateInput: $('bitrateInput'),
+      codecSelect: $('codecSelect'),
+      audioBitrateSelect: $('audioBitrateSelect'),
+      stereoCheck: $('stereoCheck'),
+      hideCursorCheck: $('hideCursorCheck'),
+      baseHostInput: $('baseHostInput'),
+      inviteStatus: $('inviteStatus'),
+      inviteStatusText: $('inviteStatusText'),
+      inviteForm: $('inviteForm'),
+      inviteInput: $('inviteInput'),
+      connectBtn: $('connectBtn'),
+      inviteMeta: $('inviteMeta'),
+      slotLabel: $('slotLabel'),
+      presetLabel: $('presetLabel'),
+      inviteError: $('inviteError'),
+      openClassicBtn: $('openClassicBtn'),
+      windowSizeSelect: $('windowSizeSelect'),
+      windowSizeCurrent: $('windowSizeCurrent'),
+      windowPinBtn: $('windowPinBtn'),
+      windowMinBtn: $('windowMinBtn'),
+      windowCloseBtn: $('windowCloseBtn')
     };
-    const windowMetaState = { meta: null };
-    const sizePresetOptions = new Set(['1280x720', '1600x900', '1600x960', '1920x1080', '2560x1440']);
-    let shareSaveTimer = null;
-    let unsubscribe = null;
+
+    let profile = null;
     let lastState = null;
+    let windowMeta = null;
     let lastLaunchedUrl = null;
     let autoConnectInFlight = false;
-    let advancedVisible = false;
-    let shareDetailsVisible = false;
-    let inviteDetailsVisible = false;
+    let launching = false;
+    let launchFailed = false;
+    let lastQrText = null;
+    let roomSaveTimer = null;
+    let regenConfirmTimer = null;
+    let unsubscribe = null;
+    const flashTimers = new WeakMap();
 
-    function setInviteStatus(text) {
-      inviteStatusPill.textContent = text;
+    // ---------- small helpers ----------
+
+    function setStatus(target, text, tone) {
+      const chip = target === 'invite' ? el.inviteStatus : el.shareStatus;
+      const label = target === 'invite' ? el.inviteStatusText : el.shareStatusText;
+      label.textContent = text;
+      if (tone) {
+        chip.dataset.tone = tone;
+      } else {
+        delete chip.dataset.tone;
+      }
     }
 
-    function setShareStatus(text) {
-      shareStatusEl.textContent = text;
+    function showError(node, message) {
+      node.textContent = message || '';
+      node.hidden = !message;
     }
 
-    function showError(message) {
-      if (!message) {
-        errorEl.hidden = true;
-        errorEl.textContent = '';
+    function errorMessage(error, fallback) {
+      return (error && error.message) ? error.message : fallback;
+    }
+
+    // Bridge calls resolve with { success: false, error } on failure instead of rejecting.
+    async function callBridge(method, payload) {
+      if (!bridge || typeof bridge[method] !== 'function') {
+        throw new Error('The app bridge is unavailable. Please update or reinstall the app.');
+      }
+      const result = await bridge[method](payload);
+      if (result && result.success === false) {
+        throw new Error(result.error || 'Request failed.');
+      }
+      return result;
+    }
+
+    function flashButton(button, text) {
+      if (!button) {
         return;
       }
-      errorEl.hidden = false;
-      errorEl.textContent = message;
+      if (!button.dataset.label) {
+        button.dataset.label = button.textContent;
+      }
+      button.textContent = text;
+      clearTimeout(flashTimers.get(button));
+      flashTimers.set(button, setTimeout(() => {
+        button.textContent = button.dataset.label;
+      }, 1600));
     }
 
-    function showShareError(message) {
-      if (!message) {
-        shareErrorEl.hidden = true;
-        shareErrorEl.textContent = '';
+    async function copyText(value) {
+      if (!value) {
+        throw new Error('Nothing to copy.');
+      }
+      if (bridge && typeof bridge.copyText === 'function') {
+        const result = await bridge.copyText(value);
+        if (result && result.success !== false) {
+          return;
+        }
+      }
+      await navigator.clipboard.writeText(value);
+    }
+
+    async function openExternal(url) {
+      if (bridge && typeof bridge.openExternal === 'function') {
+        await callBridge('openExternal', url);
         return;
       }
-      shareErrorEl.hidden = false;
-      shareErrorEl.textContent = message;
+      window.open(url, '_blank', 'noopener');
     }
 
-    function formatValue(value) {
-      if (!value) {
-        return '—';
+    // Keep only allowed characters while typing, without making the caret jump.
+    function filterInput(input, disallowed) {
+      const value = input.value;
+      if (!disallowed.test(value)) {
+        return;
       }
-      const str = String(value);
-      return str.length > 48 ? `${str.slice(0, 45)}…` : str;
+      const caret = input.selectionStart || 0;
+      const before = value.slice(0, caret).replace(new RegExp(disallowed.source, 'g'), '');
+      input.value = value.replace(new RegExp(disallowed.source, 'g'), '');
+      input.setSelectionRange(before.length, before.length);
     }
 
-    function formatViewerHint(value) {
-      if (!value) {
-        return '—';
+    // Don't overwrite a field the user is typing in.
+    function setFieldValue(input, value) {
+      if (document.activeElement === input) {
+        return;
+      }
+      if (input.value !== value) {
+        input.value = value;
+      }
+    }
+
+    function formatMbps(kbps) {
+      const value = Number(kbps) / 1000;
+      return `${Number.isInteger(value) ? value : value.toFixed(1)} Mbps`;
+    }
+
+    // ---------- share panel ----------
+
+    function renderQr(text) {
+      if (text === lastQrText) {
+        return;
+      }
+      lastQrText = text;
+      const box = el.qrCode;
+      box.innerHTML = '';
+      if (!text || typeof QRCode !== 'function') {
+        box.classList.add('empty');
+        box.textContent = text ? 'QR unavailable' : 'No link yet';
+        return;
       }
       try {
-        const parsed = new URL(value);
-        const viewId = parsed.searchParams.get('view') || parsed.searchParams.get('id') || parsed.searchParams.get('push');
-        if (viewId) {
-          return `${parsed.hostname}/${viewId}`;
-        }
-        return parsed.hostname;
+        box.classList.remove('empty');
+        new QRCode(box, {
+          text,
+          width: 328,
+          height: 328,
+          colorDark: '#000000',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.L
+        });
+        // qrcode.js sets a tooltip with the full URL; it's noisy here.
+        box.removeAttribute('title');
       } catch (error) {
-        return formatValue(value);
+        console.error('QR render failed:', error);
+        box.innerHTML = '';
+        box.classList.add('empty');
+        box.textContent = 'QR unavailable';
       }
     }
 
-    function setShareDetailsVisibility(flag) {
-      shareDetailsVisible = !!flag;
-      if (shareDetailsSection) {
-        shareDetailsSection.hidden = !shareDetailsVisible;
+    function renderShare(nextProfile) {
+      if (!nextProfile || !nextProfile.streamId) {
+        return;
       }
-      if (shareDetailsToggleBtn) {
-        shareDetailsToggleBtn.textContent = shareDetailsVisible ? 'Hide details' : 'Edit details';
+      profile = nextProfile;
+      const advanced = profile.advanced || {};
+      const viewerUrl = (profile.shareLinks && profile.shareLinks.view) || '';
+      const hasPublish = Boolean(profile.shareLinks && profile.shareLinks.publish);
+
+      setFieldValue(el.viewerLinkField, viewerUrl);
+      setFieldValue(el.streamIdField, profile.streamId || '');
+      el.streamIdField.removeAttribute('aria-invalid');
+      setFieldValue(el.roomInput, profile.roomCode || '');
+      setFieldValue(el.roomPasswordInput, profile.roomPassword || '');
+      renderQr(viewerUrl);
+
+      el.copyLinkBtn.disabled = !viewerUrl;
+      el.openLinkBtn.disabled = !viewerUrl;
+      el.copyIdBtn.disabled = !profile.streamId;
+      el.regenIdBtn.disabled = false;
+      el.goLiveBtn.disabled = !hasPublish || launching;
+
+      // Room summary
+      if (profile.roomCode) {
+        el.roomSummary.textContent = profile.roomPassword ? `${profile.roomCode} · password set` : profile.roomCode;
+      } else {
+        el.roomSummary.textContent = profile.roomPassword ? 'Password set' : 'Off';
+      }
+      if ((profile.roomCode || profile.roomPassword) && !el.roomSection.dataset.autoOpened) {
+        el.roomSection.dataset.autoOpened = '1';
+        el.roomSection.open = true;
+      }
+
+      // Quality controls
+      const presetKey = QUALITY_PRESETS[advanced.qualityPreset] ? advanced.qualityPreset : 'custom';
+      setFieldValue(el.qualityPresetSelect, presetKey);
+      setFieldValue(el.bitrateInput, String(advanced.publishBitrateKbps || ''));
+      setFieldValue(el.codecSelect, advanced.codec || 'h264');
+      setFieldValue(el.audioBitrateSelect, String(advanced.audioBitrateKbps || 192));
+      el.stereoCheck.checked = advanced.stereo !== false;
+      el.hideCursorCheck.checked = !!advanced.hideCursor;
+      const defaultHost = (profile.defaults && profile.defaults.baseHost) || '';
+      el.baseHostInput.placeholder = defaultHost;
+      setFieldValue(el.baseHostInput, advanced.baseHost && advanced.baseHost !== defaultHost ? advanced.baseHost : '');
+
+      const presetLabel = presetKey === 'custom' ? 'Custom' : QUALITY_PRESETS[presetKey].label;
+      const parts = [presetLabel, formatMbps(advanced.publishBitrateKbps || 0), CODEC_LABELS[advanced.codec] || 'H.264'];
+      if (advanced.hideCursor) {
+        parts.push('cursor hidden');
+      }
+      el.qualitySummary.textContent = parts.join(' · ');
+
+      if (!launching && !launchFailed) {
+        setStatus('share', 'Ready to go live', 'ok');
       }
     }
 
-    function setInviteDetailsVisibility(flag) {
-      inviteDetailsVisible = !!flag;
-      if (inviteDetailsSection) {
-        inviteDetailsSection.hidden = !inviteDetailsVisible;
-      }
-      if (inviteDetailsToggleBtn) {
-        inviteDetailsToggleBtn.textContent = inviteDetailsVisible ? 'Hide form' : 'Paste invite';
+    async function saveShare(payload, { quiet = false } = {}) {
+      try {
+        const next = await callBridge('updateShareProfile', payload);
+        showError(el.shareError, '');
+        renderShare(next);
+        return next;
+      } catch (error) {
+        console.error('Failed to save share settings:', error);
+        if (!quiet) {
+          showError(el.shareError, `Couldn't save that setting: ${errorMessage(error, 'unknown error')}`);
+        }
+        return null;
       }
     }
 
-    function updateInviteUi(state) {
+    function flushRoomSave() {
+      if (roomSaveTimer) {
+        clearTimeout(roomSaveTimer);
+        roomSaveTimer = null;
+      }
+      return saveShare({ roomCode: el.roomInput.value, roomPassword: el.roomPasswordInput.value });
+    }
+
+    function scheduleRoomSave() {
+      clearTimeout(roomSaveTimer);
+      roomSaveTimer = setTimeout(flushRoomSave, 400);
+    }
+
+    async function goLive() {
+      if (!profile || !profile.shareLinks || !profile.shareLinks.publish) {
+        showError(el.shareError, 'Your share link isn’t ready yet. Try again in a moment.');
+        return;
+      }
+      if (roomSaveTimer) {
+        await flushRoomSave();
+      }
+      launching = true;
+      launchFailed = false;
+      el.goLiveBtn.disabled = true;
+      showError(el.shareError, '');
+      setStatus('share', 'Opening capture…', 'busy');
+      const advanced = profile.advanced || {};
+      const metadata = {};
+      if (advanced.hideCursor) {
+        metadata.cursorPreference = 'hide';
+      }
+      if (typeof advanced.preferWhipRelay !== 'undefined') {
+        metadata.transportPreference = advanced.preferWhipRelay;
+      }
+      try {
+        const result = await callBridge('launchInvite', { url: profile.shareLinks.publish, ...metadata });
+        lastLaunchedUrl = (result && result.url) || profile.shareLinks.publish;
+      } catch (error) {
+        console.error('Quick-share launch failed:', error);
+        launching = false;
+        launchFailed = true;
+        el.goLiveBtn.disabled = false;
+        setStatus('share', 'Couldn’t start capture', 'error');
+        showError(el.shareError, errorMessage(error, 'Failed to launch capture.'));
+      }
+    }
+
+    function resetRegenButton() {
+      clearTimeout(regenConfirmTimer);
+      regenConfirmTimer = null;
+      el.regenIdBtn.classList.remove('confirm');
+      el.regenIdBtn.textContent = 'New ID';
+    }
+
+    async function regenerateId() {
+      // Two-step: a new ID breaks links people already have.
+      if (!regenConfirmTimer) {
+        el.regenIdBtn.classList.add('confirm');
+        el.regenIdBtn.textContent = 'Confirm?';
+        regenConfirmTimer = setTimeout(resetRegenButton, 3500);
+        return;
+      }
+      resetRegenButton();
+      el.regenIdBtn.disabled = true;
+      try {
+        const next = await callBridge('regenerateStreamId', { mode: 'words' });
+        showError(el.shareError, '');
+        renderShare(next);
+        el.streamIdHint.classList.remove('error-text');
+        el.streamIdHint.textContent = 'New ID saved. Old viewer links won’t work anymore.';
+      } catch (error) {
+        console.error('Failed to regenerate stream ID:', error);
+        showError(el.shareError, `Couldn't make a new ID: ${errorMessage(error, 'unknown error')}`);
+      } finally {
+        el.regenIdBtn.disabled = false;
+      }
+    }
+
+    async function commitStreamId() {
+      const value = el.streamIdField.value.trim();
+      if (!profile || value === profile.streamId) {
+        el.streamIdField.removeAttribute('aria-invalid');
+        return;
+      }
+      if (!STREAM_ID_PATTERN.test(value)) {
+        el.streamIdField.setAttribute('aria-invalid', 'true');
+        el.streamIdHint.classList.add('error-text');
+        el.streamIdHint.textContent = 'Use 4–40 letters, numbers, or underscores.';
+        return;
+      }
+      const next = await saveShare({ streamId: value });
+      if (next && next.streamId === value) {
+        el.streamIdHint.classList.remove('error-text');
+        el.streamIdHint.textContent = 'Stream ID saved. Old viewer links won’t work anymore.';
+      }
+    }
+
+    // ---------- invite panel ----------
+
+    function renderInvite(state) {
       lastState = state || null;
       if (!state) {
-        setInviteStatus('Waiting for invite');
-        pendingEl.textContent = '—';
-        slotEl.textContent = '—';
-        presetEl.textContent = '—';
-        showError('');
         return;
       }
       if (state.pendingInviteUrl) {
-        pendingEl.textContent = formatValue(state.pendingInviteUrl);
-        inviteInput.value = state.pendingInviteUrl;
-      } else {
-        pendingEl.textContent = '—';
+        setFieldValue(el.inviteInput, state.pendingInviteUrl);
       }
-      slotEl.textContent = formatValue(state.slotId);
-      presetEl.textContent = formatValue(state.preset);
-
-      if (state.activeInviteUrl) {
-        setInviteStatus('Streaming interface active');
-      } else if (state.pendingInviteUrl) {
-        setInviteStatus('Invite ready – auto connecting');
-      } else {
-        setInviteStatus('Waiting for invite');
-      }
+      const hasMeta = Boolean(state.slotId || state.preset);
+      el.inviteMeta.hidden = !hasMeta;
+      el.slotLabel.textContent = state.slotId || '—';
+      el.presetLabel.textContent = state.preset || '—';
 
       if (state.lastError) {
-        showError(state.lastError);
-      } else {
-        showError('');
-      }
-      if ((state.pendingInviteUrl || state.lastError) && !inviteDetailsVisible) {
-        setInviteDetailsVisibility(true);
-      }
-    }
-
-    function setAdvancedVisibility(flag) {
-      advancedVisible = !!flag;
-      if (advancedOptions) {
-        advancedOptions.classList.toggle('visible', advancedVisible);
-      }
-      if (advancedVisible && !shareDetailsVisible) {
-        setShareDetailsVisibility(true);
-      }
-      if (advancedToggleBtn) {
-        advancedToggleBtn.textContent = advancedVisible ? 'Hide advanced options' : 'Advanced options';
+        setStatus('invite', 'Couldn’t connect', 'error');
+        showError(el.inviteError, state.lastError);
+      } else if (state.pendingInviteUrl) {
+        setStatus('invite', 'Invite found · connecting', 'busy');
+        showError(el.inviteError, '');
+      } else if (!autoConnectInFlight) {
+        setStatus('invite', 'No invite');
+        showError(el.inviteError, '');
       }
     }
 
-    function updateSharePanel(profile) {
-      shareState.profile = profile || null;
-      if (!profile) {
-        streamIdField.value = '';
-        viewerLinkField.value = '';
-        qualityPresetLabel.textContent = '—';
-        bitrateLabel.textContent = '—';
-        codecLabel.textContent = '—';
-        shareGoLiveBtn.disabled = true;
-        sharePrimaryBtn.disabled = true;
-        if (summaryCopyLinkBtn) {
-          summaryCopyLinkBtn.disabled = true;
-        }
-        if (summaryOpenLinkBtn) {
-          summaryOpenLinkBtn.disabled = true;
-        }
-        setShareStatus('Generating stream ID…');
-        if (shareSummaryStreamId) {
-          shareSummaryStreamId.textContent = '—';
-        }
-        if (shareSummaryViewerHint) {
-          shareSummaryViewerHint.textContent = '—';
-        }
+    function inviteMetadata(state) {
+      return {
+        slotId: state && state.slotId,
+        preset: state && state.preset,
+        cursorPreference: state && state.cursorPreference,
+        appAudioTarget: state && state.appAudioTarget,
+        transportPreference: state && state.transportPreference
+      };
+    }
+
+    async function launchInvite(url, { auto = false } = {}) {
+      const trimmed = (url || '').trim();
+      if (!trimmed) {
+        showError(el.inviteError, 'Paste an invite or VDO.Ninja link first.');
+        el.inviteInput.focus();
         return;
       }
-
-      shareInputs.roomCode = profile.roomCode || '';
-      shareInputs.roomPassword = profile.roomPassword || '';
-
-      streamIdField.value = profile.streamId || '';
-      viewerLinkField.value = (profile.shareLinks && profile.shareLinks.view) || '';
-      roomInput.value = shareInputs.roomCode;
-      roomPasswordInput.value = shareInputs.roomPassword;
-
-      const hasViewerLink = Boolean(profile.shareLinks && profile.shareLinks.view);
-      const qualitySummary = profile.qualitySummary || {};
-      qualityPresetLabel.textContent = qualitySummary.preset || 'Versus HQ';
-      const bitrateValue = qualitySummary.publishBitrateKbps || profile.advanced?.publishBitrateKbps;
-      bitrateLabel.textContent = bitrateValue ? `${bitrateValue} kbps` : '—';
-      codecLabel.textContent = qualitySummary.codec ? qualitySummary.codec.toUpperCase() : 'H264';
-      if (shareSummaryStreamId) {
-        shareSummaryStreamId.textContent = profile.streamId ? formatValue(profile.streamId) : '—';
-      }
-      if (shareSummaryViewerHint) {
-        const viewerUrl = (profile.shareLinks && profile.shareLinks.view) || '';
-        shareSummaryViewerHint.textContent = viewerUrl ? formatViewerHint(viewerUrl) : '—';
-      }
-
-      shareGoLiveBtn.disabled = false;
-      sharePrimaryBtn.disabled = false;
-      if (summaryCopyLinkBtn) {
-        summaryCopyLinkBtn.disabled = !hasViewerLink;
-      }
-      if (summaryOpenLinkBtn) {
-        summaryOpenLinkBtn.disabled = !hasViewerLink;
-      }
-
-      if (lastState && lastState.activeInviteUrl && profile.shareLinks && lastState.activeInviteUrl === profile.shareLinks.publish) {
-        setShareStatus('Live • viewer link ready');
-      } else if (lastState && lastState.activeInviteUrl) {
-        setShareStatus('Another invite is active.');
-      } else {
-        setShareStatus('Ready to share');
-      }
-    }
-
-    function updateUi(state) {
-      updateInviteUi(state);
-      updateSharePanel(state && state.shareProfile);
-      updateWindowMeta(state && state.windowMeta);
-    }
-
-    function launchInviteToUrl(targetUrl, metadata = {}, options = {}) {
-      if (!bridge || typeof bridge.launchInvite !== 'function') {
-        return Promise.reject(new Error('Bridge unavailable.'));
-      }
-      const buttons = Array.isArray(options.buttons) ? options.buttons.filter(Boolean) : [];
-      buttons.forEach((btn) => {
-        btn.disabled = true;
-      });
-      return bridge.launchInvite({
-        url: targetUrl,
-        ...metadata
-      }).then((result) => {
-        if (!result || result.success === false) {
-          const error = new Error(result && result.error ? result.error : 'Failed to launch invite.');
-          throw error;
-        }
-        lastLaunchedUrl = result.url || targetUrl;
-        return result;
-      }).catch((error) => {
-        if (options.resetLastOnError) {
+      showError(el.inviteError, '');
+      setStatus('invite', 'Connecting…', 'busy');
+      el.connectBtn.disabled = true;
+      try {
+        const result = await callBridge('launchInvite', { url: trimmed, ...inviteMetadata(lastState) });
+        lastLaunchedUrl = (result && result.url) || trimmed;
+      } catch (error) {
+        console.error('Invite launch failed:', error);
+        if (auto) {
           lastLaunchedUrl = null;
         }
-        throw error;
-      }).finally(() => {
-        buttons.forEach((btn) => {
-          btn.disabled = false;
-        });
-      });
+        setStatus('invite', 'Couldn’t connect', 'error');
+        showError(el.inviteError, errorMessage(error, 'Failed to open that invite.'));
+      } finally {
+        el.connectBtn.disabled = false;
+      }
     }
 
     function maybeAutoLaunch(state) {
-      if (!state || !state.pendingInviteUrl) {
+      if (!state || !state.pendingInviteUrl || autoConnectInFlight || !bridge) {
         return;
       }
       if (state.pendingInviteUrl === lastLaunchedUrl && !state.lastError) {
         return;
       }
-      if (autoConnectInFlight || !bridge) {
-        return;
-      }
       autoConnectInFlight = true;
-      setInviteStatus('Connecting to invite…');
-      showError('');
-      launchInviteToUrl(
-        state.pendingInviteUrl,
-        {
-          slotId: state.slotId,
-          preset: state.preset,
-          cursorPreference: state.cursorPreference,
-          appAudioTarget: state.appAudioTarget,
-          transportPreference: state.transportPreference
-        },
-        { resetLastOnError: true }
-      ).catch((error) => {
-        console.error('Automatic invite launch failed:', error);
-        showError(error && error.message ? error.message : 'Unable to launch invite automatically. Use the Connect button.');
-      }).finally(() => {
+      launchInvite(state.pendingInviteUrl, { auto: true }).finally(() => {
         autoConnectInFlight = false;
       });
     }
 
-    function handleShareFieldInput() {
-      shareInputs.roomCode = roomInput.value;
-      shareInputs.roomPassword = roomPasswordInput.value;
-      if (!bridge || typeof bridge.updateShareProfile !== 'function') {
-        return;
-      }
-      if (shareSaveTimer) {
-        clearTimeout(shareSaveTimer);
-      }
-      shareSaveTimer = setTimeout(() => {
-        bridge.updateShareProfile({
-          roomCode: shareInputs.roomCode,
-          roomPassword: shareInputs.roomPassword
-        }).then(() => {
-          showShareError('');
-        }).catch((error) => {
-          console.error('Failed to save share profile:', error);
-          showShareError('Unable to save room settings right now.');
-        }).finally(() => {
-          shareSaveTimer = null;
-        });
-      }, 400);
-    }
+    // ---------- window controls ----------
 
-    async function handleQuickShareLaunch() {
-      if (!shareDetailsVisible) {
-        setShareDetailsVisibility(true);
-      }
-      if (!shareState.profile || !shareState.profile.shareLinks || !shareState.profile.shareLinks.publish) {
-        showShareError('No share link available yet. Please try again.');
-        return;
-      }
-      showShareError('');
-      setShareStatus('Launching Versus capture wizard…');
-      const metadata = {};
-      if (shareState.profile.advanced?.hideCursor) {
-        metadata.cursorPreference = 'hide';
-      }
-      if (typeof shareState.profile.advanced?.preferWhipRelay !== 'undefined') {
-        metadata.transportPreference = shareState.profile.advanced.preferWhipRelay;
-      }
-      try {
-        await launchInviteToUrl(
-          shareState.profile.shareLinks.publish,
-          metadata,
-          { buttons: [shareGoLiveBtn, sharePrimaryBtn] }
-        );
-        setShareStatus('Live • viewer link ready');
-      } catch (error) {
-        console.error('Quick-share launch failed:', error);
-        showShareError(error && error.message ? error.message : 'Failed to launch capture.');
-        setShareStatus('Unable to launch capture.');
-      }
-    }
-
-    function handleManualLaunch(targetUrl) {
-      const trimmed = (targetUrl || '').trim();
-      if (!trimmed) {
-        showError('Please paste an invite or VDO link.');
-        return;
-      }
-      showError('');
-      setInviteStatus('Launching invite…');
-      launchInviteToUrl(trimmed, {
-        slotId: lastState && lastState.slotId,
-        preset: lastState && lastState.preset,
-        cursorPreference: lastState && lastState.cursorPreference,
-        transportPreference: lastState && lastState.transportPreference,
-        appAudioTarget: lastState && lastState.appAudioTarget
-      }, { buttons: [connectBtn] }).catch((error) => {
-        console.error('Manual invite launch failed:', error);
-        showError(error && error.message ? error.message : 'Failed to launch invite.');
-        setInviteStatus('Waiting for invite');
-      });
-    }
-
-    function copyToClipboard(value) {
-      if (!value) {
-        return Promise.reject(new Error('Nothing to copy.'));
-      }
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        return navigator.clipboard.writeText(value);
-      }
-      return new Promise((resolve, reject) => {
-        try {
-          const temp = document.createElement('textarea');
-          temp.value = value;
-          temp.style.position = 'fixed';
-          temp.style.opacity = '0';
-          document.body.appendChild(temp);
-          temp.focus();
-          temp.select();
-          const success = document.execCommand('copy');
-          document.body.removeChild(temp);
-          if (success) {
-            resolve();
-          } else {
-            reject(new Error('Copy failed.'));
-          }
-        } catch (error) {
-          reject(error);
-        }
-      });
-    }
-
-    function updateWindowMeta(meta) {
-      windowMetaState.meta = meta || null;
-      const controls = [windowMinBtn, windowPinBtn, windowCloseBtn, windowSizeSelect];
-      controls.forEach((el) => {
-        if (el) {
-          el.disabled = !meta;
-        }
+    function renderWindowMeta(meta) {
+      windowMeta = meta || null;
+      [el.windowSizeSelect, el.windowPinBtn, el.windowMinBtn, el.windowCloseBtn].forEach((node) => {
+        node.disabled = !meta;
       });
       if (!meta) {
-        if (windowPinBtn) {
-          windowPinBtn.classList.remove('active');
-        }
-        if (windowSizeSelect) {
-          windowSizeSelect.value = 'custom';
-        }
         return;
       }
-      if (windowPinBtn) {
-        windowPinBtn.classList.toggle('active', !!meta.isAlwaysOnTop);
-      }
-      if (windowSizeSelect) {
-        const presetKey = meta.width && meta.height ? `${meta.width}x${meta.height}` : null;
-        if (presetKey && sizePresetOptions.has(presetKey)) {
-          windowSizeSelect.value = presetKey;
-        } else {
-          windowSizeSelect.value = 'custom';
-        }
+      el.windowPinBtn.setAttribute('aria-pressed', meta.isAlwaysOnTop ? 'true' : 'false');
+      const key = meta.width && meta.height ? `${meta.width}x${meta.height}` : '';
+      const match = Array.from(el.windowSizeSelect.options).find((option) => option.value && option.value === key);
+      if (match) {
+        el.windowSizeSelect.value = key;
+        el.windowSizeCurrent.textContent = 'Window size';
+      } else {
+        el.windowSizeCurrent.textContent = key ? key.replace('x', ' × ') : 'Window size';
+        el.windowSizeSelect.selectedIndex = 0;
       }
     }
 
-    function requestWindowAction(action, extra = {}) {
-      if (!bridge || typeof bridge.windowAction !== 'function') {
-        return;
-      }
-      bridge.windowAction({ action, ...extra }).then((result) => {
+    async function windowCall(method, payload) {
+      try {
+        const result = await callBridge(method, payload);
         if (result && result.state) {
-          updateWindowMeta(result.state);
+          renderWindowMeta(result.state);
         }
-      }).catch((error) => {
-        console.error('Window action failed:', error);
-      });
+      } catch (error) {
+        console.error(`${method} failed:`, error);
+      }
     }
 
-    function requestWindowResize(width, height) {
-      if (!bridge || typeof bridge.resizeWindow !== 'function') {
+    // ---------- state sync ----------
+
+    function applyState(state) {
+      if (!state) {
         return;
       }
-      bridge.resizeWindow({ width, height }).then((result) => {
-        if (result && result.state) {
-          updateWindowMeta(result.state);
-        }
-      }).catch((error) => {
-        console.error('Resize failed:', error);
-      });
+      renderInvite(state);
+      if (state.shareProfile) {
+        renderShare(state.shareProfile);
+      }
+      if (state.windowMeta) {
+        renderWindowMeta(state.windowMeta);
+      }
     }
 
-    function subscribeToUpdates() {
-      if (!bridge || typeof bridge.onUpdate !== 'function') {
+    async function init() {
+      if (!bridge) {
+        setStatus('share', 'App bridge unavailable', 'error');
+        setStatus('invite', 'Unavailable', 'error');
+        showError(el.shareError, 'This page has to run inside the Versus Game Capture app. Please update or reinstall it.');
+        el.connectBtn.disabled = true;
+        renderWindowMeta(null);
         return;
       }
-      unsubscribe = bridge.onUpdate((message) => {
-        if (message && message.state) {
-          updateUi(message.state);
-          maybeAutoLaunch(message.state);
-        }
-      });
-    }
-
-    async function refreshContext() {
-      if (!bridge || typeof bridge.getContext !== 'function') {
-        setInviteStatus('Bridge unavailable. Please reinstall the app.');
-        return;
-      }
-      const context = await bridge.getContext();
-      updateUi(context);
-      if ((!context || !context.shareProfile) && bridge.getShareProfile) {
-        const profile = await bridge.getShareProfile();
-        updateSharePanel(profile);
-      }
-      maybeAutoLaunch(context);
-    }
-
-    sharePrimaryBtn.addEventListener('click', handleQuickShareLaunch);
-    shareGoLiveBtn.addEventListener('click', handleQuickShareLaunch);
-    if (shareDetailsToggleBtn) {
-      shareDetailsToggleBtn.addEventListener('click', () => {
-        if (shareDetailsVisible) {
-          setShareDetailsVisibility(false);
-        } else {
-          setShareDetailsVisibility(true);
-          if (shareDetailsSection) {
-            shareDetailsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (typeof bridge.onUpdate === 'function') {
+        unsubscribe = bridge.onUpdate((message) => {
+          if (message && message.state) {
+            applyState(message.state);
+            maybeAutoLaunch(message.state);
           }
-        }
-      });
-    }
-    if (inviteDetailsToggleBtn) {
-      inviteDetailsToggleBtn.addEventListener('click', () => {
-        const next = !inviteDetailsVisible;
-        setInviteDetailsVisibility(next);
-        if (next && inviteInput) {
-          inviteInput.focus();
-        }
-      });
-    }
-    if (openInvitePanelBtn) {
-      openInvitePanelBtn.addEventListener('click', () => {
-        if (!inviteDetailsVisible) {
-          setInviteDetailsVisibility(true);
-        }
-        if (inviteInput) {
-          inviteInput.focus();
-        }
-      });
-    }
-    copyStreamIdBtn.addEventListener('click', () => {
-      copyToClipboard(streamIdField.value).then(() => {
-        setShareStatus('Stream ID copied to clipboard.');
-      }).catch((error) => {
-        console.error('Copy stream ID failed:', error);
-        showShareError('Unable to copy stream ID.');
-      });
-    });
-    const handleViewerLinkCopy = () => {
-      if (!viewerLinkField.value) {
-        showShareError('Viewer link is empty.');
-        return;
-      }
-      copyToClipboard(viewerLinkField.value).then(() => {
-        setShareStatus('Viewer link copied.');
-        showShareError('');
-      }).catch((error) => {
-        console.error('Copy viewer link failed:', error);
-        showShareError('Unable to copy viewer link.');
-      });
-    };
-
-    const handleViewerLinkOpen = () => {
-      if (!viewerLinkField.value) {
-        showShareError('Viewer link is empty.');
-        return;
+        });
       }
       try {
-        window.open(viewerLinkField.value, '_blank', 'noopener');
-        showShareError('');
+        const context = await bridge.getContext();
+        applyState(context);
+        if (!profile && typeof bridge.getShareProfile === 'function') {
+          renderShare(await bridge.getShareProfile());
+        }
+        if (!profile) {
+          setStatus('share', 'Couldn’t load your stream ID', 'error');
+        }
+        maybeAutoLaunch(context);
       } catch (error) {
-        console.error('Failed to open viewer link:', error);
-        showShareError('Unable to open viewer link.');
+        console.error('Failed to load game capture context:', error);
+        setStatus('share', 'Couldn’t load settings', 'error');
+        showError(el.shareError, errorMessage(error, 'Failed to load settings.'));
       }
-    };
+    }
 
-    copyViewerLinkBtn.addEventListener('click', handleViewerLinkCopy);
-    openViewerLinkBtn.addEventListener('click', handleViewerLinkOpen);
-    if (summaryCopyLinkBtn) {
-      summaryCopyLinkBtn.addEventListener('click', handleViewerLinkCopy);
-    }
-    if (summaryOpenLinkBtn) {
-      summaryOpenLinkBtn.addEventListener('click', handleViewerLinkOpen);
-    }
-    regenStreamIdBtn.addEventListener('click', () => {
-      if (!bridge || typeof bridge.regenerateStreamId !== 'function') {
-        showShareError('Bridge unavailable.');
+    // ---------- events ----------
+
+    el.goLiveBtn.addEventListener('click', goLive);
+
+    el.copyLinkBtn.addEventListener('click', () => {
+      copyText(el.viewerLinkField.value).then(() => {
+        flashButton(el.copyLinkBtn, 'Copied');
+        showError(el.shareError, '');
+      }).catch((error) => {
+        console.error('Copy viewer link failed:', error);
+        showError(el.shareError, 'Couldn’t copy the link. Select it and press Ctrl+C instead.');
+      });
+    });
+    el.viewerLinkField.addEventListener('focus', () => el.viewerLinkField.select());
+
+    el.openLinkBtn.addEventListener('click', () => {
+      openExternal(el.viewerLinkField.value).then(() => {
+        flashButton(el.openLinkBtn, 'Opened');
+      }).catch((error) => {
+        console.error('Open viewer link failed:', error);
+        showError(el.shareError, 'Couldn’t open the link in your browser.');
+      });
+    });
+
+    el.copyIdBtn.addEventListener('click', () => {
+      copyText(profile && profile.streamId).then(() => {
+        flashButton(el.copyIdBtn, 'Copied');
+      }).catch((error) => {
+        console.error('Copy stream ID failed:', error);
+        showError(el.shareError, 'Couldn’t copy the stream ID.');
+      });
+    });
+
+    el.regenIdBtn.addEventListener('click', regenerateId);
+    el.regenIdBtn.addEventListener('blur', () => {
+      if (regenConfirmTimer) {
+        resetRegenButton();
+      }
+    });
+
+    el.streamIdField.addEventListener('input', () => filterInput(el.streamIdField, /[^A-Za-z0-9_]/));
+    el.streamIdField.addEventListener('change', commitStreamId);
+    el.streamIdField.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        el.streamIdField.blur();
+      } else if (event.key === 'Escape' && profile) {
+        el.streamIdField.value = profile.streamId;
+        el.streamIdField.removeAttribute('aria-invalid');
+        el.streamIdField.blur();
+      }
+    });
+    el.streamIdField.addEventListener('blur', () => {
+      // Put back the saved value if what's left is invalid.
+      if (profile && el.streamIdField.getAttribute('aria-invalid') === 'true') {
+        el.streamIdField.value = profile.streamId;
+        el.streamIdField.removeAttribute('aria-invalid');
+        el.streamIdHint.classList.remove('error-text');
+        el.streamIdHint.textContent = STREAM_ID_HINT;
+      }
+    });
+
+    el.roomInput.addEventListener('input', () => {
+      filterInput(el.roomInput, /[^A-Za-z0-9_-]/);
+      scheduleRoomSave();
+    });
+    el.roomPasswordInput.addEventListener('input', scheduleRoomSave);
+    [el.roomInput, el.roomPasswordInput].forEach((input) => {
+      input.addEventListener('blur', () => {
+        if (roomSaveTimer) {
+          flushRoomSave();
+        } else if (profile) {
+          // Show the saved (trimmed) value once the user is done typing.
+          setFieldValue(input, input === el.roomInput ? (profile.roomCode || '') : (profile.roomPassword || ''));
+        }
+      });
+    });
+    el.togglePasswordBtn.addEventListener('click', () => {
+      const show = el.roomPasswordInput.type === 'password';
+      el.roomPasswordInput.type = show ? 'text' : 'password';
+      el.togglePasswordBtn.textContent = show ? 'Hide' : 'Show';
+      el.togglePasswordBtn.setAttribute('aria-pressed', show ? 'true' : 'false');
+    });
+
+    el.qualityPresetSelect.addEventListener('change', () => {
+      const key = el.qualityPresetSelect.value;
+      const preset = QUALITY_PRESETS[key];
+      if (preset) {
+        saveShare({ advanced: { qualityPreset: key, publishBitrateKbps: preset.publish, viewBitrateKbps: preset.view } });
+      } else {
+        saveShare({ advanced: { qualityPreset: 'custom' } });
+        el.bitrateInput.focus();
+      }
+    });
+    el.bitrateInput.addEventListener('change', () => {
+      const raw = parseInt(el.bitrateInput.value, 10);
+      if (!Number.isFinite(raw)) {
+        el.bitrateInput.value = profile && profile.advanced ? profile.advanced.publishBitrateKbps : '';
         return;
       }
-      setShareStatus('Generating new stream ID…');
-      bridge.regenerateStreamId({ mode: 'words' }).then((profile) => {
-        updateSharePanel(profile);
-        setShareStatus('New stream ID ready.');
-      }).catch((error) => {
-        console.error('Failed to regenerate stream ID:', error);
-        showShareError('Unable to regenerate stream ID.');
-      });
+      const kbps = Math.min(20000, Math.max(500, raw));
+      el.bitrateInput.value = kbps;
+      saveShare({ advanced: { qualityPreset: 'custom', publishBitrateKbps: kbps, viewBitrateKbps: kbps } });
     });
-    roomInput.addEventListener('input', handleShareFieldInput);
-    roomPasswordInput.addEventListener('input', handleShareFieldInput);
+    el.codecSelect.addEventListener('change', () => saveShare({ advanced: { codec: el.codecSelect.value } }));
+    el.audioBitrateSelect.addEventListener('change', () => saveShare({ advanced: { audioBitrateKbps: Number(el.audioBitrateSelect.value) } }));
+    el.stereoCheck.addEventListener('change', () => saveShare({ advanced: { stereo: el.stereoCheck.checked } }));
+    el.hideCursorCheck.addEventListener('change', () => saveShare({ advanced: { hideCursor: el.hideCursorCheck.checked } }));
+    el.baseHostInput.addEventListener('change', async () => {
+      const value = el.baseHostInput.value.trim();
+      if (value && !/^https?:\/\//i.test(value)) {
+        el.baseHostInput.setAttribute('aria-invalid', 'true');
+        showError(el.shareError, 'Server must start with https://');
+        return;
+      }
+      el.baseHostInput.removeAttribute('aria-invalid');
+      await saveShare({ advanced: { baseHost: value } });
+    });
 
-    inviteForm.addEventListener('submit', (event) => {
+    el.inviteForm.addEventListener('submit', (event) => {
       event.preventDefault();
-      handleManualLaunch(inviteInput.value);
+      launchInvite(el.inviteInput.value);
     });
-    fallbackBtn.addEventListener('click', () => handleManualLaunch(FALLBACK_URL));
-    openClassicBtn.addEventListener('click', () => handleManualLaunch(FALLBACK_URL));
-    if (windowMinBtn) {
-      windowMinBtn.addEventListener('click', () => requestWindowAction('minimize'));
-    }
-    if (windowPinBtn) {
-      windowPinBtn.addEventListener('click', () => {
-        const targetState = !(windowMetaState.meta && windowMetaState.meta.isAlwaysOnTop);
-        requestWindowAction('toggle-pin', { target: targetState });
-      });
-    }
-    if (windowCloseBtn) {
-      windowCloseBtn.addEventListener('click', () => requestWindowAction('close'));
-    }
-    if (advancedToggleBtn) {
-      advancedToggleBtn.addEventListener('click', () => {
-        setAdvancedVisibility(!advancedVisible);
-      });
-    }
-    if (windowSizeSelect) {
-      windowSizeSelect.addEventListener('change', () => {
-        const value = windowSizeSelect.value;
-        if (value === 'custom') {
-          const current = windowMetaState.meta;
-          const seed = current && current.width && current.height ? `${current.width}x${current.height}` : '1600x900';
-          const manual = window.prompt('Enter width x height (e.g., 1600x900):', seed);
-          if (!manual) {
-            updateWindowMeta(windowMetaState.meta);
-            return;
-          }
-          const parts = manual.toLowerCase().split('x');
-          if (parts.length !== 2) {
-            updateWindowMeta(windowMetaState.meta);
-            return;
-          }
-          const width = parseInt(parts[0], 10);
-          const height = parseInt(parts[1], 10);
-          if (Number.isFinite(width) && Number.isFinite(height)) {
-            requestWindowResize(width, height);
-          } else {
-            updateWindowMeta(windowMetaState.meta);
-          }
-          return;
-        }
-        const [w, h] = value.split('x').map((token) => parseInt(token, 10));
-        if (Number.isFinite(w) && Number.isFinite(h)) {
-          requestWindowResize(w, h);
-        }
-      });
-    }
+    el.openClassicBtn.addEventListener('click', () => launchInvite(FALLBACK_URL));
+
+    el.windowMinBtn.addEventListener('click', () => windowCall('windowAction', { action: 'minimize' }));
+    el.windowCloseBtn.addEventListener('click', () => windowCall('windowAction', { action: 'close' }));
+    el.windowPinBtn.addEventListener('click', () => {
+      windowCall('windowAction', { action: 'toggle-pin', target: !(windowMeta && windowMeta.isAlwaysOnTop) });
+    });
+    el.windowSizeSelect.addEventListener('change', () => {
+      const [width, height] = el.windowSizeSelect.value.split('x').map((token) => parseInt(token, 10));
+      if (Number.isFinite(width) && Number.isFinite(height)) {
+        windowCall('resizeWindow', { width, height });
+      }
+    });
 
     window.addEventListener('beforeunload', () => {
       if (typeof unsubscribe === 'function') {
         unsubscribe();
       }
-      if (shareSaveTimer) {
-        clearTimeout(shareSaveTimer);
+      if (roomSaveTimer) {
+        clearTimeout(roomSaveTimer);
+        flushRoomSave();
       }
     });
 
-    (async function init() {
-      if (!bridge) {
-        setShareStatus('Electron bridge unavailable. Update the app to continue.');
-        setInviteStatus('Bridge unavailable');
-        return;
-      }
-      setAdvancedVisibility(false);
-      subscribeToUpdates();
-      await refreshContext();
-    })();
+    init();
   </script>
 </body>
 </html>

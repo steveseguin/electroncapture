@@ -80,9 +80,6 @@ async function main () {
     return;
   }
 
-  await fs.promises.rm(distDir, { recursive: true, force: true });
-  await fs.promises.mkdir(distDir, { recursive: true });
-
   const localArtifact = resolveLocalArtifact(filename);
   let cleanup = async () => {};
   let zipPath;
@@ -133,9 +130,16 @@ async function main () {
 
   try {
     const actualChecksum = await sha256File(zipPath);
+    const allowMismatch = process.env.CUSTOM_ELECTRON_ALLOW_CHECKSUM_MISMATCH === '1';
     if (expectedChecksum && actualChecksum !== expectedChecksum) {
-      throw new Error(`Checksum mismatch for ${filename}: expected ${expectedChecksum} but got ${actualChecksum}`);
+      const message = `Checksum mismatch for ${filename}: expected ${expectedChecksum} but got ${actualChecksum}`;
+      if (!allowMismatch) {
+        throw new Error(`${message}. Set CUSTOM_ELECTRON_ALLOW_CHECKSUM_MISMATCH=1 to override while the release manifest catches up.`);
+      }
+      console.warn(`[custom-electron] ${message}. Proceeding because CUSTOM_ELECTRON_ALLOW_CHECKSUM_MISMATCH=1.`);
     }
+    await fs.promises.rm(distDir, { recursive: true, force: true });
+    await fs.promises.mkdir(distDir, { recursive: true });
 
     const extractZip = require(require.resolve('extract-zip', { paths: [electronDir] }));
     await extractZip(zipPath, { dir: distDir });

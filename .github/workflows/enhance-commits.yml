@@ -63,7 +63,7 @@ jobs:
       
       - name: Install dependencies
         if: steps.check_time.outputs.skip != 'true'
-        run: npm install @google/generative-ai axios
+        run: npm install axios
       
       - name: Configure Git
         if: steps.check_time.outputs.skip != 'true'
@@ -75,7 +75,7 @@ jobs:
         if: steps.check_time.outputs.skip != 'true'
         id: enhance
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ZAI_API_KEY: ${{ secrets.ZAI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.COMMIT_ENHANCER_PAT }}
         run: |
           node .github/scripts/enhance-commits.js || {

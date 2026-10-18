@@ -847,14 +847,14 @@ function createYargs(){
     describe: "The width of the window in pixel.",
     type: "number",
     nargs: 1,
-	default: 1600
+	default: 1856
   })
   .option("h", {
     alias: "height",
     describe: "The height of the window in pixels.",
     type: "number",
     nargs: 1,
-	default: 960
+	default: 1728
   })
   .option("monitor", {
 	  alias: "m",
@@ -1800,7 +1800,7 @@ if (!(Argv.hwa)){
 	console.log("HWA DISABLED");
 }
 
-const enableFeatureSet = new Set(['WebAssemblySimd', 'PlatformHEVCEncoderSupport']);
+const enableFeatureSet = new Set(['WebAssemblySimd', 'PlatformHEVCEncoderSupport', 'WebRTCHideCursorFromCapturer']);
 const disableFeatureSet = new Set();
 
 if (!(Argv.mf)){
@@ -1829,7 +1829,8 @@ if (process.platform === 'win32') {
 			console.warn('Unable to determine elevation state; assuming not elevated for WGC decisions.', error);
 		}
 	}
-	if (disableWgcViaCli || (!preferWgc && elevatedForCapture)) {
+	const shouldDisableWgc = disableWgcViaCli || (!preferWgc && elevatedForCapture);
+	if (shouldDisableWgc) {
 		disableFeatureSet.add('WinUseBrowserMediaSource');
 		if (!disableWgcViaCli && elevatedForCapture) {
 			console.log('Windows Graphics Capture disabled automatically for elevated session. Launch with --usewgc to override.');
@@ -2100,6 +2101,20 @@ function pushGameCaptureUpdate(windowInstance, reason = 'state-changed') {
   }
 }
 
+function formatGameCaptureDebugPayload(payload) {
+  if (payload === null || payload === undefined) {
+    return '';
+  }
+  if (typeof payload === 'string') {
+    return payload;
+  }
+  try {
+    return JSON.stringify(payload);
+  } catch (error) {
+    return String(payload);
+  }
+}
+
 function getPrimaryGameCaptureWindow(options = {}) {
   const windows = BrowserWindow.getAllWindows().filter((win) => win && !win.isDestroyed());
   if (!windows.length) {
@@ -2113,6 +2128,21 @@ function getPrimaryGameCaptureWindow(options = {}) {
     return prioritized || null;
   }
   return prioritized || windows[0];
+}
+
+function isWindowDisplayingGameShell(windowInstance) {
+  if (!windowInstance || windowInstance.isDestroyed()) {
+    return false;
+  }
+  try {
+    const currentUrl = windowInstance.webContents.getURL() || '';
+    if (!currentUrl || !GAME_CAPTURE_SHELL_URL) {
+      return false;
+    }
+    return currentUrl.startsWith(GAME_CAPTURE_SHELL_URL);
+  } catch (error) {
+    return false;
+  }
 }
 
 function applyInviteToWindow(windowInstance, invitePayload = {}) {
@@ -2382,15 +2412,25 @@ function handleGameCaptureDeepLink(args, source = 'deeplink') {
   if (!targetWindow) {
     return false;
   }
-  return applyInviteToWindow(targetWindow, {
-    inviteUrl,
+  const metadata = {
     slotId: args && (args.slotId || args.slot),
     preset: args && args.preset,
     cursorPreference: args && args.cursor,
     transportPreference: typeof (args && args.whipout) !== 'undefined' ? args.whipout : undefined,
-    appAudioTarget: args && args.appaudio,
+    appAudioTarget: args && args.appaudio
+  };
+  const applied = applyInviteToWindow(targetWindow, {
+    ...metadata,
+    inviteUrl,
     reason: source
   });
+  if (!applied) {
+    return false;
+  }
+  if (!isWindowDisplayingGameShell(targetWindow)) {
+    launchInviteInWindow(targetWindow, inviteUrl, metadata);
+  }
+  return true;
 }
 
 const STREAM_ID_DICTIONARY = (Array.isArray(STREAM_ID_WORDS) ? STREAM_ID_WORDS : []).filter((entry) => typeof entry === 'string' && entry.trim().length);
@@ -2719,16 +2759,19 @@ function buildPublishParams(profile, advanced) {
     512,
     DEFAULT_SHARE_PROFILE.advanced.audioBitrateKbps
   );
+  // VDO bitrate params are in kbps. `scene` is left off: on a publisher it switches
+  // VDO into scene mode, which disables the web-audio mixer (game + mic audio).
+  // `autostart` is left off too: in Electron it skips the source picker and
+  // broadcasts the whole first monitor without asking.
   const params = {
     push: profile.streamId,
     screenshare: 1,
-    bitrate: Math.round(publishBitrate) * 1000,
+    bitrate: Math.round(publishBitrate),
+    outboundvideobitrate: Math.round(publishBitrate),
     ab: Math.round(audioBitrate),
     stereo: advanced.stereo ? 1 : undefined,
     room: profile.roomCode || undefined,
     password: profile.roomPassword || undefined,
-    scene: 0,
-    autostart: 1,
     cleanoutput: 2,
     label: 'VersusGameCapture'
   };
@@ -2758,13 +2801,13 @@ function buildViewParams(profile, advanced) {
     512,
     DEFAULT_SHARE_PROFILE.advanced.audioBitrateKbps
   );
+  // No `stats` here: it pops the stats overlay on load, which would show up in OBS.
   const params = {
     view: profile.streamId,
     cleanoutput: 2,
-    stats: 1,
     quality: 0,
     scene: 0,
-    bitrate: Math.round(viewBitrate) * 1000,
+    bitrate: Math.round(viewBitrate),
     ab: Math.round(audioBitrate),
     stereo: advanced.stereo ? 1 : undefined,
     room: profile.roomCode || undefined,
@@ -2809,6 +2852,11 @@ function buildShareProfilePayload() {
     roomCode: profile.roomCode || '',
     roomPassword: profile.roomPassword || '',
     advanced,
+    defaults: {
+      baseHost: DEFAULT_VDO_BASE_URL,
+      publishBitrateKbps: DEFAULT_SHARE_PROFILE.advanced.publishBitrateKbps,
+      viewBitrateKbps: DEFAULT_SHARE_PROFILE.advanced.viewBitrateKbps
+    },
     shareLinks,
     qualitySummary: {
       preset: advanced.qualityPreset,
@@ -2862,10 +2910,16 @@ function updateStoredShareProfile(payload = {}) {
     if (payload.advanced && typeof payload.advanced === 'object') {
       draft.advanced = draft.advanced || {};
       if (Object.prototype.hasOwnProperty.call(payload.advanced, 'baseHost')) {
-        draft.advanced.baseHost = resolveShareBaseUrl(
-          payload.advanced.baseHost,
-          draft.advanced.baseHost || DEFAULT_VDO_BASE_URL
-        );
+        const requestedHost = typeof payload.advanced.baseHost === 'string' ? payload.advanced.baseHost.trim() : '';
+        // An empty value resets to the default host; anything that isn't http(s) is ignored.
+        if (!requestedHost.length) {
+          draft.advanced.baseHost = DEFAULT_VDO_BASE_URL;
+        } else if (/^https?:\/\//i.test(requestedHost)) {
+          draft.advanced.baseHost = resolveShareBaseUrl(
+            requestedHost,
+            draft.advanced.baseHost || DEFAULT_VDO_BASE_URL
+          );
+        }
       }
       if (Object.prototype.hasOwnProperty.call(payload.advanced, 'publishBitrateKbps')) {
         draft.advanced.publishBitrateKbps = clampNumber(
@@ -3053,6 +3107,41 @@ ipcMain.handle('gamecapture:regenerate-stream-id', (_event, payload) => {
   } catch (error) {
     console.warn('gamecapture:regenerate-stream-id failed:', error);
     return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('gamecapture:open-external', async (_event, rawUrl) => {
+  try {
+    const parsed = new URL(String(rawUrl || ''));
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+      return { success: false, error: 'unsupported-url' };
+    }
+    await shell.openExternal(parsed.toString());
+    return { success: true };
+  } catch (error) {
+    console.warn('gamecapture:open-external failed:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('gamecapture:copy-text', (_event, text) => {
+  try {
+    if (typeof text !== 'string' || !text.length) {
+      return { success: false, error: 'empty' };
+    }
+    electron.clipboard.writeText(text);
+    return { success: true };
+  } catch (error) {
+    console.warn('gamecapture:copy-text failed:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.on('gamecapture:debug-log', (_event, payload) => {
+  try {
+    console.log('[gamecapture-debug]', formatGameCaptureDebugPayload(payload));
+  } catch (error) {
+    console.warn('gamecapture:debug-log failed:', error);
   }
 });
 

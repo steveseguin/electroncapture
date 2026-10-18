@@ -46,6 +46,9 @@
 - The main process persists share profiles per user, including deterministic word-based IDs, quality presets, and Versus-style high-bitrate publish/view URLs exposed over IPC.
 - The preload bridge exposes `electronGameCapture` helpers for share profile reads/updates, so renderers can regenerate IDs, save rooms/passwords, and launch quick-share sessions without node integration.
 - Invite handling remains unchanged: deep links still auto-populate, but the landing shell now shows a secondary “Join with invite” panel with the latest metadata and error surfacing.
+- Landing shell redesigned: one Go live button, full viewer link + QR (vendored `assets/vendor/qrcode.min.js`), editable stream ID, room/password, and real quality controls (preset, bitrate, codec, audio, cursor, server) saved through `updateShareProfile`.
+- Quick-share publish links no longer carry `autostart` (in Electron it skipped the picker and broadcast monitor #1) or `scene` (disabled VDO's web-audio mixer). Bitrate params are now kbps as VDO expects. Viewer links no longer carry `stats`.
+- Opening and copying links goes through main (`gamecapture:open-external`, `gamecapture:copy-text`), so viewer links open in the user's browser instead of a bare Electron window.
 
 ## Execution Plan
 ### Immediate
