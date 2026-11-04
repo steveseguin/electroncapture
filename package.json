@@ -1,6 +1,6 @@
 {
   "name": "VDON.Electron.Capture.App",
-  "version": "2.23.4-beta.3",
+  "version": "2.23.4",
   "description": "A simple tool to aid with frameless window video capture and VDO.Ninja publishing",
   "author": "Steve Seguin <steve@seguin.email>",
   "license": "GPL-3.0-only",
@@ -321,7 +321,7 @@
     "publish": [
       {
         "provider": "github",
-        "releaseType": "release"
+        "releaseType": "prerelease"
       }
     ],
     "afterPack": "./afterPackHook.js",
@@ -329,6 +329,34 @@
     "rpm": {
       "fpm": [
         "--rpm-rpmbuild-define=_build_id_links none"
+      ],
+      "depends": [
+        "gtk3",
+        "libnotify",
+        "nss",
+        "libXScrnSaver",
+        "(libXtst or libXtst6)",
+        "xdg-utils",
+        "at-spi2-core",
+        "(libuuid or libuuid1)",
+        "(alsa-lib or libasound2)",
+        "(mesa-libgbm or libgbm1)",
+        "(libsecret or libsecret-1-0)"
+      ]
+    },
+    "deb": {
+      "depends": [
+        "libgtk-3-0",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0",
+        "libuuid1",
+        "libsecret-1-0",
+        "libasound2 | libasound2t64",
+        "libgbm1"
       ]
     }
   },

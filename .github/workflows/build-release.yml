@@ -9,12 +9,16 @@ on:
       version:
         description: 'Version tag (e.g., v2.23.3)'
         required: true
+      publish_release:
+        description: 'Upload verified packages to the requested GitHub release, marked pre-release'
+        type: boolean
+        default: false
       linux_only:
         description: 'Build and validate only Linux packages (all three architectures)'
         type: boolean
         default: false
       reviewed_prerelease_tooling:
-        description: 'beta.3 only: accept the four documented build-tool advisories; all other audits remain blocking'
+        description: '2.23.4 GitHub prerelease only: accept the four documented build-tool advisories; all other audits remain blocking'
         type: boolean
         default: false
 
@@ -208,17 +212,21 @@ jobs:
           VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
 
       - name: Upload to Release
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) || (github.event_name == 'workflow_dispatch' && inputs.publish_release)
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           fail_on_unmatched_files: true
-          prerelease: ${{ contains(github.ref_name, '-') }}
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+          # Release approval is manual, even when the app version has no suffix.
+          prerelease: true
           files: |
             dist/elecap_win_*_portable.zip
             dist/elecap_win_*_installer.zip
             dist/elecap_win11_*_portable.zip
             dist/elecap_win11_*_installer.zip
             dist/elecap-*.exe
+            dist/elecap.exe
+            dist/elecap-win11.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -235,6 +243,8 @@ jobs:
             dist/elecap_win11_*_portable.zip
             dist/elecap_win11_*_installer.zip
             dist/elecap-*.exe
+            dist/elecap.exe
+            dist/elecap-win11.exe
 
   build-windows-arm64:
     if: github.event_name != 'workflow_dispatch' || !inputs.linux_only
@@ -300,11 +310,13 @@ jobs:
           VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
 
       - name: Upload to Release
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) || (github.event_name == 'workflow_dispatch' && inputs.publish_release)
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           fail_on_unmatched_files: true
-          prerelease: ${{ contains(github.ref_name, '-') }}
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+          # Release approval is manual, even when the app version has no suffix.
+          prerelease: true
           files: |
             dist/*win-arm64*.exe
             dist/*_arm64_*.zip
@@ -380,11 +392,13 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
       - name: Upload to Release
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) || (github.event_name == 'workflow_dispatch' && inputs.publish_release)
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           fail_on_unmatched_files: true
-          prerelease: ${{ contains(github.ref_name, '-') }}
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+          # Release approval is manual, even when the app version has no suffix.
+          prerelease: true
           files: |
             dist/*.dmg
             dist/*.zip
@@ -449,6 +463,14 @@ jobs:
       - name: Verify Linux packages
         run: npm run ${{ matrix.verify }}
 
+      - name: Verify clean Linux package dependencies
+        if: matrix.arch != 'armv7l'
+        shell: bash
+        run: |
+          bash scripts/verify-linux-clean-install.sh dist/*.deb ubuntu:24.04
+          bash scripts/verify-linux-clean-install.sh dist/*.deb ubuntu:22.04
+          bash scripts/verify-linux-clean-install.sh dist/*.rpm fedora:43
+
       - name: Test native Linux packaged runtime
         if: matrix.arch != 'armv7l'
         shell: bash
@@ -486,11 +508,13 @@ jobs:
             /tmp/elecap-recording-validation-*/**
 
       - name: Upload to Release
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) || (github.event_name == 'workflow_dispatch' && inputs.publish_release)
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           fail_on_unmatched_files: true
-          prerelease: ${{ contains(github.ref_name, '-') }}
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+          # Release approval is manual, even when the app version has no suffix.
+          prerelease: true
           files: |
             dist/*.AppImage
             dist/*.deb
