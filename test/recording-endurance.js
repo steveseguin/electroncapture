@@ -3,6 +3,8 @@
 // Opt-in real Electron test with generated media, not a hardware capture test.
 // node test/recording-endurance.js [seconds]; defaults to one hour.
 // Set VALIDATION_CAMERA_LABEL to an exact enumerated label for opt-in camera recording.
+// For a Windows portable SFX, set VALIDATION_PORTABLE=1 to copy it into the
+// temporary fixture directory and use an isolated portable profile (no protocol registration).
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
@@ -102,12 +104,22 @@ if (!process.versions.electron) {
     const env = { ...process.env, ELECTRON_CAPTURE_USER_DATA_DIR: path.join(root, 'profile'), VALIDATION_ROOT: root, VALIDATION_SECONDS: String(seconds) };
     delete env.ELECTRON_RUN_AS_NODE;
     const packaged = process.env.VALIDATION_EXECUTABLE;
+    let executable = packaged || process.env.VALIDATION_ELECTRON || require('electron');
+    if (packaged && process.platform === 'win32' && process.env.VALIDATION_PORTABLE === '1') {
+      const portableDirectory = path.join(root, 'portable-app');
+      fs.mkdirSync(portableDirectory);
+      executable = path.join(portableDirectory, path.basename(packaged));
+      fs.copyFileSync(packaged, executable);
+      delete env.ELECTRON_CAPTURE_USER_DATA_DIR;
+      env.PORTABLE_EXECUTABLE_DIR = portableDirectory;
+      env.ELECTRON_CAPTURE_PORTABLE_LEGACY_USER_DATA_DIR = path.join(root, 'unused-legacy-profile');
+    }
     const fixture = path.join(root, 'packaged-fixture.js');
     if (packaged) fs.writeFileSync(fixture, `(${recordingFixture.toString()})('normal', ${JSON.stringify(process.env.VALIDATION_CAMERA_LABEL || '')}).then(() => setTimeout(async () => { await window.stopValidationRecording(); window.close(); }, ${seconds * 1000}));`);
     const args = ['--multiinstance', '--minimized', '--no-node', '--nodpi', `--url=${url}`];
     if (packaged) args.push(`--js=${fixture}`);
     else args.unshift(__filename);
-    const child = require('node:child_process').spawn(packaged || process.env.VALIDATION_ELECTRON || require('electron'), args,
+    const child = require('node:child_process').spawn(executable, args,
       { cwd: path.join(__dirname, '..'), env, windowsHide: true });
     const log = fs.createWriteStream(path.join(root, 'runtime.log'));
     child.stdout.pipe(log); child.stderr.pipe(log);

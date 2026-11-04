@@ -136,10 +136,30 @@ The source inventory mismatch and outstanding native feature gates make an
 automatic engine replacement inappropriate in this change. Current package
 and platform validation is recorded in [runtime-validation.md](runtime-validation.md).
 
+### Suggested work after beta.3
+
+1. Reconcile custom runtime provenance and port the required native patches to a
+   supported patch release in an isolated checkout. Keep the current installers
+   available until the candidate passes the Windows 10/11 compatibility gates.
+2. Run dedicated hardware coverage: real Windows 10, mixed DPI, OBS alpha,
+   mouse resize/click-through, ASIO and device reconnects, hardware codec/QP and
+   custom scaling/cursor/delay behavior, then multi-hour recording soaks.
+3. Resolve the four build-tool advisories through upstream fixes or tested build
+   API migrations; remove the beta.3 exception before its December 4 expiry.
+   Do not force incompatible majors into the current dependency tree.
+4. Investigate Linux cold-start audio timing before publishing the Linux CI
+   packages, and validate Gamescope/Wayland plus remaining platform-specific
+   reports on their actual environments. Keep unresolved issues open until the
+   reported behavior, rather than a nearby unit test, is verified.
+
 ## November GitHub review
 
 | Reports / PRs | Disposition |
 | --- | --- |
+| #39 | Closed after checking the original reporter's confirmation that doubled Retina dimensions were fixed. Current resolution tests also pass; this does not close other mixed-DPI/OBS reports. |
+| #66 | Closed the exact Node/npm patch-version `EBADENGINE` failure. Current minimum-version ranges, clean Ubuntu install, all 22 suites and Linux CI builds pass. Debian 11 runtime compatibility is not claimed. |
+| #124 | `--class` and `--app-id` produce distinct native X11 WM_CLASS values in simultaneous processes. Left open pending Gamescope/Wayland grouping validation. |
+| #122 | ARM64 packages are built and signature-checked on a native Windows ARM runner. Snapdragon/RTX hardware and native audio feature coverage remain separate; release availability alone is not hardware certification. |
 | #152, #153, #156 | Already incorporated by #167: CommonJS startup compatibility, macOS shortcut ownership, and ASIO stream ownership. |
 | #155 | Retained legacy navigation handler now serializes URL text; direct-handler regressions cover both frame depths and hostile quotes. Current Electron no longer emits this legacy event, so this is defensive hardening, not a demonstrated current-runtime exploit. |
 | #123, #125, #150, #151 | Superseded by the installed dependency versions, including Undici 7.30.1 / 8.12.3 and node-gyp 13.0.2. |

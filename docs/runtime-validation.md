@@ -1,10 +1,86 @@
-# Windows runtime validation — September 5, 2026
+# Runtime validation — updated November 4, 2026
 
-These checks use temporary profiles and local fixtures. No release was published
-or installed over the user's app. The generated recordings are not physical
+These checks use temporary profiles and local fixtures. The generated recordings are not physical
 camera/microphone recordings or a VDO.Ninja end-to-end test.
 
-## November 4, 2026 Windows follow-up
+## Beta.3 release validation, November 4, 2026
+
+Source: `d6e8051` (upstream beta.3 plus reviewed security fixes and the bounded
+window-close listener cleanup). Windows host: Windows 11 Pro 10.0.26200, x64,
+one 1920x1080 display at scale 1. Linux checks use Ubuntu WSL, Xvfb and Openbox;
+they do not establish Wayland/Gamescope behavior.
+
+| Check | Result |
+| --- | --- |
+| Regression suite | All 22 suites pass on Windows and Ubuntu, and in release CI. |
+| Custom Windows window matrix | All 156 checks pass on each of 39.8.10-qp20 and 43.3.0-qp20. |
+| Native Windows transparency | All five native compositor states pass on each custom runtime; resizing remains enabled. |
+| Official Linux window matrix | All 156 checks pass on 43.8.7, with a real X11 window manager. |
+| WebRTC | VP8, VP9 and H.264 encode/decode pass on both custom Windows runtimes and Linux 43.8.7. |
+| Native process audio | Both custom runtimes pass source-isolation, replacement, old-owner stop and recovery checks. |
+| Available-device workflow | Both custom runtimes pass six-device enumeration, capture/output routing, two downloads, fullscreen and resolution checks. Devices include Stereo Mix, OBS Virtual Camera and Realtek/display outputs. |
+| Recording endurance | Each custom runtime completed a 15-minute generated recording while repeatedly opening/closing a second window, plus separate 10-second close/quit recordings. All six recordings decode without warnings. |
+| Recording sync | Normal-recording end offsets: +35.5 ms (v39), -5 ms (v43); offset changes: +19.5 ms and -7 ms. Close/quit end offsets: 46.5–64.5 ms. These are timestamp checks, not perceptual lip-sync measurements. |
+| Memory observations | Thirty samples per runtime. Aggregate private memory peaked at 505 MB (v39) and 493 MB (v43); late-minus-early means +11 MB and +33 MB. Fifteen minutes does not establish multi-hour memory stability. |
+| Dependency audits | Production and both native lockfiles clean. Four explicit build-tool advisories remain under the version/time-scoped manual prerelease policy; see maintenance review. |
+| Linux packaged follow-up | Final AppImage source/version/security fuses match. Both 30-second recordings decode cleanly; first run fails sync drift because audio starts 743 ms late, unchanged repeat passes (+32 ms end offset, +25 ms drift). Cause is not established. Linux assets are retained as CI test artifacts pending cold-start audio investigation. |
+| Linux identities | Two simultaneous processes using `--class` and `--app-id` have distinct native X11 WM_CLASS values, verified with xprop. Gamescope/Wayland remains untested. |
+| Windows release CI | Both custom x64 variants pass version/native-module/packaged-source/fuse checks and timestamped signature verification. Install v39 → replace with v43 → roll back to v39 passes, including native audio startup and uninstall cleanup. Native ARM64 runner verifies official 43.8.7, architecture, package contents, fuses and signatures; x64 audio binaries are excluded. |
+| Downloaded Windows packages | Pinned signatures/timestamps verified again locally. Extracted v39/v43 sources match the reviewed files; native binaries are x64 and security fuses match. Each final portable SFX completes a fresh-profile 30-second recording; both decode cleanly, with end offsets +64/+67 ms and drift +34/+41 ms. |
+| Additional macOS CI build | CI built the universal DMG/ZIP, signed with Developer ID, notarized successfully and passed the native package verifier (both architecture slices/fuses). Downloaded app.asar matches reviewed source/version. This additional build was not published over the existing Mac assets. This Windows host did not repeat physical Mac GUI/device tests. |
+
+Release builds use [workflow run 41863845043](https://github.com/steveseguin/electroncapture/actions/runs/41863845043)
+at source `d6e8051`. Windows signatures match pinned certificate thumbprint
+`C48A2F691E4B3362B47382B9C6AA3391AA96CA0A` and include Authenticode timestamps.
+The project certificate is self-signed; identity/integrity validation does not
+establish public CA trust or SmartScreen reputation. No local certificate-store
+changes were made for validation.
+
+Windows assets are added to the existing [v2.23.4-beta.3 prerelease](https://github.com/steveseguin/electroncapture/releases/tag/v2.23.4-beta.3).
+The existing macOS assets, their `SHA256SUMS`, and the tag at `01eeaaf` are
+preserved. The added Windows binaries come from `d6e8051`, explicitly identified
+in the release supplement, with separate `WINDOWS-SHASUMS256.txt` and the full
+`security-audit.json`. The newly built Mac and Linux CI artifacts are not part
+of this Windows asset addition.
+
+The release binaries remain exactly those built from `d6e8051`. Subsequent
+documentation/test-only commits do not alter the packaged application. Native
+audio tests now disable protocol registration, and `VALIDATION_PORTABLE=1`
+copies a Windows portable SFX into its fixture directory for a fresh portable
+profile without protocol registration. The native audio test passed again after
+that harness correction (`elecap-native-audio-FZAEtV`). The earlier fixture had
+registered the temporary v43 runtime as the current user's electroncapture URL
+handler; automatic approval review blocked removal of that test-owned registry
+key. It remains until a normal installed-app launch registers the proper handler.
+
+Final artifacts relative to `%TEMP%`:
+
+- Windows workflows: `elecap-window-workflows-1f5iJR` (v39), `elecap-window-workflows-6cCvRy` (v43).
+- Windows native alpha: `elecap-windows-alpha-7patwA` (v39), `elecap-windows-alpha-3K2bw2` (v43).
+- Windows WebRTC: `elecap-webrtc-smoke-1kNoU5` (v39), `elecap-webrtc-smoke-pm285A` (v43).
+- Native audio: `elecap-native-audio-jYhP9Z` (v39), `elecap-native-audio-8akjsn` (v43).
+- Device workflow: `elecap-device-validation-CoeUC2` (v39), `elecap-device-validation-rBR02X` (v43).
+- Recording runs and FFmpeg reports: `elecap-recording-validation-H9TNps` (v39), `elecap-recording-validation-Kvi27M` (v43).
+- Final portable recordings: `elecap-recording-validation-hKAPMc` (v39), `elecap-recording-validation-SdA8XC` (v43).
+- WSL `/tmp`: `elecap-window-workflows-7eRpoF`, `elecap-webrtc-smoke-3yg5kJ`, and `elecap-beta3-final-tests.log`.
+- WSL package recordings: `elecap-recording-validation-3zPxsM` (initial sync failure), `elecap-recording-validation-dqUsnh` (unchanged passing repeat); identity results in `elecap-beta3-identities`.
+
+Validation corrections were kept visible: Xvfb alone has no window manager and
+cannot test minimize/restore; the repeat used Openbox. The full X11 run then
+identified a close-listener warning, fixed by combining existing cleanup/logging
+listeners rather than suppressing warnings. An overlapping Windows recording run
+held global shortcuts, so the final window/compositor runs were repeated
+sequentially after both recordings exited. The 15-minute runs preceded only the
+listener consolidation; final window and shutdown regressions cover that change.
+
+Still required on dedicated hardware: actual Windows 10, mixed-DPI monitors,
+physical camera/microphone reconnects, ASIO devices, OBS alpha capture, native
+mouse-driven edge resizing/click-through delivery, hardware codec/QP stress,
+custom cursor/scaling/delay guarantees, and multi-hour soaks. Linux desktop tests
+do not validate PipeWire, Gamescope or the remaining Wayland issue reports.
+
+## Earlier beta.2 Windows follow-up
+
 
 Host: Windows 11 Pro 10.0.26200, x64, one display at scale 1. Tests use temporary
 profiles. The default installed custom runtime remains 39.8.10-qp20; the

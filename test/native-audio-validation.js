@@ -33,6 +33,8 @@ if (!process.versions.electron) {
     });
     setTimeout(() => app.exit(), 75000);
   } else {
+    app.setAsDefaultProtocolClient = () => false;
+    app.isDefaultProtocolClient = () => true;
     const children = [];
     const report = {};
     const waitFor = async predicate => {
