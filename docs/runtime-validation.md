@@ -3,6 +3,15 @@
 These checks use temporary profiles and local fixtures. The generated recordings are not physical
 camera/microphone recordings or a VDO.Ninja end-to-end test.
 
+## Linux supplement, November 4, 2026
+
+The Linux packages have now been added to the existing beta.3 prerelease after
+native x64/ARM64 installation, startup, recording and removal tests passed.
+See [Linux validation](linux-release-validation.md) for the 12-package matrix,
+ARMv7 preview limits, Wayland smoke test, source provenance and uploaded hashes.
+The earlier WSL results and initial decision to hold Linux artifacts are retained
+below as historical evidence; their timing caveat is not claimed universally fixed.
+
 ## Beta.3 release validation, November 4, 2026
 
 Source: `d6e8051` (upstream beta.3 plus reviewed security fixes and the bounded

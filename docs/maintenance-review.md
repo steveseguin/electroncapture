@@ -5,6 +5,15 @@ Windows runtime pins. Source changes are integrated with the upstream macOS
 prerelease work on `master`; Windows binaries were built from `d6e8051`.
 The earlier September findings and evidence are retained below.
 
+## Linux follow-up, November 4, 2026
+
+[Linux validation and publication](linux-release-validation.md) completes the
+x64/ARM64/ARMv7 package matrix for the existing beta.3 prerelease. Native x64
+and ARM64 installed-app tests and six fresh-profile recordings pass. The
+existing Mac/Windows downloads and release tag remain unchanged. Earlier WSL
+cold-start timing, physical hardware and broader compositor coverage remain
+explicit limitations rather than closed issues.
+
 ## Windows follow-up, November 4, 2026
 
 ### Beta.3 prerelease preparation
@@ -148,10 +157,11 @@ and platform validation is recorded in [runtime-validation.md](runtime-validatio
 3. Resolve the four build-tool advisories through upstream fixes or tested build
    API migrations; remove the beta.3 exception before its December 4 expiry.
    Do not force incompatible majors into the current dependency tree.
-4. Investigate Linux cold-start audio timing before publishing the Linux CI
-   packages, and validate Gamescope/Wayland plus remaining platform-specific
-   reports on their actual environments. Keep unresolved issues open until the
-   reported behavior, rather than a nearby unit test, is verified.
+4. Continue investigating the earlier WSL cold-start audio delay and validate
+   Gamescope/full desktop Wayland plus remaining platform-specific reports on
+   their actual environments. Linux packages are now published after native
+   Ubuntu x64/ARM64 fresh-profile timing tests passed; this does not establish
+   that the WSL report or hardware-specific behavior is fixed.
 
 ## November GitHub review
 

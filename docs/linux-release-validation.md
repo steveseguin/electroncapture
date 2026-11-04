@@ -78,6 +78,14 @@ passed; no ARMv7 runtime claim is made. `LINUX-VALIDATION.json` preserves the
 local and CI results; `LINUX-SHASUMS256.txt` covers the Linux packages, exact
 source archive, validation report and full audit report.
 
+Publication completed on November 4, 2026: 12 Linux packages plus source, audit,
+validation and checksum files were added to the existing prerelease. All 16
+uploaded Linux files match GitHub's reported SHA-256 digests. All 17 prior
+Mac/Windows/support assets retain their original IDs, sizes and hashes; the tag
+and prerelease status are unchanged. Every downloaded DEB, RPM and AppImage
+contains the same executable and app.asar as its architecture's verified tar.
+CodeQL passed for the Linux implementation commit.
+
 ## Audits and limits
 
 Production dependencies and both native lockfiles audit clean. All 378 installed
