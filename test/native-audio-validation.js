@@ -9,7 +9,7 @@ if (!process.versions.electron) {
   const root = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'elecap-native-audio-'));
   const env = { ...process.env, VALIDATION_ROOT: root, ELECTRON_CAPTURE_USER_DATA_DIR: path.join(root, 'profile') };
   delete env.ELECTRON_RUN_AS_NODE;
-  const result = spawnSync(require('electron'), [__filename, '--multiinstance', '--minimized', '--no-node', '--url=data:text/html,<body>Native audio validation</body>'],
+  const result = spawnSync(process.env.VALIDATION_ELECTRON || require('electron'), [__filename, '--multiinstance', '--minimized', '--no-node', '--url=data:text/html,<body>Native audio validation</body>'],
     { env, cwd: path.join(__dirname, '..'), windowsHide: true, encoding: 'utf8', timeout: 90000 });
   fs.writeFileSync(path.join(root, 'runtime.log'), result.stdout + result.stderr);
   console.log(`Native audio validation artifacts: ${root}; exit=${result.status}`);

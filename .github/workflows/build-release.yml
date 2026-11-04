@@ -9,6 +9,10 @@ on:
       version:
         description: 'Version tag (e.g., v2.23.3)'
         required: true
+      reviewed_prerelease_tooling:
+        description: 'beta.3 only: accept the four documented build-tool advisories; all other audits remain blocking'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -56,7 +60,27 @@ jobs:
         run: npm test
 
       - name: Audit dependency lockfiles
-        run: npm run audit:dependencies
+        shell: bash
+        env:
+          REVIEWED_PRERELEASE_TOOLING: ${{ github.event_name == 'workflow_dispatch' && inputs.reviewed_prerelease_tooling }}
+        run: |
+          if [ "$REVIEWED_PRERELEASE_TOOLING" = "true" ]; then
+            node test/prerelease-audit-regression.js
+            node scripts/audit-prerelease-dependencies.js
+            npm audit --omit=dev --package-lock-only --audit-level=low
+            npm --prefix native-modules/electron-asio audit --package-lock-only --audit-level=low
+            npm --prefix native-modules/window-audio-capture audit --package-lock-only --audit-level=low
+          else
+            npm run audit:dependencies
+          fi
+
+      - name: Upload full dependency audit report
+        if: always() && inputs.reviewed_prerelease_tooling
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: prerelease-security-audit
+          path: dist/security-audit.json
+          if-no-files-found: error
 
   build-windows:
     needs: validate

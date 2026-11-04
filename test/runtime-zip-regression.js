@@ -36,15 +36,23 @@ assert.throws(() => validateLinks(['dir//link'], new Map([['dir//link', '../../o
   const filename = 'electron-v39.8.10-qp20-win32-x64.zip';
   fs.writeFileSync(path.join(root, filename), 'corrupt replacement');
   fs.writeFileSync(path.join(root, 'SHASUMS256.txt'), `${'0'.repeat(64)}  ${filename}\n`);
-  const failedInstall = require('node:child_process').spawnSync(process.execPath,
+  const attemptInstall = () => require('node:child_process').spawnSync(process.execPath,
     [path.join(__dirname, '../scripts/install-custom-electron.js')], {
       cwd: root, encoding: 'utf8', timeout: 5000, windowsHide: true,
       env: { ...process.env, CUSTOM_ELECTRON_SKIP: '', CUSTOM_ELECTRON_LOCAL_DIR: root,
         CUSTOM_ELECTRON_WINDOWS_VARIANT: 'win10', npm_config_platform: 'win32', npm_config_arch: 'x64' },
     });
-  assert.equal(failedInstall.status, 1);
-  assert.match(failedInstall.stderr, /Checksum mismatch/);
-  assert.equal(fs.readFileSync(sentinel, 'utf8'), 'preserve me', 'failed verification retains installed runtime');
+  const manifest = path.join(root, 'SHASUMS256.txt');
+  const forgedHash = require('node:crypto').createHash('sha256').update('corrupt replacement').digest('hex');
+  for (const contents of [null, `${forgedHash}  ${filename}\n`, `${'0'.repeat(64)}  ${filename}\n`]) {
+    if (contents === null) fs.unlinkSync(manifest);
+    else fs.writeFileSync(manifest, contents);
+    const failedInstall = attemptInstall();
+    assert.equal(failedInstall.status, 1);
+    assert.match(failedInstall.stderr, /Checksum mismatch/,
+      'missing or forged local manifests must not bypass the pinned release checksum');
+    assert.equal(fs.readFileSync(sentinel, 'utf8'), 'preserve me', 'failed verification retains installed runtime');
+  }
   console.log('Runtime ZIP validation checks passed');
   clearTimeout(watchdog);
 })().catch(error => { console.error(error); process.exitCode = 1; });

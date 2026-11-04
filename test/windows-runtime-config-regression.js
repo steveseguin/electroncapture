@@ -91,4 +91,18 @@ const checksumEntries = parseChecksumManifest([
 assert.strictEqual(checksumEntries.get('text-mode.zip'), 'a'.repeat(64));
 assert.strictEqual(checksumEntries.get('binary-mode.zip'), 'b'.repeat(64));
 
+// electron-builder's local ZIP option bypasses its downloader, so enforce the
+// same pinned checksum there as in the development-runtime installer.
+const localDirectory = fs.mkdtempSync(path.join(require('os').tmpdir(), 'elecap-build-checksum-'));
+const localZip = path.join(localDirectory, windows11.artifacts.get('x64'));
+fs.writeFileSync(localZip, 'untrusted local runtime');
+for (const setting of ['CUSTOM_ELECTRON_WIN11_ZIP', 'CUSTOM_ELECTRON_LOCAL_DIR']) {
+  const env = { ...process.env, CUSTOM_ELECTRON_WIN11_ZIP: '', CUSTOM_ELECTRON_LOCAL_DIR: '' };
+  env[setting] = setting === 'CUSTOM_ELECTRON_WIN11_ZIP' ? localZip : localDirectory;
+  const result = require('child_process').spawnSync(process.execPath,
+    ['-e', 'require("./electron-builder.win11")'], { cwd: path.resolve(__dirname, '..'), env, encoding: 'utf8' });
+  assert.strictEqual(result.status, 1);
+  assert.match(result.stderr, /Checksum mismatch/);
+}
+
 console.log('Windows runtime configuration regression checks passed');

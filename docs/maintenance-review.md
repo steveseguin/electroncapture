@@ -3,6 +3,123 @@
 The current follow-up is implemented directly on `master` for 2.23.4-beta.2.
 The earlier September findings and evidence are retained below.
 
+## Windows follow-up, November 4, 2026
+
+### Beta.3 prerelease preparation
+
+Integrated upstream `01eeaaf` / `dff1aab`, including the macOS unpinned
+click-through restoration fix. The expanded window matrix passes 156 checks on
+each custom Windows runtime, plus five native compositor states per runtime.
+The inherited fullscreen-startup assertion also needed the Windows native-state
+correction: actual display coverage is tested, not merely the app's state flag.
+
+For the requested beta.3 prerelease, manual release builds may explicitly select
+`reviewed_prerelease_tooling`. This accepts exactly four reviewed **development
+tooling** advisory URLs in the audit report: the two extract-zip symlink
+advisories, minimatch globparts amplification, and glob cancellation traversal.
+They remain unfixed and visible in the uploaded full report. These tools process
+the checked-in file patterns and release archives, not renderer input. Runtime
+ZIPs are checksum-pinned, and the application-owned extraction has ZIP preflight
+validation; this is mitigation, not a patch for every third-party extractor.
+Forced minimatch/glob major overrides would change build APIs; extract-zip has
+no published patched version. Neither is justified as a low-risk app update.
+
+`scripts/audit-prerelease-dependencies.js` restricts the exception to
+`2.23.4-beta.3`, expires it on December 4, 2026, checks every affected package is
+development-only, and rejects unknown advisories, invalid audit results and any
+production dependency finding. Production and both native lockfiles still pass
+strict audits; registry signatures are verified. Ordinary tag/stable builds and
+`npm run audit:dependencies` retain their original strict gate. The explicit
+manual path builds artifacts for review; it does not publish them automatically
+or dismiss GitHub alerts. This supersedes the earlier statement that every
+prerelease build must wait for all build-tool advisories to disappear.
+
+Reviewed the beta.2 changes on Windows 11 Pro build 26200 and compared the local
+`ssn_app` window compatibility code and custom Electron source. The follow-up
+changes are uncommitted. Neither custom Windows runtime pin was changed.
+
+### Corrections made
+
+- Fetch stream read/close IPC now verifies the requesting WebContents owns the
+  stream. Previously another window knowing a stream UUID could consume or cancel
+  it. This is defense in depth; UUID guessing or disclosure was not demonstrated.
+- Local runtime ZIPs now use the trusted release checksum, just like downloads.
+  A missing or attacker-supplied adjacent manifest can no longer bypass the
+  installer checksum. The Windows 11 builder's explicit/local ZIP paths now also
+  verify the pinned checksum before handing the archive to electron-builder.
+  Failed verification preserves the installed development runtime.
+- The private window-audio-capture submodule lockfile updates build-time Undici
+  6.28.0 to 6.29.1. Its audit now reports zero vulnerabilities. This is a separate
+  dirty submodule change: commit it in that repository and update the parent's
+  gitlink before sharing/releasing; a parent-only commit will not carry it.
+- Corrected the Windows fullscreen integration assertion to verify actual display
+  coverage when native `isFullScreen()` reports false. The app already handled
+  this native discrepancy; no fullscreen behavior change was needed.
+- Added native Windows compositor and local WebRTC integration tests, plus
+  alternate-runtime selection for window/audio checks. Updated stale README
+  runtime versions and removed the claim that the old custom binaries contain
+  current Chromium security fixes.
+
+The initial malformed-fetch regression failure was caused by installed Undici
+7.29.0 being older than the committed 7.30.1 lockfile. `npm ci --ignore-scripts`
+and restoration of the existing custom Electron runtime resolved it. The test
+was retained unchanged. Production dependencies and both native lockfiles audit
+clean. Root build tooling still reports 19 moderate and one high affected
+dependency entries, rooted in glob/minimatch/extract-zip advisories. These are
+not 20 independent application vulnerabilities. The strict release audit remains
+blocked; no forced major overrides or audit exclusions were applied.
+
+### Compatibility decision and runtime update plan
+
+1. **Keep this app update on the verified custom binaries.** Both
+   `39.8.10-qp20` and `43.3.0-qp20` pass the Windows checks recorded in
+   [runtime-validation.md](runtime-validation.md). This does not patch Chromium
+   or establish Windows 10 compatibility from a Windows 11 host.
+2. **Reconcile the exact patch inventory before rebuilding.** The local tree
+   `C:\electron-work-v36\src\electron` is at `1db7db0b84`, matching the
+   [39.8.10-qp20 release](https://github.com/steveseguin/electron/releases/tag/v39.8.10-qp20).
+   Its committed history includes WS_THICKFRAME/translucency/DWM fixes, QP caps,
+   and NVENC configuration. However the inspected WebRTC tree still has a
+   10,000 ms `kMaximumDelayMs`, and no `WebRTC-DisableAdaptiveScaling`,
+   `WebRTC-LockResolution`, or `WebRTC-LockFramerate` checks in
+   `media/engine/webrtc_video_engine.cc`. The helper notes describe these features;
+   the [43.3.0-qp20 release](https://github.com/steveseguin/electron/releases/tag/v43.3.0-qp20)
+   also advertises them. Do not assume the v39 checkout represents the v43 patch
+   set or that helper notes prove the shipped binaries' behavior. Record Electron,
+   Chromium, WebRTC and FFmpeg revisions, patch order, GN args and artifact hashes
+   for each supported variant. Preserve the existing working trees.
+3. **Port to a supported candidate in an isolated source checkout.** First
+   evaluate a current patch release on the v43 line while it remains supported;
+   if it is outside support when building, use a supported branch. Electron
+   [supports its latest three stable major lines](https://www.electronjs.org/docs/latest/tutorial/electron-timelines).
+   Rebase transparency/window-frame patches independently from codec QP caps,
+   cursor constraint routing, scaling field trials, delay/buffer changes and
+   FFmpeg/NVENC. Use upstream implementations when equivalent behavior is proven.
+   A version bump in package.json cannot port these C++ changes or update a pinned
+   custom runtime. Do not bulk cherry-pick Chromium security patches into v39
+   without their dependencies and native build verification.
+4. **Do not directly copy SSN's Windows 10 workaround.** In `ssn_app/main.js`,
+   `applyPlatformWindowCompatibility` makes transparent frameless Win10 windows
+   non-resizable. This agrees with the caution in Electron's
+   [transparent-window documentation](https://www.electronjs.org/docs/latest/tutorial/custom-window-styles),
+   but removes a feature Electron Capture's native patches deliberately restore.
+   SSN's OS/profile detection is a useful design reference, not proof that its
+   stock Electron 44 runtime preserves this app's capture behavior.
+5. **Gate candidate promotion on real behavior.** Run the existing regressions,
+   91 window checks, native compositor checks, WebRTC codec delivery, process
+   audio replacement, and packaged recordings on actual Windows 10 and Windows
+   11. Also require mouse-driven edge resizing, OBS alpha capture, click delivery
+   through overlays, mixed-DPI monitors, hardware codec paths/QP under load,
+   cursor visibility, adaptive-scaling locks, long delay playback, physical
+   camera/microphone reconnects and extended recordings. Sign/verify the packages
+   and test installer replacement/rollback. Only then update runtime pins and
+   checksums, with the prior installer available for rollback.
+
+No new custom engine build, signed installer, publication, or Windows 10/native
+Linux/macOS validation was performed in this Windows follow-up. The source
+inventory mismatch and outstanding native feature gates make an automatic
+engine replacement inappropriate in this change.
+
 ## November GitHub review
 
 | Reports / PRs | Disposition |

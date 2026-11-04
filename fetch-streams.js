@@ -68,9 +68,9 @@ function setupFetchStreams(ipcMain, fetch) {
     }
   });
 
-  ipcMain.handle('readStreamChunk', async (_event, id) => {
+  ipcMain.handle('readStreamChunk', async (event, id) => {
     const entry = streams.get(id);
-    if (!entry) return { done: true };
+    if (!entry || entry.sender !== event.sender) return { done: true };
     try {
       const { done, value } = await entry.reader.read();
       if (done) { release(id); return { done: true }; }
@@ -80,7 +80,9 @@ function setupFetchStreams(ipcMain, fetch) {
       throw error;
     }
   });
-  ipcMain.handle('closeStream', async (_event, id) => {
+  ipcMain.handle('closeStream', async (event, id) => {
+    const entry = streams.get(id);
+    if (entry && entry.sender !== event.sender) return false;
     release(id, true);
     return true;
   });

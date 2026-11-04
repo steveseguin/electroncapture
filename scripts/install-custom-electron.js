@@ -102,18 +102,16 @@ async function main () {
   const localArtifact = resolveLocalArtifact(filename);
   let cleanup = async () => {};
   let zipPath;
-  let expectedChecksum;
+  // Cached/local artifacts must satisfy the same trusted release checksum as
+  // downloaded artifacts. A manifest beside a ZIP cannot authenticate that ZIP.
+  const expectedChecksum = (await loadChecksums(target)).get(filename);
+  if (!expectedChecksum) {
+    throw new Error(`No checksum entry found for ${filename} in ${CHECKSUM_MANIFEST}`);
+  }
 
   if (localArtifact) {
     zipPath = localArtifact.zipPath;
     console.log(`[custom-electron] Using local artifact ${zipPath}`);
-    if (localArtifact.manifestPath) {
-      const checksums = await loadChecksumFile(localArtifact.manifestPath);
-      expectedChecksum = checksums.get(filename);
-    }
-    if (!expectedChecksum) {
-      console.log('[custom-electron] No checksum entry found locally; will verify via computed hash only.');
-    }
   } else {
     const downloadUrl = `${target.mirrorBase}${target.releaseTag}/${filename}`;
     const tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'electron-custom-'));
@@ -122,13 +120,6 @@ async function main () {
     };
     zipPath = path.join(tmpDir, filename);
     try {
-      const checksums = await loadChecksums(target);
-      expectedChecksum = checksums.get(filename);
-
-      if (!expectedChecksum) {
-        throw new Error(`No checksum entry found for ${filename} in ${CHECKSUM_MANIFEST}`);
-      }
-
       console.log(`[custom-electron] Downloading ${downloadUrl}`);
       const response = await fetch(downloadUrl, {
         redirect: 'follow',
@@ -149,7 +140,7 @@ async function main () {
 
   try {
     const actualChecksum = await sha256File(zipPath);
-    if (expectedChecksum && actualChecksum !== expectedChecksum) {
+    if (actualChecksum !== expectedChecksum) {
       throw new Error(`Checksum mismatch for ${filename}: expected ${expectedChecksum} but got ${actualChecksum}`);
     }
 
@@ -324,10 +315,8 @@ function resolveLocalArtifact (filename) {
   for (const dir of getLocalDirCandidates()) {
     const candidate = path.join(dir, filename);
     if (fs.existsSync(candidate)) {
-      const manifestPath = path.join(dir, CHECKSUM_MANIFEST);
       return {
-        zipPath: candidate,
-        manifestPath: fs.existsSync(manifestPath) ? manifestPath : null
+        zipPath: candidate
       };
     }
   }
@@ -341,9 +330,4 @@ function getLocalDirCandidates () {
   }
   dirs.add(path.join(os.homedir(), 'electron-work-v36', 'src', 'out', 'Release-win'));
   return Array.from(dirs);
-}
-
-async function loadChecksumFile (manifestPath) {
-  const contents = await fs.promises.readFile(manifestPath, 'utf8');
-  return parseChecksumManifest(contents);
 }

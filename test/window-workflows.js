@@ -41,7 +41,7 @@ if (!process.versions.electron) {
       const env = { ...process.env, WORKFLOW_SCENARIO: name, WORKFLOW_ARTIFACTS: directory,
         ELECTRON_CAPTURE_USER_DATA_DIR: path.join(directory, 'profile') };
       delete env.ELECTRON_RUN_AS_NODE;
-      const child = require('node:child_process').spawn(require('electron'), [__filename,
+      const child = require('node:child_process').spawn(process.env.VALIDATION_ELECTRON || require('electron'), [__filename,
         '--multiinstance', '--nodpi', '--width=640', '--height=360', '--title=Workflow validation', '--windowName=workflow',
         `--url=${pathToFileURL(page).href}`, `--js=${path.join(artifacts, 'fixture.js')}`,
         `--css=${path.join(artifacts, 'fixture.css')}`, ...flags], { cwd: root, env });
@@ -71,6 +71,14 @@ if (!process.versions.electron) {
   const save = () => fs.writeFileSync(path.join(directory, 'result.json'), JSON.stringify(report, null, 2));
   const check = (condition, name) => { assert.ok(condition, name); report.checks.push(name); save(); };
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+  const fillsDisplay = win => {
+    if (win.isMaximized() || win.isFullScreen()) return true;
+    // Transparent Windows windows can fill the screen while native state is false.
+    if (process.platform !== 'win32' || !win.full) return false;
+    const bounds = win.getBounds();
+    const display = screen.getDisplayMatching(bounds).bounds;
+    return ['x', 'y', 'width', 'height'].every(key => Math.abs(bounds[key] - display[key]) <= 1);
+  };
   async function waitFor(predicate, name) {
     const deadline = Date.now() + 8000;
     while (Date.now() < deadline) {
@@ -132,7 +140,8 @@ if (!process.versions.electron) {
       const scale = screen.getDisplayMatching(win.getBounds()).scaleFactor;
       const size = win.getSize();
       if (scenario === 'fullscreen') {
-        check(win.isMaximized() || win.isFullScreen(), 'CLI fullscreen startup');
+        await waitFor(() => fillsDisplay(win), 'CLI fullscreen bounds');
+        check(true, 'CLI fullscreen startup');
       } else {
         check(size[0] === Math.floor(640 / scale) && size[1] === Math.floor(360 / scale), 'CLI physical dimensions');
       }
@@ -204,7 +213,8 @@ if (!process.versions.electron) {
         await waitFor(() => win.webContents.executeJavaScript('!getComputedStyle(document.body).cursor.includes("data:image/png")'), 'restore cursor');
         check(true, 'cursor restored');
         item(win, 'Fullscreen (Alt+Enter)').click();
-        await waitFor(() => win.isMaximized() || win.isFullScreen(), 'fullscreen/maximize');
+        await waitFor(() => fillsDisplay(win), 'fullscreen/maximize');
+        report.fullscreenState = { native: win.isFullScreen(), tracked: win.full, bounds: win.getBounds() };
         check(true, 'fullscreen menu enters supported platform mode');
         item(win, '640x360').click();
         await waitFor(() => !win.isMaximized() && !win.isFullScreen() && win.getSize()[0] === Math.round(640 / scale), 'resize exits fullscreen');

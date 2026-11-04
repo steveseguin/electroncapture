@@ -56,7 +56,7 @@ if (!process.versions.electron) {
   </script></body>`);
   const env = { ...process.env, ELECTRON_CAPTURE_USER_DATA_DIR: path.join(root, 'profile'), VALIDATION_ROOT: root };
   delete env.ELECTRON_RUN_AS_NODE;
-  const result = require('node:child_process').spawnSync(require('electron'), [__filename,
+  const result = require('node:child_process').spawnSync(process.env.VALIDATION_ELECTRON || require('electron'), [__filename,
     '--multiinstance', '--minimized', '--no-node', '--nodpi', `--url=${require('node:url').pathToFileURL(page)}`,
     ...(process.argv.includes('--fake-media') ? ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] : []),
   ], { env, cwd: path.join(__dirname, '..'), windowsHide: true, encoding: 'utf8', timeout: 120000 });

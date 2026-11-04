@@ -88,6 +88,12 @@ async function main() {
   finally { Date.now = oldNow; }
   assert.notEqual(first.streamId, second.streamId, 'simultaneous fetches must stay independent');
   assert.equal(first.boundary, 'frame');
+  const unrelatedPage = { sender: sender() };
+  assert.deepEqual(await handlers.readStreamChunk(unrelatedPage, first.streamId), { done: true },
+    'another window must not consume the owner\'s response');
+  assert.equal(await handlers.closeStream(unrelatedPage, first.streamId), false,
+    'another window must not cancel the owner\'s response');
+  assert.equal(cancelled, 0);
   assert.deepEqual(await handlers.readStreamChunk(event, first.streamId), { done: false, value: [1, 2, 3] });
   page.emit('did-start-navigation', {}, 'url', true, true);
   assert.equal(cancelled, 0, 'in-page navigation keeps the feed');

@@ -4,7 +4,76 @@ These checks use temporary profiles and local fixtures. No release was published
 or installed over the user's app. The generated recordings are not physical
 camera/microphone recordings or a VDO.Ninja end-to-end test.
 
-## Findings requiring attention
+## November 4, 2026 Windows follow-up
+
+Host: Windows 11 Pro 10.0.26200, x64, one display at scale 1. Tests use temporary
+profiles. The default installed custom runtime remains 39.8.10-qp20; the
+43.3.0-qp20 archive was downloaded, checked against its pinned SHA-256, validated
+for ZIP traversal, and extracted separately under `%TEMP%`.
+
+| Check | Result |
+| --- | --- |
+| `npm.cmd test` | All 21 regression suites passed, including new cross-window fetch and forged/missing local checksum cases. |
+| Real Electron startup smoke | Passed on the default runtime. |
+| `test:window-workflows` | 91 checks passed on each custom runtime: window pin/restore, click-through state and shortcut, fullscreen bounds, resolution changes, renderer alpha, CSS/JS, Node mode, reload, reuse and multi-window behavior. |
+| `test:windows-alpha` | Five native compositor states passed on each runtime: initial, resized, unfocused, restored and changed backdrop. Transparent/opaque/half-alpha regions matched equivalent opaque reference compositions. |
+| `test:webrtc-smoke` | VP8, VP9 and H.264 loopback encoding and decoding passed on each runtime, with no external signaling/ICE servers. |
+| `test:native-audio` | Passed on each runtime: source-specific 440/660 Hz loopback, old-owner stop, six replacements, source exit and recovery. |
+| Generated recording | Default runtime: 15-second normal, 10-second window-close and 10-second app-quit recordings decoded successfully. End offsets were approximately 61, 59 and 5 ms. |
+| Unpacked builds | Both variants built with electron-builder 26.18.0. App version, changed runtime source, native binaries, file exclusions and disabled Node/debug/environment-injection fuses were checked. |
+| Packaged recording | Ten seconds on each unpacked build decoded without errors; audio/video end offsets approximately 43 ms (v39) and 33 ms (v43). |
+| Audits | Production npm dependencies and both native lockfiles: zero vulnerabilities. Root build dependencies: 19 moderate and one high affected dependency entries; release audit still fails. |
+
+The compositor test uses native Windows screen sampling of only its fixture
+rectangle. A fully opaque reference window accounts for desktop RGB/color
+conversion; it does not substitute renderer-only `capturePage()` for native
+compositing. Run desktop tests sequentially on an unlocked desktop. Other windows
+or user interaction covering the fixture can legitimately fail these checks.
+
+WebRTC QP averages were about 1.6-1.7 for VP8, 5.6-6.3 for VP9 and 2.4 for H.264
+on the simple generated fixture. Averages do **not** verify a per-frame QP ceiling,
+hardware acceleration, stress behavior or custom field-trial enforcement.
+Default v39 VP8 adapted to 480x270; the other cases delivered 640x360. These tests
+leave adaptation enabled and do not assert resolution locking.
+
+Artifacts (all paths below are relative to `%TEMP%`):
+
+- Window workflows: `elecap-window-workflows-4DXTsj` (v39),
+  `elecap-window-workflows-VckpBP` (v43).
+- Final compositor checks: `elecap-windows-alpha-amZ2iy` (v39),
+  `elecap-windows-alpha-evgG9D` (v43).
+- WebRTC: `elecap-webrtc-smoke-TM3ZWw` (v39), `elecap-webrtc-smoke-Ksh8c8` (v43).
+- Native audio: `elecap-native-audio-y9nn3R` (v39), `elecap-native-audio-22BCaq` (v43).
+- Recording/FFmpeg analyses: `elecap-recording-validation-PXvVJC` (development),
+  `elecap-recording-validation-j6gOjF` (v39 package),
+  `elecap-recording-validation-CkLd8F` (v43 package).
+- Unpacked build outputs are in `dist/review-20261104-win10/win-unpacked` and
+  `dist/review-20261104-win11/win-unpacked`. These are unsigned local validation
+  builds, with executable resource editing disabled; they are not release installers.
+
+Reproduce the native tests against the installed development runtime:
+
+```powershell
+npm.cmd test
+npm.cmd run test:window-workflows
+npm.cmd run test:windows-alpha
+npm.cmd run test:webrtc-smoke
+npm.cmd run test:native-audio
+```
+
+Set `VALIDATION_ELECTRON` to an extracted, verified alternate `electron.exe` for
+the four opt-in integration commands. Use `VALIDATION_EXECUTABLE` instead for
+`test:recording-endurance` against a packaged app. The normal suite does not open
+native windows or capture physical media.
+
+Still unverified here: an actual Windows 10 host, physical cameras/microphones,
+mixed-DPI displays, OBS capture, mouse-driven resize/click-through, ASIO hardware,
+hardware codec selection, custom cursor/scaling/delay semantics, long soaks,
+installer replacement/rollback and release signing. See the
+[maintenance review](maintenance-review.md#windows-follow-up-november-4-2026)
+for the runtime upgrade plan and source-provenance findings.
+
+## September findings requiring attention
 
 1. **Native application-audio replacement fixed and retested.** The old stream's
    asynchronous finalizer cleared the replacement callback. Native stop now owns

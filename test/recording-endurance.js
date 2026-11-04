@@ -107,7 +107,7 @@ if (!process.versions.electron) {
     const args = ['--multiinstance', '--minimized', '--no-node', '--nodpi', `--url=${url}`];
     if (packaged) args.push(`--js=${fixture}`);
     else args.unshift(__filename);
-    const child = require('node:child_process').spawn(packaged || require('electron'), args,
+    const child = require('node:child_process').spawn(packaged || process.env.VALIDATION_ELECTRON || require('electron'), args,
       { cwd: path.join(__dirname, '..'), env, windowsHide: true });
     const log = fs.createWriteStream(path.join(root, 'runtime.log'));
     child.stdout.pipe(log); child.stderr.pipe(log);
