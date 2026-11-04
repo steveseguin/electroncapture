@@ -96,6 +96,16 @@ The expanded matrix covers fullscreen startup and pinned/unpinned click-through
 combinations, including minimized startup and restoring mouse interaction.
 Version 2.23.4-beta.3 supersedes beta.2 for this correction.
 
+The universal beta.3 app is signed and Apple-notarized. Both architecture slices
+passed fuse verification; the bundled main process matches the tested source
+exactly. Packaged Apple Silicon and Intel/Rosetta launch checks passed, including
+CSS/JavaScript injection, explicit Node mode, renderer isolation, and rejection
+of Node environment injection. A packaged 15-second audio/video recording decoded
+without errors and passed synchronization checks. The DMG and ZIP passed their
+integrity checks and SHA-256 verification. CodeQL passed for the fix commit
+`dff1aab`. No release was published. The dependency alerts and platform-validation
+limitations recorded above still apply.
+
 ## September review
 
 This source review focused on the Electron main process, preload bridge, audio
