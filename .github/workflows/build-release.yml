@@ -30,7 +30,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          submodules: recursive
+          persist-credentials: false
+
+      - name: Resolve pinned native module
+        id: native-ref
+        shell: bash
+        run: echo "sha=$(git rev-parse HEAD:native-modules/window-audio-capture)" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout private native module
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: steveseguin/window-audio-capture-plugin
+          ref: ${{ steps.native-ref.outputs.sha }}
+          path: native-modules/window-audio-capture
           ssh-key: ${{ secrets.SUBMODULE_SSH_KEY }}
           persist-credentials: false
 
@@ -100,7 +112,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          submodules: recursive
+          persist-credentials: false
+
+      - name: Resolve pinned native module
+        id: native-ref
+        shell: bash
+        run: echo "sha=$(git rev-parse HEAD:native-modules/window-audio-capture)" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout private native module
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: steveseguin/window-audio-capture-plugin
+          ref: ${{ steps.native-ref.outputs.sha }}
+          path: native-modules/window-audio-capture
           ssh-key: ${{ secrets.SUBMODULE_SSH_KEY }}
           persist-credentials: false
 
