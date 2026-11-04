@@ -36,6 +36,48 @@ claimed from this macOS host.
 The Ubuntu Wayland click-through report #120 and macOS menu-bar fullscreen request
 #112 remain open: the successful macOS window tests do not establish either fix.
 
+### November validation and build
+
+The application changes are committed on `master` at `be2a86f`. Version
+2.23.4-beta.2 uses official Electron 43.8.7 on macOS. The universal DMG and ZIP
+were built with electron-builder 26.18.0, signed with the Developer ID identity,
+notarized by Apple, and checked with `npm run verify:darwin`. Both architecture
+slices passed the security-fuse checks; artifact SHA-256 checksums were generated
+and verified. No GitHub release was published by this review.
+
+- All 21 regression suites passed, as did CLI help and workflow YAML validation.
+- All 94 real macOS window checks passed: pinning, unpinning, visibility,
+  click-through, minimized startup, native/Dock restoration, fullscreen,
+  resolution changes, named-window reuse, multiple windows, shortcuts, and chroma.
+- Native compositor alpha checks passed for transparent, opaque, and half-alpha
+  content (measured alpha values 0, 255, and 128).
+- All 14 available media devices passed the device checks, including the built-in
+  camera/microphone, continuity camera, virtual camera/audio devices, and five
+  outputs. After correcting a test fixture, both window downloads and the
+  fullscreen/resize checks passed in a separate run using synthetic media.
+- A 60-second generated audio/video recording and separate close/quit recordings
+  decoded without errors and passed the synchronization threshold. The actual
+  signed package also recorded and decoded a 15-second fixture successfully.
+- Packaged Apple Silicon startup, explicit Node mode, custom CSS/JavaScript,
+  isolated renderer mode, and rejection of Node environment injection passed.
+  The Intel slice launched successfully through Rosetta; its initial 30-second
+  cold-start timeout passed when retried with a 90-second allowance.
+
+All 16 incorporated/superseded PRs and issues #119 and #41 were closed. PRs #137
+and #144 remain open for the compatibility reasons above. The already-patched
+private fuse report was closed after verifying the signed package; the published
+historical advisory remains published. GitHub now reports zero open CodeQL and
+secret-scanning alerts, with three open dependency alerts (minimatch and two
+extract-zip advisories). This is not a claim that all security work is complete.
+
+CodeQL passed for the application commit. Two other GitHub jobs remain failing:
+the generated Pages workflow cannot clone the private native-module submodule,
+and the commit-message enhancement service returns HTTP 429 after exhausting
+its free quota. These do not invalidate the local build, but CI is not all green.
+The strict dependency audit also remains a blocker for the release workflow.
+Native Windows/Linux behavior and the custom Windows Electron runtimes still
+require platform-specific follow-up.
+
 ## September review
 
 This source review focused on the Electron main process, preload bridge, audio
