@@ -56,10 +56,15 @@ async function decode(file) {
   const metricsPath = path.join(root, 'metrics.jsonl');
   if (fs.existsSync(metricsPath)) {
     const samples = fs.readFileSync(metricsPath, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse);
-    const totals = samples.map(sample => sample.processes.reduce((sum, process) => sum + process.memory.privateBytes, 0) / 1024);
+    // privateBytes is Windows-only; use resident memory on other platforms.
+    const metric = samples.every(sample => sample.processes.every(process => Number.isFinite(process.memory.privateBytes)))
+      ? 'privateBytes' : 'workingSetSize';
+    const totals = samples.map(sample => sample.processes.reduce((sum, process) => sum + process.memory[metric], 0) / 1024);
     const mean = values => values.reduce((sum, value) => sum + value, 0) / values.length;
-    report.memory = { samples: samples.length, firstMB: totals[0], lastMB: totals.at(-1), peakMB: Math.max(...totals),
-      earlyMeanMB: mean(totals.slice(10, 30)), lateMeanMB: mean(totals.slice(-20)) };
+    const windowSize = Math.min(20, Math.max(1, Math.floor(totals.length / 2)));
+    const earlyStart = totals.length >= 40 ? 10 : 0;
+    report.memory = { metric, samples: samples.length, firstMB: totals[0], lastMB: totals.at(-1), peakMB: Math.max(...totals),
+      earlyMeanMB: mean(totals.slice(earlyStart, earlyStart + windowSize)), lateMeanMB: mean(totals.slice(-windowSize)) };
     report.memory.lateMinusEarlyMB = report.memory.lateMeanMB - report.memory.earlyMeanMB;
   }
   report.passed = run.exitCode === 0 && report.recordings.length > 0 && report.recordings.every(recording => recording.passed);

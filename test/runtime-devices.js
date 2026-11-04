@@ -50,6 +50,7 @@ if (!process.versions.electron) {
   delete env.ELECTRON_RUN_AS_NODE;
   const result = require('node:child_process').spawnSync(require('electron'), [__filename,
     '--multiinstance', '--minimized', '--no-node', '--nodpi', `--url=${require('node:url').pathToFileURL(page)}`,
+    ...(process.argv.includes('--fake-media') ? ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] : []),
   ], { env, cwd: path.join(__dirname, '..'), windowsHide: true, encoding: 'utf8', timeout: 120000 });
   fs.writeFileSync(path.join(root, 'runtime.log'), result.stdout + result.stderr);
   console.log(`Device validation artifacts: ${root}; exit=${result.status}`);
@@ -58,6 +59,8 @@ if (!process.versions.electron) {
   process.exitCode = result.status === 0 && passed ? 0 : 1;
 } else {
   const { app, BrowserWindow, screen } = require('electron');
+  app.setAsDefaultProtocolClient = () => false;
+  app.isDefaultProtocolClient = () => true;
   const { resizeWindow } = require('../window-resolution');
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
   const waitFor = async predicate => {

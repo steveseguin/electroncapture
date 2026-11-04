@@ -124,6 +124,9 @@ if (!process.versions.electron) {
   })().catch(error => { console.error(error); process.exitCode = 1; });
 } else {
   const { app, BrowserWindow, screen } = require('electron');
+  // Development validation must not replace the installed app's protocol handler.
+  app.setAsDefaultProtocolClient = () => false;
+  app.isDefaultProtocolClient = () => true;
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
   const waitFor = async predicate => {
     for (let i = 0; i < 240; i++) { if (await predicate()) return; await sleep(50); }
