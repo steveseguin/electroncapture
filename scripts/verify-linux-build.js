@@ -73,12 +73,20 @@ async function verify(arch = process.argv[2] || process.arch) {
     if (extension === 'deb') {
       assert.equal(execFileSync('dpkg-deb', ['-f', file, 'Architecture'], { encoding: 'utf8' }).trim(), expected.deb);
       assert.equal(execFileSync('dpkg-deb', ['-f', file, 'Version'], { encoding: 'utf8' }).trim(), pkg.version.replace('-', '~'));
+      const depends = execFileSync('dpkg-deb', ['-f', file, 'Depends'], { encoding: 'utf8' });
+      for (const library of ['libasound2', 'libasound2t64', 'libgbm1', 'libsecret-1-0']) {
+        assert.ok(depends.includes(library), `Missing DEB runtime dependency: ${library}`);
+      }
     }
     if (extension === 'rpm') {
       assert.equal(execFileSync('rpm', ['-qp', '--queryformat', '%{ARCH}', file], { encoding: 'utf8' }).trim(), expected.rpm);
       execFileSync('rpm', ['-K', '--nosignature', file]);
       const files = execFileSync('rpm', ['-qpl', file], { encoding: 'utf8' });
       assert.ok(!files.includes('/usr/lib/.build-id'), 'RPM must not claim shared Electron build-id links');
+      const depends = execFileSync('rpm', ['-qp', '--requires', file], { encoding: 'utf8' });
+      for (const library of ['alsa-lib', 'mesa-libgbm', 'libsecret']) {
+        assert.ok(depends.includes(library), `Missing RPM runtime dependency: ${library}`);
+      }
     }
     if (extension === 'tar.gz') execFileSync('tar', ['-tzf', file], { stdio: 'ignore' });
   }
