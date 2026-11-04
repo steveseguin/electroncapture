@@ -25,4 +25,32 @@ assert.doesNotMatch(mainSource, /rejectUnauthorized\s*:\s*false/);
 assert.doesNotMatch(mainSource, /appendSwitch\(['"]ignore-certificate-errors/);
 assert.doesNotMatch(mainSource, /getURL\(\)\.includes\(['"]youtube\.com/);
 
+// Exercise the retained legacy navigation handler directly: hostile URL text
+// must remain a string even if a platform/plugin still emits this event.
+const vm = require('vm');
+const start = mainSource.indexOf("mainWindow.webContents.on('new-window'");
+const end = mainSource.indexOf('installDownloadHandler(mainWindow', start);
+assert.ok(start >= 0 && end > start);
+for (const nested of [false, true]) {
+  const target = { url: 'https://fixture.invalid/' };
+  const frames = nested ? [{ url: 'https://parent.invalid/', frames: [target] }] : [target];
+  let handler;
+  let prevented = false;
+  const renderer = { window: {}, injected: false };
+  vm.runInNewContext(mainSource.slice(start, end), {
+    mainWindow: { webContents: { mainFrame: { frames }, on: (_name, callback) => { handler = callback; } } },
+    console: { log() {} },
+    runPageOperation(frame, method, code) {
+      assert.strictEqual(frame, target);
+      assert.strictEqual(method, 'executeJavaScript');
+      vm.runInNewContext(code, renderer);
+    },
+  });
+  const url = 'https://fixture.invalid/"; globalThis.injected = true; //';
+  handler({ preventDefault() { prevented = true; } }, url, null, null, null, null, { url: target.url });
+  assert.strictEqual(prevented, true);
+  assert.strictEqual(renderer.window.location, url);
+  assert.strictEqual(renderer.injected, false);
+}
+
 console.log('Security regression checks passed');

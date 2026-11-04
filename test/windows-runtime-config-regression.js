@@ -53,7 +53,7 @@ assert.strictEqual(windows11Build.nsis.artifactName, 'elecap-${version}-win11.${
 assert.strictEqual(windows11Build.portable.artifactName, 'elecap-win11.exe');
 
 const linux = resolvePlatformTarget('linux', [], { CUSTOM_ELECTRON_WINDOWS_VARIANT: 'future' });
-assert.strictEqual(linux.version, '43.3.0');
+assert.strictEqual(linux.version, '43.8.7');
 
 const outputDir = path.resolve('test-output');
 const fallbackArtifacts = getWindowsArtifactFiles(outputDir, '2.23.3', false);

@@ -45,7 +45,15 @@ async function deviceChecks() {
 if (!process.versions.electron) {
   const root = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'elecap-device-validation-'));
   const page = path.join(root, 'page.html');
-  fs.writeFileSync(page, '<body>Local device validation</body>');
+  fs.writeFileSync(page, `<body>Local device validation<script>
+    window.validationDownload = () => {
+      const bytes = location.hash === '#second' ? 'window-1' : 'window-0';
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([bytes]));
+      a.download = 'validation.bin';
+      a.click();
+    };
+  </script></body>`);
   const env = { ...process.env, ELECTRON_CAPTURE_USER_DATA_DIR: path.join(root, 'profile'), VALIDATION_ROOT: root };
   delete env.ELECTRON_RUN_AS_NODE;
   const result = require('node:child_process').spawnSync(require('electron'), [__filename,
@@ -93,7 +101,8 @@ if (!process.versions.electron) {
       assert.deepEqual(first.getSize(), [Math.round(640 / scale(first)), Math.round(360 / scale(first))]);
       report.resize = true;
       first.minimize();
-      app.emit('second-instance', {}, [], process.cwd(), { ...first.args, title: 'Second download', t: 'Second download' });
+      const secondURL = `${first.args.url}#second`;
+      app.emit('second-instance', {}, [], process.cwd(), { ...first.args, url: secondURL, u: secondURL, title: 'Second download', t: 'Second download' });
       await waitFor(() => BrowserWindow.getAllWindows().length === 2);
       const second = BrowserWindow.getAllWindows().find(window => window !== first);
       await waitFor(() => !second.webContents.isLoading());
@@ -109,7 +118,7 @@ if (!process.versions.electron) {
             item.once('done', (_event, state) => { clearTimeout(timer); resolve({ state, path: item.getSavePath() }); });
           });
         });
-        await window.webContents.executeJavaScript(`(() => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([${JSON.stringify(bytes)}])); a.download = 'validation.bin'; a.click(); })()`);
+        await window.webContents.executeJavaScript('window.validationDownload()');
         const download = await done;
         assert.equal(download.state, 'completed'); assert.equal(download.path, file);
         assert.equal(fs.readFileSync(file, 'utf8'), bytes);

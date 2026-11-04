@@ -34,21 +34,21 @@ const WINDOWS_TARGETS = new Map([
 ]);
 const PLATFORM_TARGETS = new Map([
   ['linux', {
-    version: '43.3.0',
-    releaseTag: 'v43.3.0',
+    version: '43.8.7',
+    releaseTag: 'v43.8.7',
     mirrorBase: 'https://github.com/electron/electron/releases/download/',
     artifacts: new Map([
-      ['x64', 'electron-v43.3.0-linux-x64.zip'],
-      ['arm64', 'electron-v43.3.0-linux-arm64.zip']
+      ['x64', 'electron-v43.8.7-linux-x64.zip'],
+      ['arm64', 'electron-v43.8.7-linux-arm64.zip']
     ])
   }],
   ['darwin', {
-    version: '43.3.0',
-    releaseTag: 'v43.3.0',
+    version: '43.8.7',
+    releaseTag: 'v43.8.7',
     mirrorBase: 'https://github.com/electron/electron/releases/download/',
     artifacts: new Map([
-      ['x64', 'electron-v43.3.0-darwin-x64.zip'],
-      ['arm64', 'electron-v43.3.0-darwin-arm64.zip']
+      ['x64', 'electron-v43.8.7-darwin-x64.zip'],
+      ['arm64', 'electron-v43.8.7-darwin-arm64.zip']
     ])
   }]
 ]);

@@ -1,4 +1,42 @@
-# Reliability review — September 5, 2026
+# Security and reliability review — November 4, 2026
+
+The current follow-up is implemented directly on `master` for 2.23.4-beta.2.
+The earlier September findings and evidence are retained below.
+
+## November GitHub review
+
+| Reports / PRs | Disposition |
+| --- | --- |
+| #152, #153, #156 | Already incorporated by #167: CommonJS startup compatibility, macOS shortcut ownership, and ASIO stream ownership. |
+| #155 | Retained legacy navigation handler now serializes URL text; direct-handler regressions cover both frame depths and hostile quotes. Current Electron no longer emits this legacy event, so this is defensive hardening, not a demonstrated current-runtime exploit. |
+| #123, #125, #150, #151 | Superseded by the installed dependency versions, including Undici 7.30.1 / 8.12.3 and node-gyp 13.0.2. |
+| #143, #164 | Electron npm dependency updated to 44.10.2. Official packaged/runtime pins are independently updated from 43.3.0 to 43.8.7. An npm-only update would not update these shipped runtimes. |
+| #154, #145 | Compatible dependency patches retained; electron-builder updated to 26.18.0 and the development cleanup CLI to rimraf 6.1.4. |
+| #158, #160, #165, #166 | SHA-pinned setup-node, upload-artifact, and both CodeQL steps updated. |
+| #137 | Deferred: electron-is-dev 3 returns a module namespace through `require()`, making the existing development-mode check incorrectly truthy in packaged apps. Requires an API migration. |
+| #144 | Deferred major CLI upgrade. Yargs 18's basic factory works in the compatibility probe, but no security fix requires this migration; comprehensive compatibility with all existing CLI forms remains separate work. |
+| CodeQL alerts 5 and 6 | Downloads use a fixed fixture function instead of interpolated JavaScript; the recording fixture returns a generic HTTP error while logging diagnostics locally. |
+| macOS fuse reports | Both concern the older RunAsNode/debug/environment-injection configuration. Release verification checks both universal architecture slices; the published historical advisory remains valid. |
+
+### Remaining security scope
+
+Production npm dependencies and the ASIO lockfile audit clean. The root development
+dependency graph still reports `extract-zip`, `glob`, and `minimatch` advisories
+(including their dependent packages). The installer validates ZIP symlinks and
+checksums before extraction, but this does not patch every third-party use of
+`extract-zip`. No alert is dismissed merely to make an audit pass. The existing
+strict release-workflow audit gate remains in place.
+
+Windows x64 still requires the custom 39.8.10-qp20 / 43.3.0-qp20 runtimes for its
+capture/encoding features. Updating official Electron does not fix those custom
+binaries; rebuilding and validating them remains separate work. The Windows ARM64,
+macOS, and Linux official pins are 43.8.7. Native Windows/Linux testing is not
+claimed from this macOS host.
+
+The Ubuntu Wayland click-through report #120 and macOS menu-bar fullscreen request
+#112 remain open: the successful macOS window tests do not establish either fix.
+
+## September review
 
 This source review focused on the Electron main process, preload bridge, audio
 stream wrapper, native audio IPC, CLI documentation, and existing regression

@@ -93,7 +93,7 @@ if (!process.versions.electron) {
             if (match[1] === 'chunk') fs.appendFileSync(path.join(root, `${match[2]}.webm`), body);
             else completed[match[2]] = JSON.parse(body);
             response.end('ok');
-          } catch (error) { response.statusCode = 500; response.end(String(error)); }
+          } catch (error) { console.error(error); response.statusCode = 500; response.end('Recording fixture write failed'); }
         });
       } else { response.setHeader('Content-Type', 'text/html'); response.end('<body>Local recording validation</body>'); }
     });

@@ -31,9 +31,9 @@ jobs:
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '22.12.0'
+          node-version: '22'
           cache: 'npm'
 
       - name: Validate release version
@@ -81,9 +81,9 @@ jobs:
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '22.12.0'
+          node-version: '22'
           cache: 'npm'
 
       - name: Restore Windows signing certificate
@@ -171,7 +171,7 @@ jobs:
 
       - name: Upload artifacts (for workflow_dispatch)
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: windows-builds
           if-no-files-found: error
@@ -198,9 +198,9 @@ jobs:
           persist-credentials: false
 
       - name: Setup ARM64 Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '22.12.0'
+          node-version: '22'
           architecture: arm64
           cache: 'npm'
 
@@ -259,7 +259,7 @@ jobs:
 
       - name: Upload artifacts (for workflow_dispatch)
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: windows-arm64-builds
           if-no-files-found: error
@@ -302,9 +302,9 @@ jobs:
           fi
 
       - name: Setup Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '22.12.0'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
@@ -338,7 +338,7 @@ jobs:
 
       - name: Upload artifacts (for workflow_dispatch)
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: macos-universal-builds
           if-no-files-found: error
@@ -357,9 +357,9 @@ jobs:
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '22.12.0'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
@@ -385,7 +385,7 @@ jobs:
 
       - name: Upload artifacts (for workflow_dispatch)
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: linux-builds
           if-no-files-found: error
@@ -410,9 +410,9 @@ jobs:
           persist-credentials: false
 
       - name: Setup ARM64 Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '22.12.0'
+          node-version: '22'
           architecture: arm64
           cache: 'npm'
 
@@ -440,7 +440,7 @@ jobs:
 
       - name: Upload artifacts (for workflow_dispatch)
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: linux-arm64-builds
           if-no-files-found: error
