@@ -740,7 +740,9 @@ function ensureWindowVisible(windowInstance, options = {}) {
 	}
 	// Restoring a window that started minimized can reset its native macOS level
 	// without emitting a restore event, so reapply the requested overlay level.
-	if (process.platform === 'darwin' && (windowInstance.args?.pin || windowInstance.mouseEvent)) {
+	// CLI click-through alone must not override an explicit --no-pin choice.
+	if (process.platform === 'darwin' && (windowInstance.args?.pin ||
+		(windowInstance.mouseEvent && windowInstance.__clickThroughForcedPin))) {
 		windowInstance.setAlwaysOnTop(true, 'floating', 1);
 	}
 
@@ -842,6 +844,7 @@ function applyArgsToExistingWindow(windowInstance, args) {
 			}
 
 		if (typeof mergedArgs.pin === 'boolean') {
+			windowInstance.__clickThroughForcedPin = false;
 			if (mergedArgs.pin) {
 				if (process.platform === 'darwin') {
 					windowInstance.setAlwaysOnTop(true, 'floating', 1);
@@ -2579,7 +2582,8 @@ async function createWindow(args, reuse=false) {
 	mainWindow.__lastDisplayId = initialDisplay ? initialDisplay.id : null;
 	if (process.platform === 'darwin') {
 		const restorePinnedLevel = () => {
-			if (!mainWindow.isDestroyed() && !mainWindow.isMinimized() && (mainWindow.args?.pin || mainWindow.mouseEvent)) {
+			if (!mainWindow.isDestroyed() && !mainWindow.isMinimized() && (mainWindow.args?.pin ||
+				(mainWindow.mouseEvent && mainWindow.__clickThroughForcedPin))) {
 				mainWindow.setAlwaysOnTop(true, 'floating', 1);
 			}
 		};
@@ -2903,6 +2907,7 @@ async function createWindow(args, reuse=false) {
 				}
 			} else {
 				mainWindow.mouseEvent = true;
+				mainWindow.__clickThroughForcedPin = true;
 				mainWindow.setIgnoreMouseEvents(mainWindow.mouseEvent);
 				
 				if (process.platform == 'darwin'){
@@ -3642,6 +3647,7 @@ contextMenu({
 				if (browserWindow.isAlwaysOnTop()) {
 					browserWindow.setAlwaysOnTop(false);
 					browserWindow.args.pin = false;
+					browserWindow.__clickThroughForcedPin = false;
 					browserWindow.setVisibleOnAllWorkspaces(false);
 				} else {
 					browserWindow.args.pin = true;
@@ -3669,6 +3675,7 @@ contextMenu({
 						browserWindow.setVisibleOnAllWorkspaces(true);
 					}
 					browserWindow.mouseEvent = true;
+					browserWindow.__clickThroughForcedPin = true;
 					browserWindow.setIgnoreMouseEvents(browserWindow.mouseEvent);
 				}
 			}

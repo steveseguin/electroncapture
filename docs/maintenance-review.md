@@ -78,6 +78,24 @@ The strict dependency audit also remains a blocker for the release workflow.
 Native Windows/Linux behavior and the custom Windows Electron runtimes still
 require platform-specific follow-up.
 
+### Maintenance follow-up: beta.3
+
+The release remains focused on bug fixes, security fixes, and compatible updates.
+A fresh registry check found no missing root patch/minor updates within the declared
+ranges. The current custom Windows runtimes are the newest published builds of
+that fork; this does not resolve their remaining upstream security-update gap.
+
+Expanded native macOS testing reproduced one beta.2 regression: starting with
+`--minimized --no-pin --unclickable` and restoring from the Dock unexpectedly
+pinned the window. Restoration now distinguishes CLI click-through from the
+menu/shortcut action that explicitly pins an overlay. Explicit pin changes and
+named-window arguments reset that temporary pin choice.
+
+All 21 regression suites and 161 native window checks pass after the correction.
+The expanded matrix covers fullscreen startup and pinned/unpinned click-through
+combinations, including minimized startup and restoring mouse interaction.
+Version 2.23.4-beta.3 supersedes beta.2 for this correction.
+
 ## September review
 
 This source review focused on the Electron main process, preload bridge, audio

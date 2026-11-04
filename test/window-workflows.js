@@ -16,6 +16,11 @@ const scenarios = {
   clickthrough: ['--unclickable'],
   node: ['--node'],
   chroma: ['--chroma=00ff00'],
+  fullscreen: ['--fullscreen'],
+  'minimized-clickthrough': ['--minimized', '--unclickable'],
+  'minimized-unpinned-clickthrough': ['--minimized', '--no-pin', '--unclickable'],
+  'pinned-clickthrough': ['--pin', '--unclickable'],
+  'unpinned-clickthrough': ['--no-pin', '--unclickable'],
 };
 
 if (!process.versions.electron) {
@@ -126,7 +131,11 @@ if (!process.versions.electron) {
       check(true, 'local URL and CSS/JavaScript injections load');
       const scale = screen.getDisplayMatching(win.getBounds()).scaleFactor;
       const size = win.getSize();
-      check(size[0] === Math.floor(640 / scale) && size[1] === Math.floor(360 / scale), 'CLI physical dimensions');
+      if (scenario === 'fullscreen') {
+        check(win.isMaximized() || win.isFullScreen(), 'CLI fullscreen startup');
+      } else {
+        check(size[0] === Math.floor(640 / scale) && size[1] === Math.floor(360 / scale), 'CLI physical dimensions');
+      }
       check(win.webContents.getZoomFactor() === 1, 'nodpi preserves normal page zoom');
       const expectedPin = !!win.args.pin;
       if (!scenario.startsWith('minimized')) {
@@ -151,11 +160,16 @@ if (!process.versions.electron) {
         await waitFor(() => win.isVisible(), 'starts visible');
         check(true, 'window starts visible');
       }
-      if (scenario === 'clickthrough') {
+      if (scenario.includes('clickthrough')) {
         check(win.mouseEvent === true, 'CLI click-through survives initial focus');
         await sleep(1100);
         callbacks.get('CommandOrControl+Shift+Alt+X')();
         check(win.mouseEvent === false, 'shortcut restores mouse interaction');
+        check(win.isAlwaysOnTop() === expectedPin, 'leaving click-through preserves the chosen pin state');
+        callbacks.get('CommandOrControl+Shift+Alt+X')();
+        check(win.mouseEvent === true && win.isAlwaysOnTop(), 'shortcut explicitly pins click-through overlay');
+        callbacks.get('CommandOrControl+Shift+Alt+X')();
+        check(win.mouseEvent === false && win.isAlwaysOnTop() === expectedPin, 'shortcut restores original pin choice');
       }
       if (scenario === 'chroma') {
         check(await win.webContents.executeJavaScript('getComputedStyle(document.body).backgroundColor === "rgb(0, 255, 0)"'), 'chroma background injected');
