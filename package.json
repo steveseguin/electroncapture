@@ -76,7 +76,9 @@
     "build:linux-armv7l": "electron-builder --armv7l --linux deb rpm AppImage tar.gz --publish=never --config.electronVersion=43.8.7 --config.electronDownload.mirror=https://github.com/electron/electron/releases/download/ --config.electronDownload.customDir=v43.8.7",
     "prebuild:linux-armv7l": "node ./scripts/install-window-audio-capture.js",
     "verify:linux": "node ./scripts/verify-linux-build.js x64",
-    "verify:linux-armv7l": "node ./scripts/verify-linux-build.js armv7l"
+    "verify:linux-armv7l": "node ./scripts/verify-linux-build.js armv7l",
+    "test:window-matrix": "node ./test/window-workflows.js --matrix",
+    "test:window-reuse": "node ./test/window-reuse-runtime.js"
   },
   "repository": {
     "type": "git",

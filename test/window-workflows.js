@@ -23,6 +23,19 @@ const scenarios = {
   'unpinned-clickthrough': ['--no-pin', '--unclickable'],
 };
 
+// Full Cartesian matrix for release validation; the default run stays shorter.
+const matrix = process.argv.includes('--matrix') || process.env.WORKFLOW_MATRIX === '1';
+if (matrix) {
+  for (let bits = 0; bits < 32; bits++) {
+    const pin = !!(bits & 1), minimized = !!(bits & 2), clickthrough = !!(bits & 4);
+    const fullscreen = !!(bits & 8), node = !!(bits & 16);
+    const name = `matrix-${pin ? 'pinned' : 'unpinned'}-${minimized ? 'minimized' : 'visible'}-${clickthrough ? 'clickthrough' : 'interactive'}-${fullscreen ? 'fullscreen' : 'windowed'}-${node ? 'node' : 'isolated'}`;
+    scenarios[name] = [pin ? '--pin' : '--no-pin', node ? '--node' : '--no-node',
+      ...(minimized ? ['--minimized'] : []), ...(clickthrough ? ['--unclickable'] : []),
+      ...(fullscreen ? ['--fullscreen'] : [])];
+  }
+}
+
 if (!process.versions.electron) {
   (async () => {
     const artifacts = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'elecap-window-workflows-'));
@@ -38,7 +51,7 @@ if (!process.versions.electron) {
     for (const [name, flags] of Object.entries(scenarios)) {
       const directory = path.join(artifacts, name);
       fs.mkdirSync(directory);
-      const env = { ...process.env, WORKFLOW_SCENARIO: name, WORKFLOW_ARTIFACTS: directory,
+      const env = { ...process.env, WORKFLOW_SCENARIO: name, WORKFLOW_ARTIFACTS: directory, WORKFLOW_MATRIX: matrix ? '1' : '0',
         ELECTRON_CAPTURE_USER_DATA_DIR: path.join(directory, 'profile') };
       delete env.ELECTRON_RUN_AS_NODE;
       const child = require('node:child_process').spawn(process.env.VALIDATION_ELECTRON || require('electron'), [__filename,
@@ -67,6 +80,11 @@ if (!process.versions.electron) {
   const { app, BrowserWindow, globalShortcut, screen, ipcMain } = require('electron');
   const directory = process.env.WORKFLOW_ARTIFACTS;
   const scenario = process.env.WORKFLOW_SCENARIO;
+  const flags = scenarios[scenario];
+  const minimized = flags.includes('--minimized');
+  const fullscreen = flags.includes('--fullscreen');
+  const node = flags.includes('--node');
+  const clickthrough = flags.includes('--unclickable');
   const report = { scenario, versions: process.versions, checks: [], passed: false };
   const save = () => fs.writeFileSync(path.join(directory, 'result.json'), JSON.stringify(report, null, 2));
   const check = (condition, name) => { assert.ok(condition, name); report.checks.push(name); save(); };
@@ -92,7 +110,7 @@ if (!process.versions.electron) {
 
   app.setAsDefaultProtocolClient = () => false;
   app.isDefaultProtocolClient = () => true;
-  if (scenario.startsWith('minimized')) {
+  if (minimized) {
     report.windowEvents = [];
     app.on('browser-window-created', (_event, window) => {
       for (const event of ['minimize', 'restore', 'show', 'focus', 'always-on-top-changed']) {
@@ -139,21 +157,18 @@ if (!process.versions.electron) {
       check(true, 'local URL and CSS/JavaScript injections load');
       const scale = screen.getDisplayMatching(win.getBounds()).scaleFactor;
       const size = win.getSize();
-      if (scenario === 'fullscreen') {
-        await waitFor(() => fillsDisplay(win), 'CLI fullscreen bounds');
-        check(true, 'CLI fullscreen startup');
-      } else {
+      if (!fullscreen) {
         check(size[0] === Math.floor(640 / scale) && size[1] === Math.floor(360 / scale), 'CLI physical dimensions');
       }
       check(win.webContents.getZoomFactor() === 1, 'nodpi preserves normal page zoom');
       const expectedPin = !!win.args.pin;
-      if (!scenario.startsWith('minimized')) {
+      if (!minimized) {
         check(win.isAlwaysOnTop() === expectedPin, 'initial pin state');
       }
-      check(win.webContents.getLastWebPreferences().nodeIntegration === (scenario === 'node'), 'Node integration opt-in');
-      check(win.webContents.getLastWebPreferences().contextIsolation === (scenario !== 'node'), 'context isolation matches mode');
+      check(win.webContents.getLastWebPreferences().nodeIntegration === (node), 'Node integration opt-in');
+      check(win.webContents.getLastWebPreferences().contextIsolation === (!node), 'context isolation matches mode');
       check(win.webContents.backgroundThrottling === false, 'background capture is not throttled');
-      if (scenario.startsWith('minimized')) {
+      if (minimized) {
         await waitFor(() => win.isMinimized(), 'starts minimized');
         check(true, 'CLI starts minimized');
         if (process.platform === 'darwin') {
@@ -169,7 +184,11 @@ if (!process.versions.electron) {
         await waitFor(() => win.isVisible(), 'starts visible');
         check(true, 'window starts visible');
       }
-      if (scenario.includes('clickthrough')) {
+      if (fullscreen) {
+        await waitFor(() => fillsDisplay(win), 'CLI fullscreen bounds after restore');
+        check(true, 'CLI fullscreen startup');
+      }
+      if (clickthrough) {
         check(win.mouseEvent === true, 'CLI click-through survives initial focus');
         await sleep(1100);
         callbacks.get('CommandOrControl+Shift+Alt+X')();

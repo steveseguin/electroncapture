@@ -5,6 +5,24 @@ Windows runtime pins. Source changes are integrated with the upstream macOS
 prerelease work on `master`; Windows binaries were built from `d6e8051`.
 The earlier September findings and evidence are retained below.
 
+## Additional macOS maintenance testing
+
+After integrating the Windows/Linux follow-ups, all 22 regression suites and the
+commit-push safety test pass on macOS. `npm run test:window-matrix` covers all 32
+combinations of pinning, minimized startup, click-through, fullscreen, and Node
+mode alongside the original scenarios: 45 scenarios and 529 assertions pass.
+
+`npm run test:window-reuse` reproduced and now verifies two corrections:
+named-window reuse applies a changed title, and macOS resizing waits for the
+native fullscreen-exit animation. Repeated requests use the latest dimensions;
+requesting continued fullscreen preserves that state. The same live test passes
+138 checks covering repeated reuse, close-timer cancellation, real renderer IPC,
+fetch-stream ownership, and cancellation on navigation/window destruction.
+
+These are maintenance fixes; no new app features are introduced. The test scripts
+use temporary profiles and local HTTP fixtures. Longer recording and native-key
+validation are recorded separately when complete.
+
 ## Linux follow-up, November 4, 2026
 
 [Linux validation and publication](linux-release-validation.md) completes the

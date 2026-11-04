@@ -794,6 +794,9 @@ function applyArgsToExistingWindow(windowInstance, args) {
 		}
 
 	try {
+		if (typeof mergedArgs.title === 'string') {
+			windowInstance.setTitle(mergedArgs.title);
+		}
 		if (typeof mergedArgs.url === 'string' && mergedArgs.url.length) {
 			const currentUrl = windowInstance.webContents.getURL();
 			if (currentUrl !== mergedArgs.url) {
@@ -802,12 +805,30 @@ function applyArgsToExistingWindow(windowInstance, args) {
 		}
 
 			const needsExplicitResize = typeof mergedArgs.width === 'number' || typeof mergedArgs.height === 'number';
-			if (needsExplicitResize) {
-				const isFullScreen = typeof windowInstance.isFullScreen === 'function' ? windowInstance.isFullScreen() : false;
+			const isFullScreen = typeof windowInstance.isFullScreen === 'function' ? windowInstance.isFullScreen() : false;
+			if (needsExplicitResize && !(isFullScreen && mergedArgs.fullscreen === true)) {
+				// macOS restores the old bounds at the end of its fullscreen animation.
+				// One pending callback reads the latest args, including rapid reuse requests.
+				const deferResize = process.platform === 'darwin' && (isFullScreen || windowInstance.__pendingReuseResize);
+				if (deferResize && !windowInstance.__pendingReuseResize) {
+					const resizeAfterFullscreen = () => {
+						windowInstance.__pendingReuseResize = null;
+						if (!windowInstance.isDestroyed() && !windowInstance.args.fullscreen) {
+							try { applyRequestedWindowSize(windowInstance, { clampToWorkArea: true }); }
+							catch (error) { console.warn('Unable to resize reused window after fullscreen:', error); }
+						}
+					};
+					windowInstance.__pendingReuseResize = resizeAfterFullscreen;
+					windowInstance.once('leave-full-screen', resizeAfterFullscreen);
+				}
 				if (isFullScreen) {
 					try {
 						windowInstance.setFullScreen(false);
 					} catch (error) {
+						if (windowInstance.__pendingReuseResize) {
+							windowInstance.removeListener('leave-full-screen', windowInstance.__pendingReuseResize);
+							windowInstance.__pendingReuseResize = null;
+						}
 						console.warn('Failed to exit fullscreen prior to resize:', error);
 					}
 				}
@@ -819,7 +840,7 @@ function applyArgsToExistingWindow(windowInstance, args) {
 						console.warn('Failed to unmaximize prior to resize:', error);
 					}
 				}
-				applyRequestedWindowSize(windowInstance, { clampToWorkArea: true });
+				if (!deferResize) applyRequestedWindowSize(windowInstance, { clampToWorkArea: true });
 				try {
 					console.log('Reusing window bounds after resize:', windowInstance.getBounds());
 				} catch (error) {
