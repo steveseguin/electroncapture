@@ -1,7 +1,8 @@
 # Security and reliability review — November 4, 2026
 
 The current follow-up integrates upstream 2.23.4-beta.3 and preserves the custom
-Windows runtime pins. Source changes are on `release/windows-beta3-security`.
+Windows runtime pins. Source changes are integrated with the upstream macOS
+prerelease work on `master`; Windows binaries were built from `d6e8051`.
 The earlier September findings and evidence are retained below.
 
 ## Windows follow-up, November 4, 2026
@@ -276,7 +277,8 @@ Before publication, additional beta.3 checks passed:
 was published as a macOS prerelease from `01eeaaf`, with the universal DMG, ZIP,
 and SHA256SUMS. GitHub's asset sizes and SHA-256 digests match the local files.
 The latest stable release remains v2.23.2. No Windows/Linux artifacts were
-published in this prerelease.
+included in the initial macOS publication. The Windows follow-up above adds
+separately verified Windows assets while preserving that Mac build and tag.
 
 ## September review
 
