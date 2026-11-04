@@ -68,6 +68,7 @@
     "test:runtime-zip": "node ./test/runtime-zip-regression.js",
     "test:fetch-errors": "node ./test/fetch-errors-regression.js",
     "test:fetch-runtime": "node ./test/fetch-streams-runtime.js",
+    "test:linux-native-window": "node ./test/linux-native-window.js",
     "test:window-workflows": "node ./test/window-workflows.js",
     "test:windows-alpha": "node ./test/window-alpha-windows.js",
     "test:webrtc-smoke": "node ./test/webrtc-runtime-smoke.js",
