@@ -256,8 +256,27 @@ CSS/JavaScript injection, explicit Node mode, renderer isolation, and rejection
 of Node environment injection. A packaged 15-second audio/video recording decoded
 without errors and passed synchronization checks. The DMG and ZIP passed their
 integrity checks and SHA-256 verification. CodeQL passed for the fix commit
-`dff1aab`. No release was published. The dependency alerts and platform-validation
-limitations recorded above still apply.
+`dff1aab`. The dependency alerts and platform-validation limitations recorded
+above still apply.
+
+Before publication, additional beta.3 checks passed:
+
+- A five-minute recording in the signed app decoded without errors. Audio/video
+  ended 10 ms apart; offset change over the recording was approximately 67 ms.
+- A separate recording run completed 15 minimize/hide/restore cycles and repeated
+  secondary-window creation/closure. Normal-stop, window-close, and app-quit
+  recordings all decoded and passed the synchronization threshold.
+- All 14 available media devices, both window-specific downloads, and the
+  fullscreen/resize checks passed together in a complete device-validation run.
+- Native macOS compositor alpha values remained 0, 255, and 128.
+- Local WebRTC send/receive in the signed app's isolated renderer decoded 270
+  video frames and received audio; both streams reported zero packet loss.
+
+[v2.23.4-beta.3](https://github.com/steveseguin/electroncapture/releases/tag/v2.23.4-beta.3)
+was published as a macOS prerelease from `01eeaaf`, with the universal DMG, ZIP,
+and SHA256SUMS. GitHub's asset sizes and SHA-256 digests match the local files.
+The latest stable release remains v2.23.2. No Windows/Linux artifacts were
+published in this prerelease.
 
 ## September review
 
