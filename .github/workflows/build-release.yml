@@ -9,6 +9,10 @@ on:
       version:
         description: 'Version tag (e.g., v2.23.3)'
         required: true
+      linux_only:
+        description: 'Build and validate only Linux packages (all three architectures)'
+        type: boolean
+        default: false
       reviewed_prerelease_tooling:
         description: 'beta.3 only: accept the four documented build-tool advisories; all other audits remain blocking'
         type: boolean
@@ -95,6 +99,7 @@ jobs:
           if-no-files-found: error
 
   build-windows:
+    if: github.event_name != 'workflow_dispatch' || !inputs.linux_only
     needs: validate
     # node-gyp 10 does not recognize the Visual Studio 2026 image currently
     # selected by windows-latest. Keep the native ASIO build on VS 2022.
@@ -232,6 +237,7 @@ jobs:
             dist/elecap-*.exe
 
   build-windows-arm64:
+    if: github.event_name != 'workflow_dispatch' || !inputs.linux_only
     needs: validate
     runs-on: windows-11-arm
     env:
@@ -317,6 +323,7 @@ jobs:
             dist/*_arm64_*.zip
 
   build-macos:
+    if: github.event_name != 'workflow_dispatch' || !inputs.linux_only
     needs: validate
     runs-on: macos-15
     env:
@@ -397,7 +404,27 @@ jobs:
 
   build-linux:
     needs: validate
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-24.04
+            build: build:linux
+            verify: verify:linux
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            build: build:arm64
+            verify: verify:linux-arm64
+          - arch: armv7l
+            runner: ubuntu-24.04
+            build: build:linux-armv7l
+            verify: verify:linux-armv7l
+    runs-on: ${{ matrix.runner }}
+    env:
+      CUSTOM_ELECTRON_SKIP: '1'
+      WINDOW_AUDIO_CAPTURE_SKIP: '1'
+      ELECTRON_ASIO_SKIP: '1'
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -410,13 +437,53 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
+      - name: Install Linux package tools
+        run: sudo apt-get update && sudo apt-get install -y rpm xvfb openbox x11-utils ffmpeg
+
       - name: Install dependencies
         run: npm ci
-        env:
-          WINDOW_AUDIO_CAPTURE_SKIP: '1'
 
-      - name: Build Linux
-        run: npm run build:linux
+      - name: Build Linux packages
+        run: npm run ${{ matrix.build }}
+
+      - name: Verify Linux packages
+        run: npm run ${{ matrix.verify }}
+
+      - name: Test native Linux packaged runtime
+        if: matrix.arch != 'armv7l'
+        shell: bash
+        run: |
+          sudo apt-get install -y ./dist/*.deb
+          export VALIDATION_EXECUTABLE=/opt/elecap/elecap
+          export VALIDATION_PASSWORD_STORE=basic
+          export XDG_DATA_HOME="$(mktemp -d)"
+          export XDG_CONFIG_HOME="$(mktemp -d)"
+          xvfb-run -a bash -eo pipefail -c '
+            openbox >/tmp/elecap-openbox.log 2>&1 &
+            node test/linux-packaged-smoke.js
+            for attempt in 1 2 3; do
+              node test/recording-endurance.js 30 | tee /tmp/elecap-recording-$attempt.log
+              recording_dir=$(sed -n "s/^Validation artifacts: //p" /tmp/elecap-recording-$attempt.log)
+              node test/analyze-recordings.js "$recording_dir" /usr/bin/ffmpeg
+            done
+          '
+
+      - name: Test Linux package removal
+        if: matrix.arch != 'armv7l'
+        run: |
+          sudo apt-get remove -y vdon.electron.capture.app
+          test ! -e /opt/elecap/elecap
+          test ! -e /usr/bin/elecap
+
+      - name: Upload Linux runtime evidence
+        if: always() && matrix.arch != 'armv7l'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: linux-${{ matrix.arch }}-runtime-validation
+          retention-days: 14
+          path: |
+            /tmp/elecap-linux-package-*/**
+            /tmp/elecap-recording-validation-*/**
 
       - name: Upload to Release
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
@@ -428,6 +495,7 @@ jobs:
             dist/*.AppImage
             dist/*.deb
             dist/*.rpm
+            dist/*.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -435,65 +503,11 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: linux-builds
+          name: linux-${{ matrix.arch }}-builds
           if-no-files-found: error
           retention-days: 14
           path: |
             dist/*.AppImage
             dist/*.deb
             dist/*.rpm
-
-  build-linux-arm64:
-    needs: validate
-    runs-on: ubuntu-24.04-arm
-    env:
-      npm_config_arch: arm64
-      ELECTRON_INSTALL_ARCH: arm64
-      WINDOW_AUDIO_CAPTURE_SKIP: '1'
-      ELECTRON_ASIO_SKIP: '1'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Setup ARM64 Node.js
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: '22'
-          architecture: arm64
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build Linux ARM64
-        run: npm run build:arm64
-
-      - name: Verify Linux ARM64 package
-        run: npm run verify:linux-arm64
-
-      - name: Upload to Release
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
-        with:
-          fail_on_unmatched_files: true
-          prerelease: ${{ contains(github.ref_name, '-') }}
-          files: |
-            dist/*-arm64.AppImage
-            dist/*-arm64.deb
-            dist/*-aarch64.rpm
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload artifacts (for workflow_dispatch)
-        if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: linux-arm64-builds
-          if-no-files-found: error
-          retention-days: 14
-          path: |
-            dist/*-arm64.AppImage
-            dist/*-arm64.deb
-            dist/*-aarch64.rpm
+            dist/*.tar.gz

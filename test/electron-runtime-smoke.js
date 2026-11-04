@@ -13,7 +13,7 @@ if (!process.versions.electron) {
   fs.writeFileSync(css, 'body { --capture-smoke: loaded; }');
   const env = { ...process.env, ELECTRON_CAPTURE_USER_DATA_DIR: path.join(root, 'profile') };
   delete env.ELECTRON_RUN_AS_NODE;
-  const result = require('node:child_process').spawnSync(require('electron'), [
+  const result = require('node:child_process').spawnSync(process.env.VALIDATION_ELECTRON || require('electron'), [
     __filename, '--multiinstance', '--minimized', '--no-node', '--nodpi',
     '--url=data:text/html,<body>First smoke page</body>', `--js=${js}`, `--css=${css}`,
   ], { cwd: path.join(__dirname, '..'), env, encoding: 'utf8', timeout: 25000, windowsHide: true });

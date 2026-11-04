@@ -369,29 +369,55 @@ https://github.com/steveseguin/electroncapture/releases/download/1.1.3/obsn-1.1.
 If on version of Electron doesn't work for you all that well, try a different version. There may be some issues with rounded edges depending on you macOS version and the Electron version used.
 
 ### Linux Version 🐧
-- Newest version can be found here, available primarily as AppImages, but variations are available:  https://github.com/steveseguin/electroncapture/releases/
 
-For most Linux users though, we're recommending Linux users build it themselves. Details below
+The [2.23.4-beta.3 prerelease](https://github.com/steveseguin/electroncapture/releases/tag/v2.23.4-beta.3) provides Linux packages using official Electron 43.8.7. It is a testing release; the latest stable release remains separate.
 
-Source builds require **Node.js 22.12.0 or newer** and **npm 9 or newer**, as specified in `package.json`. Install versions compatible with your operating system and CPU architecture, then verify them:
+| Your Linux system | AppImage | Debian / Ubuntu | Fedora / RPM | Portable archive |
+| --- | --- | --- | --- | --- |
+| Intel/AMD 64-bit | `x86_64.AppImage` | `amd64.deb` | `x86_64.rpm` | `x64.tar.gz` |
+| ARM 64-bit / 64-bit Raspberry Pi OS | `arm64.AppImage` | `arm64.deb` | `aarch64.rpm` | `arm64.tar.gz` |
+| ARMv7 / 32-bit Raspberry Pi OS | `armv7l.AppImage` | `armv7l.deb` (armhf) | `armv7l.rpm` | `armv7l.tar.gz` |
+
+Use the architecture of your installed operating system, not just your CPU. `uname -m` commonly reports `x86_64`, `aarch64`, or `armv7l`. ARMv6 and 32-bit Intel Linux are not supported. Electron 43 is the [last series with ARMv7 binaries](https://www.electronjs.org/blog/electron-43-0); prefer a 64-bit OS where possible.
+
+For example, on x64 Linux:
 
 ```bash
-node --version
-npm --version
+# AppImage: no package installation required
+chmod +x elecap-2.23.4-beta.3-x86_64.AppImage
+./elecap-2.23.4-beta.3-x86_64.AppImage
+
+# Debian / Ubuntu: installs required system dependencies
+sudo apt install ./elecap-2.23.4-beta.3-amd64.deb
+
+# Fedora
+sudo dnf install ./elecap-2.23.4-beta.3-x86_64.rpm
+
+# Portable archive: extract, then run elecap inside the extracted directory
+tar -xzf elecap-2.23.4-beta.3-x64.tar.gz
 ```
 
-To get the actual app source code and to build a distributable version, see below
-```
+`LINUX-SHASUMS256.txt` on the release contains SHA-256 checksums. From the download directory, use `sha256sum --check --ignore-missing LINUX-SHASUMS256.txt` to verify downloaded files. The tar archive includes the runtime but still requires system GTK/NSS/audio libraries and a graphical session; it does not install dependencies or desktop integration. User data defaults to the normal Linux profile directory.
+
+If AppImage reports missing FUSE support, use `./elecap-2.23.4-beta.3-x86_64.AppImage --appimage-extract-and-run` or the native package. Run as your regular user. If Ubuntu blocks Chromium user namespaces, prefer the installed DEB with its packaged sandbox setup. Do not disable the sandbox system-wide. For compositor-specific trouble, try `--ozone-platform=x11`; native Wayland behavior can differ. `--class` / `--app-id` supports separate application groups.
+
+Linux uses the official Electron runtime, without the custom Windows WebRTC patches, ASIO, or Windows process-audio capture. See [Linux validation and limitations](docs/linux-release-validation.md) for tested environments, recording results, and ARM hardware coverage.
+
+Source builds require **Node.js 22.12.0 or newer** and **npm 9 or newer**. Install RPM build tools (`sudo apt install rpm` on Ubuntu) before building all package formats.
+
+```bash
 git clone https://github.com/steveseguin/electroncapture
 cd electroncapture
-npm install
+npm ci
 npm run build:linux
+npm run verify:linux
 ```
-The file you need to run will be in the dist folder.
+
+Artifacts are written to `dist`. The default Linux build explicitly targets x64; use the ARM scripts below for other architectures.
 
 ## Installing / building for the Raspberry Pi 🥧
 
-- Newest version can be found here, whichi includes an AppImage specific for the RPI, but more generic ARM-Linux options exist, too.
+- Newest version can be found here, including packages for both 32-bit and 64-bit Raspberry Pi OS.
 https://github.com/steveseguin/electroncapture/releases/
 
 Source builds use the same Node.js and npm minimum versions listed above. Choose the build script for the architecture and artifact you need:
@@ -400,7 +426,8 @@ Source builds use the same Node.js and npm minimum versions listed above. Choose
 | --- | --- | --- |
 | `npm run build:rpi` | ARMv7 | AppImage |
 | `npm run build:rpideb` | ARMv7 | DEB; requires system `fpm` |
-| `npm run build:arm64` | ARM64 | DEB, RPM, and AppImage |
+| `npm run build:arm64` | ARM64 | DEB, RPM, AppImage, and tar.gz |
+| `npm run build:linux-armv7l` | ARMv7 | DEB, RPM, AppImage, and tar.gz |
 
 ```bash
 git clone https://github.com/steveseguin/electroncapture

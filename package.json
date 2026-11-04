@@ -19,13 +19,13 @@
     "prebuild:win-arm64": "node ./scripts/install-window-audio-capture.js",
     "build:darwin": "electron-builder --mac --universal --publish=never --config.electronVersion=43.8.7 --config.electronDownload.mirror=https://github.com/electron/electron/releases/download/ --config.electronDownload.customDir=v43.8.7",
     "prebuild:darwin": "node ./scripts/install-window-audio-capture.js",
-    "build:linux": "electron-builder --linux --publish=never --config.electronVersion=43.8.7 --config.electronDownload.mirror=https://github.com/electron/electron/releases/download/ --config.electronDownload.customDir=v43.8.7",
+    "build:linux": "electron-builder --linux --x64 --publish=never --config.electronVersion=43.8.7 --config.electronDownload.mirror=https://github.com/electron/electron/releases/download/ --config.electronDownload.customDir=v43.8.7",
     "prebuild:linux": "node ./scripts/install-window-audio-capture.js",
     "build:rpideb": "USE_SYSTEM_FPM=true electron-builder --armv7l --linux deb --publish=never --config.electronVersion=43.8.7 --config.electronDownload.mirror=https://github.com/electron/electron/releases/download/ --config.electronDownload.customDir=v43.8.7",
     "prebuild:rpideb": "node ./scripts/install-window-audio-capture.js",
     "build:rpi": "electron-builder --armv7l --linux AppImage --publish=never --config.electronVersion=43.8.7 --config.electronDownload.mirror=https://github.com/electron/electron/releases/download/ --config.electronDownload.customDir=v43.8.7",
     "prebuild:rpi": "node ./scripts/install-window-audio-capture.js",
-    "build:arm64": "electron-builder --arm64 --linux deb rpm AppImage --publish=never --config.electronVersion=43.8.7 --config.electronDownload.mirror=https://github.com/electron/electron/releases/download/ --config.electronDownload.customDir=v43.8.7",
+    "build:arm64": "electron-builder --arm64 --linux deb rpm AppImage tar.gz --publish=never --config.electronVersion=43.8.7 --config.electronDownload.mirror=https://github.com/electron/electron/releases/download/ --config.electronDownload.customDir=v43.8.7",
     "prebuild:arm64": "node ./scripts/install-window-audio-capture.js",
     "clean": "rimraf ./dist",
     "release": "electron-builder --publish always",
@@ -60,7 +60,7 @@
     "verify:win11-signatures": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/verify-windows-signatures.ps1 -Architecture x64 -Variant win11",
     "verify:win-arm64": "node ./scripts/verify-windows-arm64-build.js",
     "verify:win-arm64-signatures": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/verify-windows-signatures.ps1 -Architecture arm64",
-    "verify:linux-arm64": "node ./scripts/verify-linux-arm64-build.js",
+    "verify:linux-arm64": "node ./scripts/verify-linux-build.js arm64",
     "verify:darwin": "node ./scripts/verify-macos-build.js",
     "submit:virustotal": "node ./scripts/submit-virustotal.js",
     "native-modules:rebuild": "node ./scripts/install-window-audio-capture.js --force && node ./scripts/install-electron-asio.js --force",
@@ -70,7 +70,11 @@
     "test:window-workflows": "node ./test/window-workflows.js",
     "test:windows-alpha": "node ./test/window-alpha-windows.js",
     "test:webrtc-smoke": "node ./test/webrtc-runtime-smoke.js",
-    "test:prerelease-audit": "node ./test/prerelease-audit-regression.js"
+    "test:prerelease-audit": "node ./test/prerelease-audit-regression.js",
+    "build:linux-armv7l": "electron-builder --armv7l --linux deb rpm AppImage tar.gz --publish=never --config.electronVersion=43.8.7 --config.electronDownload.mirror=https://github.com/electron/electron/releases/download/ --config.electronDownload.customDir=v43.8.7",
+    "prebuild:linux-armv7l": "node ./scripts/install-window-audio-capture.js",
+    "verify:linux": "node ./scripts/verify-linux-build.js x64",
+    "verify:linux-armv7l": "node ./scripts/verify-linux-build.js armv7l"
   },
   "repository": {
     "type": "git",
@@ -267,13 +271,14 @@
       }
     },
     "linux": {
-      "category": "public.build.automation",
+      "category": "Utility",
       "icon": "assets/icons/png/256x256.png",
       "artifactName": "${productName}-${version}-${arch}.${ext}",
       "target": [
         "AppImage",
         "deb",
-        "rpm"
+        "rpm",
+        "tar.gz"
       ],
       "executableName": "elecap",
       "synopsis": "Video Capture Tool",
@@ -284,7 +289,8 @@
           "Comment": "Video Capture Tool",
           "Categories": "Utility;"
         }
-      }
+      },
+      "syncDesktopName": true
     },
     "nsis": {
       "runAfterFinish": true,
@@ -315,7 +321,12 @@
       }
     ],
     "afterPack": "./afterPackHook.js",
-    "afterAllArtifactBuild": "./afterPack.js"
+    "afterAllArtifactBuild": "./afterPack.js",
+    "rpm": {
+      "fpm": [
+        "--rpm-rpmbuild-define=_build_id_links none"
+      ]
+    }
   },
   "devDependencies": {
     "@electron/fuses": "^2.1.3",
@@ -356,5 +367,6 @@
     "picomatch": "4.0.5",
     "tar": "7.5.22",
     "tmp": "0.2.7"
-  }
+  },
+  "desktopName": "elecap.desktop"
 }

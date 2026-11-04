@@ -117,6 +117,8 @@ if (!process.versions.electron) {
     const fixture = path.join(root, 'packaged-fixture.js');
     if (packaged) fs.writeFileSync(fixture, `(${recordingFixture.toString()})('normal', ${JSON.stringify(process.env.VALIDATION_CAMERA_LABEL || '')}).then(() => setTimeout(async () => { await window.stopValidationRecording(); window.close(); }, ${seconds * 1000}));`);
     const args = ['--multiinstance', '--minimized', '--no-node', '--nodpi', `--url=${url}`];
+    // Only for disposable headless validation profiles without an unlocked keyring.
+    if (process.env.VALIDATION_PASSWORD_STORE === 'basic') args.push('--password-store=basic');
     if (packaged) args.push(`--js=${fixture}`);
     else args.unshift(__filename);
     const child = require('node:child_process').spawn(executable, args,
