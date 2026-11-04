@@ -3,13 +3,16 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { getCurrentFuseWire, FuseState, FuseV1Options } = require('@electron/fuses');
 
 if (process.platform !== 'darwin') {
     throw new Error('The macOS package verifier must run on macOS.');
 }
 
 const projectRoot = path.resolve(__dirname, '..');
-const distDir = path.join(projectRoot, 'dist');
+const distDir = process.env.ELECTRON_CAPTURE_DIST_DIR
+    ? path.resolve(process.env.ELECTRON_CAPTURE_DIST_DIR)
+    : path.join(projectRoot, 'dist');
 const packageJson = require(path.join(projectRoot, 'package.json'));
 const productName = packageJson.build.productName;
 const appPath = path.join(distDir, 'mac-universal', `${productName}.app`);
@@ -56,7 +59,38 @@ if (expectedTeamId) {
 
 run('xcrun', ['stapler', 'validate', appPath]);
 
-console.log(`Verified signed and notarized universal macOS package: ${path.relative(projectRoot, appPath)}`);
+verifyFuses().then(() => {
+    console.log(`Verified signed and notarized universal macOS package: ${path.relative(projectRoot, appPath)}`);
+}).catch(error => {
+    console.error(error);
+    process.exitCode = 1;
+});
+
+async function verifyFuses() {
+    // The fuses live in the framework, not the small Contents/MacOS launcher.
+    // Inspect both architecture slices; reading the universal file directly
+    // checks only the first fuse wire.
+    const framework = path.join(appPath, 'Contents', 'Frameworks', 'Electron Framework.framework', 'Electron Framework');
+    const temporary = fs.mkdtempSync(path.join(require('os').tmpdir(), 'elecap-macos-fuses-'));
+    try {
+        for (const architecture of ['x86_64', 'arm64']) {
+            const binary = path.join(temporary, architecture);
+            run('lipo', [framework, '-thin', architecture, '-output', binary]);
+            const wire = await getCurrentFuseWire(binary);
+            for (const name of ['RunAsNode', 'EnableNodeOptionsEnvironmentVariable', 'EnableNodeCliInspectArguments']) {
+                if (wire[FuseV1Options[name]] !== FuseState.DISABLE) {
+                    throw new Error(`${architecture}: ${name} must be disabled.`);
+                }
+            }
+            if (wire[FuseV1Options.EnableCookieEncryption] !== FuseState.ENABLE) {
+                throw new Error(`${architecture}: cookie encryption must be enabled.`);
+            }
+            console.log(`Verified security fuses for ${architecture}.`);
+        }
+    } finally {
+        fs.rmSync(temporary, { recursive: true, force: true });
+    }
+}
 
 function assertArtifact(names, extension) {
     const matching = names.filter(name => name.toLowerCase().endsWith(extension));

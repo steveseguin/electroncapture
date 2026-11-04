@@ -159,6 +159,7 @@ jobs:
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           fail_on_unmatched_files: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
           files: |
             dist/elecap_win_*_portable.zip
             dist/elecap_win_*_installer.zip
@@ -249,6 +250,7 @@ jobs:
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           fail_on_unmatched_files: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
           files: |
             dist/*win-arm64*.exe
             dist/*_arm64_*.zip
@@ -327,6 +329,7 @@ jobs:
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           fail_on_unmatched_files: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
           files: |
             dist/*.dmg
             dist/*.zip
@@ -372,6 +375,7 @@ jobs:
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           fail_on_unmatched_files: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
           files: |
             dist/*.AppImage
             dist/*.deb
@@ -426,6 +430,7 @@ jobs:
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           fail_on_unmatched_files: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
           files: |
             dist/*-arm64.AppImage
             dist/*-arm64.deb
