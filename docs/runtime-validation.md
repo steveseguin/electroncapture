@@ -42,6 +42,9 @@ preserved. The added Windows binaries come from `d6e8051`, explicitly identified
 in the release supplement, with separate `WINDOWS-SHASUMS256.txt` and the full
 `security-audit.json`. The newly built Mac and Linux CI artifacts are not part
 of this Windows asset addition.
+All 14 added asset sizes and SHA-256 digests were compared with GitHub's upload
+metadata. The three existing Mac asset digests and original tag target remain
+unchanged. The latest stable release remains v2.23.2.
 
 The release binaries remain exactly those built from `d6e8051`. Subsequent
 documentation/test-only commits do not alter the packaged application. Native

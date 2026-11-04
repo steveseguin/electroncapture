@@ -160,7 +160,7 @@ and platform validation is recorded in [runtime-validation.md](runtime-validatio
 | #39 | Closed after checking the original reporter's confirmation that doubled Retina dimensions were fixed. Current resolution tests also pass; this does not close other mixed-DPI/OBS reports. |
 | #66 | Closed the exact Node/npm patch-version `EBADENGINE` failure. Current minimum-version ranges, clean Ubuntu install, all 22 suites and Linux CI builds pass. Debian 11 runtime compatibility is not claimed. |
 | #124 | `--class` and `--app-id` produce distinct native X11 WM_CLASS values in simultaneous processes. Left open pending Gamescope/Wayland grouping validation. |
-| #122 | ARM64 packages are built and signature-checked on a native Windows ARM runner. Snapdragon/RTX hardware and native audio feature coverage remain separate; release availability alone is not hardware certification. |
+| #122 | Closed the ARM64 build-availability request after publishing installer/portable artifacts verified on a native Windows ARM runner. Snapdragon/RTX hardware and native audio feature coverage remain separate; release availability is not hardware certification. |
 | #152, #153, #156 | Already incorporated by #167: CommonJS startup compatibility, macOS shortcut ownership, and ASIO stream ownership. |
 | #155 | Retained legacy navigation handler now serializes URL text; direct-handler regressions cover both frame depths and hostile quotes. Current Electron no longer emits this legacy event, so this is defensive hardening, not a demonstrated current-runtime exploit. |
 | #123, #125, #150, #151 | Superseded by the installed dependency versions, including Undici 7.30.1 / 8.12.3 and node-gyp 13.0.2. |
