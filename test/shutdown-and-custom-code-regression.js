@@ -92,7 +92,7 @@ function testShutdown() {
   assert.equal(prevented, 2, 'the final quit must proceed');
   const window = new EventEmitter();
   const closeStart = source.indexOf("\tmainWindow.on('close', function(e) {");
-  const closeEnd = source.indexOf("\tmainWindow.on('closed'", closeStart);
+  const closeEnd = source.indexOf('\tmainWindow.on("page-title-updated"', closeStart);
   assert.ok(closeStart >= 0 && closeEnd > closeStart);
   vm.runInNewContext(source.slice(closeStart, closeEnd), { ...context, mainWindow: window });
   window.emit('close', event);

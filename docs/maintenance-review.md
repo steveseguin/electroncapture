@@ -1,6 +1,7 @@
 # Security and reliability review — November 4, 2026
 
-The current follow-up is implemented directly on `master` for 2.23.4-beta.2.
+The current follow-up integrates upstream 2.23.4-beta.3 and preserves the custom
+Windows runtime pins. Source changes are on `release/windows-beta3-security`.
 The earlier September findings and evidence are retained below.
 
 ## Windows follow-up, November 4, 2026
@@ -12,6 +13,20 @@ click-through restoration fix. The expanded window matrix passes 156 checks on
 each custom Windows runtime, plus five native compositor states per runtime.
 The inherited fullscreen-startup assertion also needed the Windows native-state
 correction: actual display coverage is tested, not merely the app's state flag.
+
+The Linux X11 integration run found a `MaxListenersExceededWarning` while
+leaving fullscreen: ten existing window-close listeners plus a temporary resize
+cleanup listener exceeded Node's default threshold. All functional assertions
+passed, but the warning correctly failed the integration gate. Consolidated the
+standalone close diagnostic into the existing timer-cleanup listener; neither
+cleanup nor the warning gate was removed. All 156 X11 window checks then passed
+on official Electron 43.8.7 under Xvfb/Openbox, as did all three WebRTC codecs.
+
+CI checkout now uses the ordinary repository token for the public app and a
+read-only deploy key only for the private native repository, at the exact parent
+gitlink revision. The previous private checkout credential failed authentication;
+a replacement repository-scoped read-only key was installed without exposing or
+retaining its private material locally.
 
 For the requested beta.3 prerelease, manual release builds may explicitly select
 `reviewed_prerelease_tooling`. This accepts exactly four reviewed **development
@@ -36,7 +51,8 @@ prerelease build must wait for all build-tool advisories to disappear.
 
 Reviewed the beta.2 changes on Windows 11 Pro build 26200 and compared the local
 `ssn_app` window compatibility code and custom Electron source. The follow-up
-changes are uncommitted. Neither custom Windows runtime pin was changed.
+changes were committed in `1edfdd3`, followed by the CI checkout correction in
+`5546895`. Neither custom Windows runtime pin was changed.
 
 ### Corrections made
 
@@ -49,9 +65,8 @@ changes are uncommitted. Neither custom Windows runtime pin was changed.
   verify the pinned checksum before handing the archive to electron-builder.
   Failed verification preserves the installed development runtime.
 - The private window-audio-capture submodule lockfile updates build-time Undici
-  6.28.0 to 6.29.1. Its audit now reports zero vulnerabilities. This is a separate
-  dirty submodule change: commit it in that repository and update the parent's
-  gitlink before sharing/releasing; a parent-only commit will not carry it.
+  6.28.0 to 6.29.1. Its audit now reports zero vulnerabilities. Native repository
+  commit `2ee4812` was pushed and the parent's gitlink updated in `1edfdd3`.
 - Corrected the Windows fullscreen integration assertion to verify actual display
   coverage when native `isFullScreen()` reports false. The app already handled
   this native discrepancy; no fullscreen behavior change was needed.
@@ -67,7 +82,8 @@ was retained unchanged. Production dependencies and both native lockfiles audit
 clean. Root build tooling still reports 19 moderate and one high affected
 dependency entries, rooted in glob/minimatch/extract-zip advisories. These are
 not 20 independent application vulnerabilities. The strict release audit remains
-blocked; no forced major overrides or audit exclusions were applied.
+blocked; no forced major overrides were applied. The explicit beta.3-only
+manual prerelease exception is described above.
 
 ### Compatibility decision and runtime update plan
 
@@ -106,7 +122,7 @@ blocked; no forced major overrides or audit exclusions were applied.
    SSN's OS/profile detection is a useful design reference, not proof that its
    stock Electron 44 runtime preserves this app's capture behavior.
 5. **Gate candidate promotion on real behavior.** Run the existing regressions,
-   91 window checks, native compositor checks, WebRTC codec delivery, process
+   156 window checks, native compositor checks, WebRTC codec delivery, process
    audio replacement, and packaged recordings on actual Windows 10 and Windows
    11. Also require mouse-driven edge resizing, OBS alpha capture, click delivery
    through overlays, mixed-DPI monitors, hardware codec paths/QP under load,
@@ -115,10 +131,10 @@ blocked; no forced major overrides or audit exclusions were applied.
    and test installer replacement/rollback. Only then update runtime pins and
    checksums, with the prior installer available for rollback.
 
-No new custom engine build, signed installer, publication, or Windows 10/native
-Linux/macOS validation was performed in this Windows follow-up. The source
-inventory mismatch and outstanding native feature gates make an automatic
-engine replacement inappropriate in this change.
+No new custom engine build or actual Windows 10 validation was performed.
+The source inventory mismatch and outstanding native feature gates make an
+automatic engine replacement inappropriate in this change. Current package
+and platform validation is recorded in [runtime-validation.md](runtime-validation.md).
 
 ## November GitHub review
 

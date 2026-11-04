@@ -2750,10 +2750,6 @@ async function createWindow(args, reuse=false) {
 		mainWindow.__pendingHangupTimeout = hangupTimeout;
 	});
 	
-	mainWindow.on('closed', function () { // Around line 1112
-		console.log(`Window ID ${mainWindow ? mainWindow.id : 'unknown'} 'closed' event.`);
-	});
-
 	mainWindow.on("page-title-updated", function(event) {
 		console.log("page-title-updated");
 		event.preventDefault();
@@ -2794,7 +2790,10 @@ async function createWindow(args, reuse=false) {
 		clearInterval(youtubeAdTimer);
 		youtubeAdTimer = null;
 	};
-	mainWindow.once('closed', clearYoutubeAdTimer);
+	mainWindow.once('closed', () => {
+		clearYoutubeAdTimer();
+		console.log(`Window ID ${mainWindow.id} 'closed' event.`);
+	});
 	mainWindow.webContents.on('did-start-navigation', (_event, _url, inPlace, mainFrame) => {
 		if (mainFrame && !inPlace) clearYoutubeAdTimer();
 	});
