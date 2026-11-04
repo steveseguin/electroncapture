@@ -28,6 +28,8 @@ if (!process.versions.electron) {
   process.exitCode = passed ? 0 : 1;
 } else {
   const { app, BrowserWindow } = require('electron');
+  app.setAsDefaultProtocolClient = () => false;
+  app.isDefaultProtocolClient = () => true;
   const assert = require('node:assert/strict');
   const waitFor = async predicate => {
     const deadline = Date.now() + 12000;

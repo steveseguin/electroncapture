@@ -65,4 +65,35 @@ c.close();
 a.close();
 assert.equal(registered.size, 0);
 assert.equal(registry.set(a, 'mute', 'Ctrl+M', () => {}), false);
+
+// On macOS Meta (the renderer spelling of the Command key) and
+// CommandOrControl must share one native registration and ownership stack.
+for (const platform of ['darwin', 'win32', 'linux']) {
+  const nativeBindings = new Map();
+  const keyOf = accelerator => accelerator.toLowerCase().replace('commandorcontrol',
+    platform === 'darwin' ? 'command' : 'control').replace('meta',
+    platform === 'darwin' ? 'command' : 'meta');
+  const aliases = createWindowShortcuts({
+    register(accelerator, callback) {
+      const key = keyOf(accelerator);
+      if (nativeBindings.has(key)) return false;
+      nativeBindings.set(key, callback);
+      return true;
+    },
+    unregister(accelerator) { nativeBindings.delete(keyOf(accelerator)); },
+  }, platform);
+  const first = window(), second = window();
+  const events = [];
+  assert.equal(aliases.set(first, 'mute', 'CommandOrControl+M', () => events.push('mute')), true);
+  const custom = pushToTalkAccelerator({ meta: true, key: 'm' });
+  assert.equal(aliases.set(second, 'ppt', custom, () => events.push('ppt')), true);
+  assert.equal(nativeBindings.size, platform === 'darwin' ? 1 : 2);
+  nativeBindings.get(keyOf(custom))();
+  assert.deepEqual(events, ['ppt']);
+  second.close();
+  nativeBindings.get(keyOf('CommandOrControl+M'))();
+  assert.deepEqual(events, ['ppt', 'mute']);
+  first.close();
+  assert.equal(nativeBindings.size, 0);
+}
 console.log('Window shortcut ownership regression checks passed');

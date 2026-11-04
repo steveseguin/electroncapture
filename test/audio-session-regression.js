@@ -105,6 +105,13 @@ function testAsio() {
           this.callback = callback;
         },
         start() { return true; },
+        stop() { return true; },
+        stats: { frames: 32 },
+        write(buffers) {
+          assert.equal(buffers[0].constructor.name, 'Float32Array');
+          assert.equal(buffers[0][0], 0.25);
+          return true;
+        },
       });
       created.push(stream);
       return stream;
@@ -121,6 +128,16 @@ function testAsio() {
   a.send = () => sends++;
   const create = owner => handlers['asio:createStream']({ sender: owner }, {});
   const first = create(a), second = create(a), other = create(b);
+  for (const operation of ['startStream', 'stopStream', 'getStreamStats', 'writeStream']) {
+    assert.throws(() => handlers[`asio:${operation}`]({ sender: b }, first.streamId, [[0.25]]),
+      /Stream not found/, `another renderer must not ${operation}`);
+  }
+  handlers['asio:closeStream']({ sender: b }, first.streamId);
+  assert.equal(created[0].closeCount, 0, 'another renderer must not close the stream');
+  assert.equal(handlers['asio:startStream']({ sender: a }, first.streamId), true);
+  assert.equal(handlers['asio:stopStream']({ sender: a }, first.streamId), true);
+  assert.equal(handlers['asio:getStreamStats']({ sender: a }, first.streamId).frames, 32);
+  assert.equal(handlers['asio:writeStream']({ sender: a }, first.streamId, [[0.25]]), true);
   assert.equal(a.listenerCount('destroyed'), 1, 'one set of listeners per renderer');
   a.emit('did-start-navigation', {}, 'url', true, true);
   assert.equal(created[0].closeCount, 0);
@@ -130,8 +147,8 @@ function testAsio() {
   assert.equal(created[2].closeCount, 0);
   created[0].callback([new Float32Array([1])], []);
   assert.equal(sends, 0, 'late callbacks must not send to the replacement page');
-  assert.throws(() => handlers['asio:startStream']({}, first.streamId), /Stream not found/);
-  handlers['asio:closeStream']({}, second.streamId);
+  assert.throws(() => handlers['asio:startStream']({ sender: a }, first.streamId), /Stream not found/);
+  handlers['asio:closeStream']({ sender: a }, second.streamId);
   assert.equal(created[1].closeCount, 1, 'close is idempotent');
   assert.equal(a.listenerCount('destroyed'), 0);
   b.emit('destroyed');
@@ -144,10 +161,16 @@ function testAsio() {
   create(a);
   a.emit('render-process-gone');
   assert.equal(created[4].closeCount, 1);
-  create(a);
+  const last = create(a);
+  handlers['asio:closeStream']({ sender: a }, last.streamId);
+  handlers['asio:closeStream']({ sender: a }, last.streamId);
+  assert.equal(created[5].closeCount, 1, 'owner close is idempotent');
+  create(b);
   module.exports.cleanupAsio();
   assert.equal(created[5].closeCount, 1);
+  assert.equal(created[6].closeCount, 1, 'app cleanup still closes remaining streams');
   assert.equal(a.listenerCount('destroyed'), 0);
+  assert.equal(b.listenerCount('destroyed'), 0);
 }
 
 async function testNativeWrapperStop() {

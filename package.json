@@ -1,12 +1,12 @@
 {
   "name": "VDON.Electron.Capture.App",
-  "version": "2.23.3",
+  "version": "2.23.4-beta.1",
   "description": "A simple tool to aid with frameless window video capture and VDO.Ninja publishing",
   "author": "Steve Seguin <steve@seguin.email>",
   "license": "GPL-3.0-only",
   "main": "main.js",
   "scripts": {
-    "test": "npm run test:portable-paths && npm run test:linux-app-identity && npm run test:windows-runtimes && npm run test:capture-preferences && npm run test:security && npm run test:lifecycle && npm run test:window-audio && npm run test:audio-sessions && npm run test:device-list && npm run test:shortcuts && npm run test:shutdown && npm run test:audio-attachment && npm run test:page-operations && npm run test:window-dpi && npm run test:window-bounds && npm run test:audio-output && npm run test:navigation && npm run test:resolution && npm run test:runtime-zip",
+    "test": "npm run test:startup-dependencies && npm run test:portable-paths && npm run test:linux-app-identity && npm run test:windows-runtimes && npm run test:capture-preferences && npm run test:security && npm run test:lifecycle && npm run test:window-audio && npm run test:audio-sessions && npm run test:device-list && npm run test:shortcuts && npm run test:shutdown && npm run test:audio-attachment && npm run test:page-operations && npm run test:window-dpi && npm run test:window-bounds && npm run test:audio-output && npm run test:navigation && npm run test:resolution && npm run test:runtime-zip && npm run test:fetch-errors",
     "prestart": "node ./scripts/install-window-audio-capture.js && node ./scripts/install-electron-asio.js",
     "start": "electron .",
     "build": "run-os",
@@ -29,6 +29,7 @@
     "prebuild:arm64": "node ./scripts/install-window-audio-capture.js",
     "clean": "rimraf ./dist",
     "release": "electron-builder --publish always",
+    "test:startup-dependencies": "node ./test/startup-dependencies-regression.js",
     "test:portable-paths": "node ./test/portable-data-paths-regression.js",
     "test:linux-app-identity": "node ./test/linux-app-identity-regression.js",
     "test:windows-runtimes": "node ./test/windows-runtime-config-regression.js",
@@ -64,7 +65,9 @@
     "submit:virustotal": "node ./scripts/submit-virustotal.js",
     "native-modules:rebuild": "node ./scripts/install-window-audio-capture.js --force && node ./scripts/install-electron-asio.js --force",
     "postinstall": "node ./scripts/install-custom-electron.js && node ./scripts/install-window-audio-capture.js && node ./scripts/install-electron-asio.js",
-    "test:runtime-zip": "node ./test/runtime-zip-regression.js"
+    "test:runtime-zip": "node ./test/runtime-zip-regression.js",
+    "test:fetch-errors": "node ./test/fetch-errors-regression.js",
+    "test:window-workflows": "node ./test/window-workflows.js"
   },
   "repository": {
     "type": "git",
@@ -321,12 +324,12 @@
     "run-script-os-fix": "^1.0.4"
   },
   "dependencies": {
-    "electron-context-menu": "^5.0.0",
+    "electron-context-menu": "3.6.1",
     "electron-is-dev": "^2.0.0",
     "electron-prompt": "^1.7.0",
     "electron-squirrel-startup": "^1.0.0",
-    "electron-unhandled": "5.0.0",
-    "undici": "^7.29.0",
+    "electron-unhandled": "4.0.1",
+    "undici": "^7.30.1",
     "yargs": "^17.7.3"
   },
   "engines": {
@@ -336,11 +339,11 @@
   "overrides": {
     "@xmldom/xmldom": "0.8.15",
     "ajv": "8.20.0",
-    "brace-expansion@^1.0.0": "1.1.18",
-    "brace-expansion@^2.0.0": "2.1.4",
+    "brace-expansion@^1.0.0": "1.1.21",
+    "brace-expansion@^2.0.0": "2.1.7",
     "form-data": "4.0.6",
     "ip-address": "10.4.0",
-    "js-yaml": "4.3.1",
+    "js-yaml": "4.3.2",
     "lodash": "4.18.1",
     "minimist": "1.2.8",
     "minimatch@^3.0.0": "3.1.5",

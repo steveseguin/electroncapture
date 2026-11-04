@@ -26,6 +26,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          submodules: recursive
+          ssh-key: ${{ secrets.SUBMODULE_SSH_KEY }}
           persist-credentials: false
 
       - name: Setup Node.js
@@ -46,6 +48,9 @@ jobs:
             exit 1
           fi
           echo "Validated release version v$package_version"
+
+      - name: Install regression test dependencies
+        run: npm ci --ignore-scripts
 
       - name: Run regression tests
         run: npm test

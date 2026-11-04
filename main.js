@@ -738,6 +738,11 @@ function ensureWindowVisible(windowInstance, options = {}) {
 			console.warn('Failed to show window while ensuring visibility:', error);
 		}
 	}
+	// Restoring a window that started minimized can reset its native macOS level
+	// without emitting a restore event, so reapply the requested overlay level.
+	if (process.platform === 'darwin' && (windowInstance.args?.pin || windowInstance.mouseEvent)) {
+		windowInstance.setAlwaysOnTop(true, 'floating', 1);
+	}
 
 	if (shouldFocus) {
 		try {
@@ -2572,6 +2577,19 @@ async function createWindow(args, reuse=false) {
 	mainWindow.__immutableWebPreferences = desiredImmutableWebPreferences;
 	mainWindow.__defaultDragRegionEnabled = defaultDragRegionEnabled;
 	mainWindow.__lastDisplayId = initialDisplay ? initialDisplay.id : null;
+	if (process.platform === 'darwin') {
+		const restorePinnedLevel = () => {
+			if (!mainWindow.isDestroyed() && !mainWindow.isMinimized() && (mainWindow.args?.pin || mainWindow.mouseEvent)) {
+				mainWindow.setAlwaysOnTop(true, 'floating', 1);
+			}
+		};
+		mainWindow.on('restore', restorePinnedLevel);
+		mainWindow.on('minimize', () => {
+			// Overlay windows normally hide the Dock icon, but minimized captures
+			// need a visible way to restore them.
+			app.dock.show().then(restorePinnedLevel).catch(error => console.warn('Unable to show Dock icon:', error));
+		});
+	}
 
 	// Restore saved window bounds if user didn't explicitly provide size/position
 	// Only applies when using default dimensions (1280x720)
@@ -2905,7 +2923,11 @@ async function createWindow(args, reuse=false) {
 		if (PIN == true) {
 			// "floating" + 1 is higher than all regular windows, but still behind things
 			// like spotlight or the screen saver
-			mainWindow.setAlwaysOnTop(true, "level");
+			if (process.platform === 'darwin') {
+				mainWindow.setAlwaysOnTop(true, 'floating', 1);
+			} else {
+				mainWindow.setAlwaysOnTop(true, 'floating');
+			}
 			// allows the window to show over a fullscreen window
 			mainWindow.setVisibleOnAllWorkspaces(true);
 		} else {
@@ -2934,7 +2956,9 @@ async function createWindow(args, reuse=false) {
 
 		if (process.platform == "darwin"){
 			try { // MacOS
-				app.dock.hide();
+				if (!BrowserWindow.getAllWindows().some(window => window.isMinimized())) {
+					app.dock.hide();
+				}
 			} catch (e){
 				// Windows?
 			}
@@ -3950,8 +3974,16 @@ app.on('ready', () => {
 // Some APIs can only be used after this event occurs.
 
 app.on('activate', function () {
-  if (BrowserWindow.getAllWindows().length === 0) {
+  if (global.closing) return;
+  const windows = BrowserWindow.getAllWindows();
+  if (windows.length === 0) {
     createWindow(Argv); // createWindow will load and apply saved state
+  } else {
+    for (const window of windows) {
+      if (!window.__pendingCloseRequested && (window.isMinimized() || !window.isVisible())) {
+        ensureWindowVisible(window, { forceShow: true, focus: true });
+      }
+    }
   }
 });
 
