@@ -226,7 +226,6 @@ jobs:
             dist/elecap_win11_*_installer.zip
             dist/elecap-*.exe
             dist/elecap.exe
-            dist/elecap-win11.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -244,7 +243,6 @@ jobs:
             dist/elecap_win11_*_installer.zip
             dist/elecap-*.exe
             dist/elecap.exe
-            dist/elecap-win11.exe
 
   build-windows-arm64:
     if: github.event_name != 'workflow_dispatch' || !inputs.linux_only
