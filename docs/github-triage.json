@@ -281,8 +281,16 @@
   "limitations": [
     "Active independent processes still cannot own the same OS global hotkey simultaneously.",
     "Generated-media startup timing and OBS timestamp reports remain unresolved; no audio retiming is introduced.",
-    "Windows startup recording gaps and sustained v43 memory growth remain under investigation; see docs/windows-exhaustive-validation.md. The Linux bare-Electron timing control does not resolve these Windows findings.",
-    "Changes are source maintenance; the published 2.23.5 tag and assets are not replaced."
+    "Windows startup recording gaps and sustained v43 memory growth remain under investigation; see docs/windows-exhaustive-validation.md. The Linux bare-Electron timing control does not resolve these Windows findings."
   ],
-  "fixCommit": "78b4faba5e3d4b8a2b811d0006d0231dede583c9"
+  "fixCommit": "78b4faba5e3d4b8a2b811d0006d0231dede583c9",
+  "releaseRefresh": {
+    "version": "2.23.5",
+    "sourceCommit": "78b4faba5e3d4b8a2b811d0006d0231dede583c9",
+    "ciRun": 41949763781,
+    "prerelease": true,
+    "status": "Published: all 26 platform packages replaced; all 33 published assets match local SHA-256 hashes. Public Linux x64 AppImage re-downloaded and confirmed identical to the artifact that passed local packaged-startup and shortcut-recovery checks.",
+    "release": "https://github.com/steveseguin/electroncapture/releases/tag/v2.23.5",
+    "previousTagCommit": "65b14d91412dc52a43110f0e21cb132d67b603a0"
+  }
 }
