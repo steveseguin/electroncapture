@@ -8,7 +8,9 @@ const [root, ffmpeg] = process.argv.slice(2);
 if (!root || !ffmpeg) throw new Error('Provide artifact directory and FFmpeg executable');
 
 async function decode(file, completed) {
-  const result = { file: path.basename(file), videoFrames: 0, audioFrames: 0, maxVideoGapSeconds: 0, errors: [] };
+  const result = { file: path.basename(file), videoFrames: 0, audioFrames: 0, maxVideoGapSeconds: 0,
+    maxAudioGapSeconds: 0, videoTimestampRegressions: 0, audioTimestampRegressions: 0, errors: [] };
+  let previousAudioStart;
   // FFmpeg writes audio/video filter logs from separate threads; combined
   // stderr lines can interleave and silently lose frame counts/timestamps.
   // Decode each track separately so every parsed timestamp has one source.
@@ -21,6 +23,10 @@ async function decode(file, completed) {
     const consume = line => {
       const time = /pts_time:([\d.e+-]+)/.exec(line);
       if (track === 'audio' && /Parsed_ashowinfo/.test(line) && time) {
+        const current = Number(time[1]);
+        if (result.audioEnd !== undefined) result.maxAudioGapSeconds = Math.max(result.maxAudioGapSeconds, current - result.audioEnd);
+        if (previousAudioStart !== undefined && current < previousAudioStart) result.audioTimestampRegressions++;
+        previousAudioStart = current;
         result.audioFrames++;
         result.audioStart ??= Number(time[1]);
         const samples = Number(/nb_samples:(\d+)/.exec(line)?.[1]);
@@ -29,7 +35,10 @@ async function decode(file, completed) {
       } else if (track === 'video' && /Parsed_showinfo/.test(line) && time) {
         result.videoFrames++;
         result.videoStart ??= Number(time[1]);
-        if (result.videoEnd !== undefined) result.maxVideoGapSeconds = Math.max(result.maxVideoGapSeconds, Number(time[1]) - result.videoEnd);
+        if (result.videoEnd !== undefined) {
+          result.maxVideoGapSeconds = Math.max(result.maxVideoGapSeconds, Number(time[1]) - result.videoEnd);
+          if (Number(time[1]) < result.videoEnd) result.videoTimestampRegressions++;
+        }
         result.videoEnd = Number(time[1]);
       }
       if (/Error|corrupt|invalid|non.monoton/i.test(line) && result.errors.length < 20) result.errors.push(line);
@@ -59,7 +68,8 @@ async function decode(file, completed) {
   result.complete = Number.isFinite(result.expectedSeconds) && result.expectedSeconds > 0 &&
     result.videoSeconds >= result.expectedSeconds - 1 && result.audioSeconds >= result.expectedSeconds - 1;
   result.passed = result.exitCode === 0 && result.videoFrames > 0 && result.audioFrames > 0 &&
-    result.complete && Number.isFinite(result.offsetChangeSeconds) && Math.abs(result.offsetChangeSeconds) < 0.25 && !result.errors.length;
+    result.complete && Number.isFinite(result.offsetChangeSeconds) && Math.abs(result.offsetChangeSeconds) < 0.25 && !result.errors.length &&
+    result.videoTimestampRegressions === 0 && result.audioTimestampRegressions === 0;
   return result;
 }
 

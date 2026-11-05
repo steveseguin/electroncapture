@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('probe', 'click', 'drag')][string]$Action,
+    [ValidateSet('probe', 'click', 'drag', 'hold')][string]$Action,
     [long]$WindowHandle, [int]$OwnerProcess,
     [int]$X, [int]$Y, [int]$EndX, [int]$EndY
 )
@@ -53,6 +53,7 @@ public class FixtureInput {
       if (!SetCursorPos(x,y)) throw new Exception("Cannot position fixture cursor");
       Thread.Sleep(40);
       if (RootAt(x,y) != window) throw new Exception("Fixture ownership changed; refusing injection");
+      if (action == "hold") { Thread.Sleep(1500); return; }
       Button(2); down=true;
       Thread.Sleep(50);
       if (action == "drag") {

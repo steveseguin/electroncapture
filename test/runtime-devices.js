@@ -83,6 +83,15 @@ if (!process.versions.electron) {
       const first = BrowserWindow.getAllWindows()[0];
       await waitFor(() => !first.webContents.isLoading());
       report.devices = await first.webContents.executeJavaScript(`(${deviceChecks.toString()})()`);
+      if (process.platform === 'win32') {
+        report.asio = await first.webContents.executeJavaScript(`(async () => ({
+          available: await electronApi.isAsioAvailableAsync(),
+          version: await electronApi.getAsioVersionInfoAsync(),
+          devices: await electronApi.getAsioDevicesAsync()
+        }))()`);
+        assert.ok(Array.isArray(report.asio.devices));
+        assert.ok(typeof report.asio.version === 'string');
+      }
       const scale = window => screen.getDisplayMatching(window.getBounds()).scaleFactor;
       first.show(); first.restore();
       await waitFor(() => first.isVisible() && !first.isMinimized());

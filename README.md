@@ -615,6 +615,12 @@ The preferred mode helper only stores and broadcasts a preference for page integ
 
 #### 3. Adaptive Scaling Controls (Windows Only)
 
+Runtime compatibility: the custom 39.8.10-qp20 fallback does not reliably enforce
+resolution locking in the measured VP8/VP9/H.264 stress cases, even with the field
+trials active. The 43.3.0-qp20 build retains the requested resolution, but a fixed
+resolution can stall delivery when the available bitrate is too low. See
+[Windows validation](docs/windows-exhaustive-validation.md) for the tested conditions.
+
 **What it does**: Controls WebRTC's `DegradationPreference` which determines how video quality adapts under CPU/network stress.
 
 **Why it matters**: By default, WebRTC will automatically reduce resolution (1080p → 720p) or framerate (60fps → 30fps) when your system is under load. For professional streaming where quality is paramount, you may want to disable this behavior.
@@ -670,6 +676,11 @@ const stream = await navigator.mediaDevices.getDisplayMedia({
 
 #### 5. Extended Playout Delay (Windows Only)
 
+Use the custom 43.3.0-qp20 build for extended delay. The 39.8.10-qp20 fallback
+measured approximately 2 seconds for a 2-second request, but a 15-second request
+produced almost no delay even though `playoutDelayHint` returned `15`. A preference
+value alone does not confirm buffering behavior.
+
 **What it does**: Increases maximum receiver buffer from 10 seconds to 10 minutes (600 seconds).
 
 **Why it matters**: For professional streaming over unreliable networks, a larger receiver buffer can absorb more jitter and late frames. WebRTC still requests missing packets near the live edge; this option does not retain sender RTP packets for minutes or turn WebRTC into SRT/RTMP.
@@ -722,7 +733,7 @@ window.electronApi.getPlayoutDelay();             // number (seconds)
 | Adaptive scaling control | ✅ | ❌ | ❌ | Yes |
 | Cursor suppression | ✅ | ❌ | ❌ | Optional |
 | Extended playout delay | ✅ | ❌ | ❌ | Optional |
-| ASIO audio capture | ✅ | ❌ | ❌ | --node |
+| ASIO audio capture | ✅ | ❌ | ❌ | No; isolated renderers use IPC |
 
 The Windows feature column above refers to the custom x64 builds. The official Windows ARM64 build does not include the custom QP/cursor/WebRTC patches, and ASIO is unavailable until an ARM64 PortAudio/ASIO dependency is provided.
 
