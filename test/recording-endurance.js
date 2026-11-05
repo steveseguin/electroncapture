@@ -9,20 +9,31 @@ const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 
-async function recordingFixture(name, cameraLabel = '') {
+const videoOptions = {
+  width: Number(process.env.VALIDATION_VIDEO_WIDTH || 640),
+  height: Number(process.env.VALIDATION_VIDEO_HEIGHT || 360),
+  fps: Number(process.env.VALIDATION_VIDEO_FPS || 30),
+  bitrate: Number(process.env.VALIDATION_VIDEO_BITRATE || 250000),
+};
+for (const [key, maximum] of [['width', 3840], ['height', 2160], ['fps', 60], ['bitrate', 50000000]]) {
+  assert.ok(Number.isInteger(videoOptions[key]) && videoOptions[key] > 0 && videoOptions[key] <= maximum, `Invalid validation ${key}`);
+}
+
+async function recordingFixture(name, cameraLabel = '', options = {}) {
+  const { width = 640, height = 360, fps = 30, bitrate = 250000 } = options;
   const canvas = document.createElement('canvas');
-  canvas.width = 640; canvas.height = 360;
+  canvas.width = width; canvas.height = height;
   document.body.append(canvas);
   const context = canvas.getContext('2d');
   let frames = 0;
   let canvasTrack;
   const timer = setInterval(() => {
     context.fillStyle = frames % 60 < 30 ? '#224466' : '#662244';
-    context.fillRect(0, 0, 640, 360);
+    context.fillRect(0, 0, width, height);
     context.fillStyle = 'white'; context.font = '30px sans-serif';
     context.fillText(`${name}: frame ${frames++}`, 20, 100);
     canvasTrack?.requestFrame();
-  }, 1000 / 30);
+  }, 1000 / fps);
   const audio = new AudioContext({ sampleRate: 48000 });
   await audio.resume();
   const oscillator = audio.createOscillator();
@@ -42,7 +53,7 @@ async function recordingFixture(name, cameraLabel = '') {
     canvasTrack = video.getVideoTracks()[0];
   }
   const stream = new MediaStream([...video.getTracks(), ...destination.stream.getTracks()]);
-  const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8,opus', videoBitsPerSecond: 250000 });
+  const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8,opus', videoBitsPerSecond: bitrate });
   let pending = Promise.resolve();
   let chunks = 0;
   const started = performance.now();
@@ -62,7 +73,8 @@ async function recordingFixture(name, cameraLabel = '') {
       await pending;
       clearInterval(timer); oscillator.stop(); stream.getTracks().forEach(track => track.stop());
       await audio.close();
-      const result = { name, chunks, frames, videoSource: cameraLabel || 'generated canvas', elapsedSeconds: (performance.now() - started) / 1000 };
+      const result = { name, chunks, frames, videoSource: cameraLabel || 'generated canvas', width, height, fps,
+        elapsedSeconds: (performance.now() - started) / 1000 };
       await fetch(`/done/${name}`, { method: 'POST', body: JSON.stringify(result) });
       resolveDone(result);
     } catch (error) { rejectDone(error); }
@@ -115,7 +127,7 @@ if (!process.versions.electron) {
       env.ELECTRON_CAPTURE_PORTABLE_LEGACY_USER_DATA_DIR = path.join(root, 'unused-legacy-profile');
     }
     const fixture = path.join(root, 'packaged-fixture.js');
-    if (packaged) fs.writeFileSync(fixture, `(${recordingFixture.toString()})('normal', ${JSON.stringify(process.env.VALIDATION_CAMERA_LABEL || '')}).then(() => setTimeout(async () => { await window.stopValidationRecording(); window.close(); }, ${seconds * 1000}));`);
+    if (packaged) fs.writeFileSync(fixture, `(${recordingFixture.toString()})('normal', ${JSON.stringify(process.env.VALIDATION_CAMERA_LABEL || '')}, ${JSON.stringify(videoOptions)}).then(() => setTimeout(async () => { await window.stopValidationRecording(); window.close(); }, ${seconds * 1000}));`);
     const args = ['--multiinstance', '--minimized', '--no-node', '--nodpi', `--url=${url}`];
     // Only for disposable headless validation profiles without an unlocked keyring.
     if (process.env.VALIDATION_PASSWORD_STORE === 'basic') args.push('--password-store=basic');
@@ -126,9 +138,33 @@ if (!process.versions.electron) {
     const log = fs.createWriteStream(path.join(root, 'runtime.log'));
     child.stdout.pipe(log); child.stderr.pipe(log);
     console.log(`Validation artifacts: ${root}`);
+    const samples = new Set();
+    let sampling = false;
+    const launched = Date.now();
+    const sampleTimer = packaged && process.platform === 'win32' ? setInterval(() => {
+      if (sampling || !child.pid) return;
+      sampling = true;
+      const sample = new Promise(resolve => require('node:child_process').execFile('powershell.exe', ['-NoProfile', '-Command',
+        'Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,PrivatePageCount,WorkingSetSize | ConvertTo-Json -Compress'],
+      { windowsHide: true, timeout: 10000 }, (error, stdout) => {
+        try {
+          if (error) throw error;
+          const all = JSON.parse(stdout);
+          const owned = new Set([child.pid]);
+          let previous;
+          do { previous = owned.size; for (const process of all) if (owned.has(process.ParentProcessId)) owned.add(process.ProcessId); } while (owned.size !== previous);
+          const processes = all.filter(process => owned.has(process.ProcessId)).map(process => ({ pid: process.ProcessId,
+            memory: { privateBytes: Number(process.PrivatePageCount) / 1024, workingSetSize: Number(process.WorkingSetSize) / 1024 } }));
+          if (processes.length) fs.appendFileSync(path.join(root, 'metrics.jsonl'), JSON.stringify({
+            secondsRemaining: Math.max(0, Math.round(seconds - (Date.now() - launched) / 1000)), processes }) + '\n');
+        } catch (error) { fs.appendFileSync(path.join(root, 'metrics-errors.log'), String(error) + '\n'); }
+        sampling = false; resolve();
+      }));
+      samples.add(sample); sample.finally(() => samples.delete(sample));
+    }, 30000) : null;
     const timeout = setTimeout(() => child.kill(), (seconds + 120) * 1000);
     const code = await new Promise((resolve, reject) => { child.on('error', reject); child.on('exit', resolve); });
-    clearTimeout(timeout); server.close(); log.end();
+    clearTimeout(timeout); clearInterval(sampleTimer); await Promise.all(samples); server.close(); log.end();
     const result = { exitCode: code, requestedSeconds: seconds, completed };
     fs.writeFileSync(path.join(root, 'result.json'), JSON.stringify(result, null, 2));
     assert.equal(code, 0);
@@ -154,7 +190,7 @@ if (!process.versions.electron) {
       await waitFor(() => !first.webContents.isLoading());
       const devices = await first.webContents.executeJavaScript('navigator.mediaDevices.enumerateDevices().then(d => d.map(x => ({kind:x.kind,label:x.label})))');
       fs.writeFileSync(path.join(process.env.VALIDATION_ROOT, 'environment.json'), JSON.stringify({ versions: process.versions, displays: screen.getAllDisplays(), devices }, null, 2));
-      const start = (window, name) => window.webContents.executeJavaScript(`(${recordingFixture.toString()})(${JSON.stringify(name)}, ${JSON.stringify(process.env.VALIDATION_CAMERA_LABEL || '')})`);
+      const start = (window, name) => window.webContents.executeJavaScript(`(${recordingFixture.toString()})(${JSON.stringify(name)}, ${JSON.stringify(process.env.VALIDATION_CAMERA_LABEL || '')}, ${JSON.stringify(videoOptions)})`);
       assert.equal((await start(first, 'normal')).state, 'recording');
       const deadline = Date.now() + Number(process.env.VALIDATION_SECONDS) * 1000;
       let cycle = 0;

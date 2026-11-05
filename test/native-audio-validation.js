@@ -95,7 +95,9 @@ if (!process.versions.electron) {
         }
         await second.webContents.executeJavaScript(`electronApi.stopStreamCapture(${children[1].pid})`);
         report.restarts = [];
-        for (let i = 0; i < 6; i++) {
+        const cycles = Number(process.env.VALIDATION_AUDIO_CYCLES || 6);
+        assert.ok(Number.isInteger(cycles) && cycles >= 1 && cycles <= 100, 'Audio cycles must be 1..100');
+        for (let i = 0; i < cycles; i++) {
           const owner = i % 2 ? second : first;
           const target = children[i % 2].pid;
           const result = await start(owner, target);
@@ -113,6 +115,37 @@ if (!process.versions.electron) {
         await sleep(500);
         report.recoveryPackets = await first.webContents.executeJavaScript('stats.packets');
         assert.ok(report.recoveryPackets > 0, 'capture recovers after the previous source exits');
+        const nativeCapture = require('../native-modules/window-audio-capture');
+        const reload = async window => {
+          const loaded = new Promise(resolve => window.webContents.once('did-finish-load', resolve));
+          window.webContents.reload();
+          await loaded;
+          await waitFor(() => !window.webContents.isLoading());
+        };
+        await reload(first);
+        await waitFor(() => !nativeCapture.isCapturing);
+        report.reloadStopsCapture = true;
+        assert.equal((await start(second, children[0].pid)).success, true);
+        await sleep(500);
+        assert.ok(await second.webContents.executeJavaScript('stats.packets') > 0);
+        second.close();
+        await waitFor(() => second.isDestroyed() && !nativeCapture.isCapturing);
+        report.ownerCloseStopsCapture = true;
+        assert.equal((await start(first, children[0].pid)).success, true);
+        await sleep(500);
+        assert.ok(await first.webContents.executeJavaScript('stats.packets') > 0);
+        const crashed = new Promise(resolve => first.webContents.once('render-process-gone', (_event, details) => resolve(details)));
+        first.webContents.forcefullyCrashRenderer();
+        report.rendererCrash = await crashed;
+        await waitFor(() => !nativeCapture.isCapturing);
+        await reload(first);
+        assert.equal((await start(first, children[0].pid)).success, true);
+        await sleep(500);
+        report.afterCrashPackets = await first.webContents.executeJavaScript('stats.packets');
+        assert.ok(report.afterCrashPackets > 0, 'capture recovers after owner renderer crash/reload');
+        await first.webContents.executeJavaScript(`electronApi.stopStreamCapture(${children[0].pid})`);
+        await waitFor(() => !nativeCapture.isCapturing);
+        report.finalStop = true;
         report.passed = true;
       } catch (error) { report.error = String(error); }
       finally {
