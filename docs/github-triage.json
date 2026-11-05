@@ -11,8 +11,37 @@
   ],
   "validation": {
     "regressionSuites": 22,
-    "linuxPackages": "All four formats built and payload-verified before the shortcut follow-up; final cross-platform CI pending.",
-    "native": "45 window scenarios, 14 dialog checks and 20 closed-window retention cycles passed. Native two-process shortcut recovery fails on published 2.23.5 and passes with the fix."
+    "linuxPackages": "AppImage, DEB, RPM and tar.gz built and payload-verified for x64, ARM64 and ARMv7. Native x64/ARM64 startup, recording, clean dependency and removal checks passed in CI; ARMv7 was cross-built and statically verified.",
+    "native": "45 window scenarios, 14 dialog checks and 20 closed-window retention cycles passed. Native two-process shortcut recovery fails on published 2.23.5 and passes with the fix.",
+    "bareElectronRecordingControl": {
+      "runtime": "Electron 43.8.7",
+      "platform": "Linux X11",
+      "durationSeconds": 60,
+      "videoFrames": 1760,
+      "audioFrames": 997,
+      "audioStartOffsetMs": 199,
+      "audioEndOffsetMs": 67,
+      "audioDriftMs": -132,
+      "decodeErrors": 0,
+      "conclusion": "The roughly 200 ms startup audio delay also occurs without EleCap code; do not introduce speculative app-level audio retiming."
+    },
+    "crossPlatformCI": {
+      "url": "https://github.com/steveseguin/electroncapture/actions/runs/41949763781",
+      "sourceCommit": "78b4faba5e3d4b8a2b811d0006d0231dede583c9",
+      "publishesRelease": false,
+      "status": "success",
+      "jobs": [
+        "validate",
+        "build-windows",
+        "build-windows-arm64",
+        "build-macos",
+        "build-linux-x64",
+        "build-linux-arm64",
+        "build-linux-armv7l"
+      ],
+      "windows": "Both x64 runtime variants and ARM64 packages verified, Authenticode signatures/timestamps passed, and x64 installer replacement/rollback passed.",
+      "macos": "Universal x86_64/ARM64 build, signatures, notarization, package contents and security fuses verified."
+    }
   },
   "issues": [
     {
@@ -39,7 +68,7 @@
     {
       "number": 113,
       "url": "https://github.com/steveseguin/electroncapture/issues/113",
-      "title": "When use `&autorecord` resolution is 640 × 360",
+      "title": "When use `&autorecord` resolution is 640 \u00d7 360",
       "state": "open",
       "reason": "Adaptive source resolution and autorecord behavior are in the VDO.Ninja recording path; no verified fix for the reported combination."
     },
@@ -229,7 +258,7 @@
   "pullRequests": [
     {
       "number": 137,
-      "status": "Close after the replacement is pushed and validated; the dependency is no longer used."
+      "status": "Closed as superseded: electron-is-dev removed and equivalent local behavior validated."
     },
     {
       "number": 144,
@@ -237,19 +266,23 @@
     }
   ],
   "security": {
-    "codeScanning": "Three test-fixture findings fixed locally; await default-branch CodeQL confirmation.",
-    "dependabot": "minimatch fixed locally; await default-branch dependency graph update.",
+    "codeScanning": "CodeQL passed on default-branch commit 6b7e1719c9abda27802997be7cb4430399bec847 (run 41949803860); alerts #7, #8 and #9 resolved automatically. Zero open code-scanning alerts.",
+    "dependabot": "Alert #264 (minimatch) resolved automatically after the patched dependency lockfile reached master. Only the two extract-zip build dependency alerts remain open.",
     "remainingAdvisories": [
       "GHSA-7pqw-9j4j-h8q3",
       "GHSA-jmr9-qjv8-65gv"
     ],
     "remainingScope": "extract-zip is build-only and has no upstream fixed version. Trusted runtime checksums and ZIP preflight remain mitigations, not a reason to dismiss the advisories.",
     "secretScanningOpen": 0,
-    "repositoryAdvisories": "One private report already closed; the published historical fuse advisory remains published."
+    "repositoryAdvisories": "One private report already closed; the published historical fuse advisory remains published.",
+    "productionAudit": "npm audit --omit=dev reports zero vulnerabilities.",
+    "runtimeScope": "A clean npm production audit does not audit bundled Electron/Chromium. The custom Windows 39.8.10-qp20 and 43.3.0-qp20 runtimes still need security-patch reconciliation and a behavior-preserving upgrade; their runtime risks are not resolved by these dependency fixes."
   },
   "limitations": [
     "Active independent processes still cannot own the same OS global hotkey simultaneously.",
     "Generated-media startup timing and OBS timestamp reports remain unresolved; no audio retiming is introduced.",
+    "Windows startup recording gaps and sustained v43 memory growth remain under investigation; see docs/windows-exhaustive-validation.md. The Linux bare-Electron timing control does not resolve these Windows findings.",
     "Changes are source maintenance; the published 2.23.5 tag and assets are not replaced."
-  ]
+  ],
+  "fixCommit": "78b4faba5e3d4b8a2b811d0006d0231dede583c9"
 }
