@@ -25,7 +25,7 @@ docker run --rm -e DEBIAN_FRONTEND=noninteractive \
       fi
     done
     case "$1" in
-      deb) apt-get remove -y vdon.electron.capture.app ;;
+      deb) apt-get remove -y "$(dpkg-deb -f /input/package.deb Package)" ;;
       rpm) dnf remove -y "$(rpm -qp --queryformat "%{NAME}" /input/package.rpm)" ;;
     esac
     test ! -e /opt/elecap/elecap

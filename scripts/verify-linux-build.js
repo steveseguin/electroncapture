@@ -8,6 +8,7 @@ const assert = require('node:assert/strict');
 const { execFileSync } = require('node:child_process');
 const asar = require('@electron/asar');
 const { getCurrentFuseWire, FuseV1Options, FuseState } = require('@electron/fuses');
+const { verifyPayload } = require('./linux-package-payload');
 const root = path.resolve(__dirname, '..');
 const pkg = require('../package.json');
 const architectures = {
@@ -89,6 +90,8 @@ async function verify(arch = process.argv[2] || process.arch) {
       }
     }
     if (extension === 'tar.gz') execFileSync('tar', ['-tzf', file], { stdio: 'ignore' });
+    const checked = verifyPayload(file, unpacked, extension);
+    console.log(`Verified ${extension} payload: ${checked} runtime files match the unpacked application.`);
   }
   console.log(`Verified Linux ${arch}: ${elfCount} ELF binaries, ${sources} source files, production dependency, security fuses, AppImage/DEB/RPM/tar.gz.`);
 }

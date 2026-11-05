@@ -452,7 +452,7 @@ jobs:
           cache: 'npm'
 
       - name: Install Linux package tools
-        run: sudo apt-get update && sudo apt-get install -y rpm xvfb openbox x11-utils ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y rpm libarchive-tools squashfs-tools xvfb openbox x11-utils ffmpeg
 
       - name: Install dependencies
         run: npm ci
@@ -461,7 +461,9 @@ jobs:
         run: npm run ${{ matrix.build }}
 
       - name: Verify Linux packages
-        run: npm run ${{ matrix.verify }}
+        run: |
+          node test/linux-package-payload-regression.js
+          npm run ${{ matrix.verify }}
 
       - name: Verify clean Linux package dependencies
         if: matrix.arch != 'armv7l'
