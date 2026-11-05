@@ -163,6 +163,7 @@ if (!process.versions.electron) {
       check(win.webContents.getZoomFactor() === 1, 'nodpi preserves normal page zoom');
       const expectedPin = !!win.args.pin;
       if (!minimized) {
+        await waitFor(() => win.isAlwaysOnTop() === expectedPin, 'initial native pin state');
         check(win.isAlwaysOnTop() === expectedPin, 'initial pin state');
       }
       check(win.webContents.getLastWebPreferences().nodeIntegration === (node), 'Node integration opt-in');
