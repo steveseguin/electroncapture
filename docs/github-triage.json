@@ -1,0 +1,255 @@
+{
+  "reviewedAt": "2026-11-05",
+  "repository": "steveseguin/electroncapture",
+  "baseCommit": "60d2c4679ec008b2a74c9385c8b85088a1336c91",
+  "fixes": [
+    "Reject unrecognized test-server routes and malformed reports; stop reflecting request paths into HTML.",
+    "Escape generated dialog test literals, including HTML delimiters and Unicode line separators.",
+    "Replace the electron-is-dev dependency with equivalent local packaged/development detection, preserving ELECTRON_IS_DEV overrides.",
+    "Update build-only minimatch/glob to patched versions and remove their audit exceptions.",
+    "Retry unowned native shortcuts on window focus after another process releases them, without stealing active shortcuts."
+  ],
+  "validation": {
+    "regressionSuites": 22,
+    "linuxPackages": "All four formats built and payload-verified before the shortcut follow-up; final cross-platform CI pending.",
+    "native": "45 window scenarios, 14 dialog checks and 20 closed-window retention cycles passed. Native two-process shortcut recovery fails on published 2.23.5 and passes with the fix."
+  },
+  "issues": [
+    {
+      "number": 124,
+      "url": "https://github.com/steveseguin/electroncapture/issues/124",
+      "title": "Feature request: Make appId/WM_CLASS dynamically based off of title, savefolder or independent argument",
+      "state": "open",
+      "reason": "CLI identity support is shipped; Gamescope/Steam Deck grouping is not validated."
+    },
+    {
+      "number": 120,
+      "url": "https://github.com/steveseguin/electroncapture/issues/120",
+      "title": "--unclickable flag not working and blocks mouse clicks",
+      "state": "open",
+      "reason": "X11 flag behavior is tested; native Wayland click-through and pinning remain compositor-dependent."
+    },
+    {
+      "number": 114,
+      "url": "https://github.com/steveseguin/electroncapture/issues/114",
+      "title": "Screenshare Capture failing on Pipewire & Wayland on Hyprland, version 2.20.1",
+      "state": "open",
+      "reason": "Requires real Hyprland/PipeWire portal and desktop-audio reproduction."
+    },
+    {
+      "number": 113,
+      "url": "https://github.com/steveseguin/electroncapture/issues/113",
+      "title": "When use `&autorecord` resolution is 640 × 360",
+      "state": "open",
+      "reason": "Adaptive source resolution and autorecord behavior are in the VDO.Ninja recording path; no verified fix for the reported combination."
+    },
+    {
+      "number": 112,
+      "url": "https://github.com/steveseguin/electroncapture/issues/112",
+      "title": "Fullscreen on OSX",
+      "state": "open",
+      "reason": "Native macOS menu-bar behavior in fullscreen needs platform-specific validation."
+    },
+    {
+      "number": 103,
+      "url": "https://github.com/steveseguin/electroncapture/issues/103",
+      "title": "Question: Audio recording",
+      "state": "open",
+      "reason": "Audio-only reconnect/close file loss is not established fixed by generated WebM recording tests."
+    },
+    {
+      "number": 99,
+      "url": "https://github.com/steveseguin/electroncapture/issues/99",
+      "title": "Can I change setting for external links to open in Same Window/tab",
+      "state": "open",
+      "reason": "Same-window external-link navigation needs an explicit behavior choice; current browsing semantics are preserved."
+    },
+    {
+      "number": 98,
+      "url": "https://github.com/steveseguin/electroncapture/issues/98",
+      "title": "Dynamic Application name",
+      "state": "open",
+      "reason": "WM_CLASS changes do not establish PulseAudio application-name routing."
+    },
+    {
+      "number": 91,
+      "url": "https://github.com/steveseguin/electroncapture/issues/91",
+      "title": "&waitimage &poster &waitmessage not working with Electron",
+      "state": "open",
+      "reason": "VDO.Ninja waiting-image/message parameter behavior is not verified fixed."
+    },
+    {
+      "number": 90,
+      "url": "https://github.com/steveseguin/electroncapture/issues/90",
+      "title": "Remember last position, display and size",
+      "state": "open",
+      "reason": "Geometry persistence exists; the full last-display/fullscreen-state request is not completely validated."
+    },
+    {
+      "number": 89,
+      "url": "https://github.com/steveseguin/electroncapture/issues/89",
+      "title": "the last vertical line is missing on image captured",
+      "state": "open",
+      "reason": "One-pixel capture clipping needs the affected display/capture setup."
+    },
+    {
+      "number": 87,
+      "url": "https://github.com/steveseguin/electroncapture/issues/87",
+      "title": "Push to drag button",
+      "state": "open",
+      "reason": "Push-to-drag is a feature request, not an existing implemented shortcut."
+    },
+    {
+      "number": 85,
+      "url": "https://github.com/steveseguin/electroncapture/issues/85",
+      "title": "Please add Quadrant function",
+      "state": "open",
+      "reason": "Quadrant CLI placement works, but the reporter's later mixed-DPI problem remains unverified."
+    },
+    {
+      "number": 76,
+      "url": "https://github.com/steveseguin/electroncapture/issues/76",
+      "title": "New release 2.17.0 does not save Always on Top (MAC)",
+      "state": "open",
+      "reason": "Always-on-top defaults and restoration work; saving a user's pin choice across restart is a separate unimplemented preference."
+    },
+    {
+      "number": 74,
+      "url": "https://github.com/steveseguin/electroncapture/issues/74",
+      "title": "&screenshare and Windows Server 2019",
+      "state": "open",
+      "reason": "Requires Windows Server 2019 capture testing."
+    },
+    {
+      "number": 68,
+      "url": "https://github.com/steveseguin/electroncapture/issues/68",
+      "title": "Change audio output not working ",
+      "state": "open",
+      "reason": "Actual Windows audio-device routing and capture enumeration need hardware reproduction."
+    },
+    {
+      "number": 65,
+      "url": "https://github.com/steveseguin/electroncapture/issues/65",
+      "title": "Crash on full screen",
+      "state": "closed",
+      "reason": "Closed: current macOS fullscreen regression evidence linked in the issue."
+    },
+    {
+      "number": 63,
+      "url": "https://github.com/steveseguin/electroncapture/issues/63",
+      "title": "Raspberry PI raspbian build",
+      "state": "closed",
+      "reason": "Closed: ARMv7 and ARM64 packages published; Pi GPU/hardware performance is not certified."
+    },
+    {
+      "number": 61,
+      "url": "https://github.com/steveseguin/electroncapture/issues/61",
+      "title": "Force camera size/layout and/or amount of expected cameras in a room capture",
+      "state": "open",
+      "reason": "Upstream VDO.Ninja mixer/layout feature discussion remains separate from the app."
+    },
+    {
+      "number": 43,
+      "url": "https://github.com/steveseguin/electroncapture/issues/43",
+      "title": "Improve DPI factor calc on macOS retina",
+      "state": "open",
+      "reason": "Mixed-DPI Retina/external-display behavior is not fully validated."
+    },
+    {
+      "number": 40,
+      "url": "https://github.com/steveseguin/electroncapture/issues/40",
+      "title": "allow showing/hiding of screen elements from context menu",
+      "state": "open",
+      "reason": "The existing clean-video menu excludes VDO.Ninja; it does not satisfy the original VDO.Ninja UI-toggle request."
+    },
+    {
+      "number": 38,
+      "url": "https://github.com/steveseguin/electroncapture/issues/38",
+      "title": "Display Capture Missaligned?",
+      "state": "open",
+      "reason": "Reported mixed-display OBS crop offsets need the affected hardware setup."
+    },
+    {
+      "number": 37,
+      "url": "https://github.com/steveseguin/electroncapture/issues/37",
+      "title": "Add right-click option to add 'overlay iframe layer'",
+      "state": "open",
+      "reason": "Overlay iframe layer remains a feature request."
+    },
+    {
+      "number": 36,
+      "url": "https://github.com/steveseguin/electroncapture/issues/36",
+      "title": "Add Uncompressed L-PCM support; and advanced AEC controls; chromium layer?",
+      "state": "open",
+      "reason": "Uncompressed PCM/AEC runtime changes require separate compatibility work."
+    },
+    {
+      "number": 33,
+      "url": "https://github.com/steveseguin/electroncapture/issues/33",
+      "title": "on windows, if your monitor is too low of a resolution, the app doesn't resize correctly",
+      "state": "open",
+      "reason": "Custom resolution with Windows display scaling needs real mixed-DPI validation."
+    },
+    {
+      "number": 31,
+      "url": "https://github.com/steveseguin/electroncapture/issues/31",
+      "title": "one user reports the resolution is off; black bar at bottom",
+      "state": "open",
+      "reason": "Insufficient reproduction for the black-bar report."
+    },
+    {
+      "number": 27,
+      "url": "https://github.com/steveseguin/electroncapture/issues/27",
+      "title": "Hard to read the debug stats on high DPI displays",
+      "state": "open",
+      "reason": "Stats readability requires upstream page/font scaling work and high-DPI validation."
+    },
+    {
+      "number": 24,
+      "url": "https://github.com/steveseguin/electroncapture/issues/24",
+      "title": "allow for an 'overscan' function",
+      "state": "open",
+      "reason": "Overscan was proposed for the upstream HTML application and is not implemented here."
+    },
+    {
+      "number": 19,
+      "url": "https://github.com/steveseguin/electroncapture/issues/19",
+      "title": "cursor broken on electron app",
+      "state": "open",
+      "reason": "Old cursor report lacks a current reproduction; CSS cursor tests alone do not establish its exact native symptom fixed."
+    },
+    {
+      "number": 8,
+      "url": "https://github.com/steveseguin/electroncapture/issues/8",
+      "title": "Add Siphon video output",
+      "state": "open",
+      "reason": "Native Syphon/NDI output remains a feature request."
+    }
+  ],
+  "pullRequests": [
+    {
+      "number": 137,
+      "status": "Close after the replacement is pushed and validated; the dependency is no longer used."
+    },
+    {
+      "number": 144,
+      "status": "Open: yargs 18 is a major CLI migration, not required by current production dependency audits."
+    }
+  ],
+  "security": {
+    "codeScanning": "Three test-fixture findings fixed locally; await default-branch CodeQL confirmation.",
+    "dependabot": "minimatch fixed locally; await default-branch dependency graph update.",
+    "remainingAdvisories": [
+      "GHSA-7pqw-9j4j-h8q3",
+      "GHSA-jmr9-qjv8-65gv"
+    ],
+    "remainingScope": "extract-zip is build-only and has no upstream fixed version. Trusted runtime checksums and ZIP preflight remain mitigations, not a reason to dismiss the advisories.",
+    "secretScanningOpen": 0,
+    "repositoryAdvisories": "One private report already closed; the published historical fuse advisory remains published."
+  },
+  "limitations": [
+    "Active independent processes still cannot own the same OS global hotkey simultaneously.",
+    "Generated-media startup timing and OBS timestamp reports remain unresolved; no audio retiming is introduced.",
+    "Changes are source maintenance; the published 2.23.5 tag and assets are not replaced."
+  ]
+}

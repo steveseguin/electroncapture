@@ -14,7 +14,7 @@ const path = require('path');
 const {app, BrowserWindow, BrowserView, webFrameMain, desktopCapturer, ipcMain, screen, shell, globalShortcut, session, dialog} = require('electron')
 const contextMenu = require('electron-context-menu');
 const Yargs = require('yargs')
-const isDev = require('electron-is-dev');
+const isDev = require('./development-mode').isDevelopment(app);
 const {
 	resolveEarlyDataPaths,
 	prepareEarlyDataPaths,
@@ -4007,6 +4007,7 @@ app.on('ready', () => {
     
     app.on('browser-window-focus', (event, win) => {
         console.log('browser-window-focus', win.webContents.id);
+		windowShortcuts.retry(win);
 		if (win.__preserveClickThroughOnInitialFocus && win.mouseEvent) {
 			setWindowIgnoreMouseEvents(win, true, 'initial focus preserve');
 			return;

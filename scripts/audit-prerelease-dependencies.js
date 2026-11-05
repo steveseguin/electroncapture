@@ -8,8 +8,6 @@ const { spawnSync } = require('node:child_process');
 const reviewed = new Map([
   ['https://github.com/advisories/GHSA-jmr9-qjv8-65gv', ['extract-zip', 'high']],
   ['https://github.com/advisories/GHSA-7pqw-9j4j-h8q3', ['extract-zip', 'high']],
-  ['https://github.com/advisories/GHSA-g3hv-75wg-m249', ['minimatch', 'moderate']],
-  ['https://github.com/advisories/GHSA-3g3m-2fjr-6pw4', ['glob', 'moderate']],
 ]);
 
 function validateReviewedAudit(report, lock, version, now = new Date()) {

@@ -10,6 +10,11 @@ const report = () => ({ auditReportVersion: 2, metadata: { vulnerabilities: { to
 const lock = { packages: { 'node_modules/extract-zip': { dev: true } } };
 const check = (r = report(), l = lock, version = '2.23.5', date = now) => validateReviewedAudit(r, l, version, date);
 assert.equal(check().length, 1);
+for (const [name, url] of [['minimatch', 'GHSA-g3hv-75wg-m249'], ['glob', 'GHSA-3g3m-2fjr-6pw4']]) {
+  const fixed = report();
+  fixed.vulnerabilities['extract-zip'].via = [{ name, severity: 'moderate', url: `https://github.com/advisories/${url}` }];
+  assert.throws(() => check(fixed), /Unreviewed advisory/, 'Fixed advisories must not remain exempt');
+}
 assert.throws(() => check(report(), lock, '2.23.6'), /only/);
 assert.throws(() => check(report(), lock, '2.23.5-beta.3'), /only/);
 assert.throws(() => check(report(), lock, '2.23.4'), /only/);

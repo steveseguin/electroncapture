@@ -12,16 +12,29 @@ const root = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'elecap-linux
 const results = [];
 const children = new Set();
 const reports = new Map();
+const fixtureNames = new Set(['default', 'class', 'alias', 'node']);
 const server = require('node:http').createServer((request, response) => {
   const name = request.url.slice(1);
   fs.appendFileSync(path.join(root, 'requests.log'), `${request.method} ${request.url}\n`);
-  if (request.method === 'POST' && reports.has(name)) {
+  if (!fixtureNames.has(name)) {
+    response.writeHead(404); response.end(); return;
+  }
+  const receiveReport = reports.get(name);
+  if (request.method === 'POST') {
+    if (typeof receiveReport !== 'function') {
+      response.writeHead(409); response.end(); return;
+    }
     let body = '';
     request.on('data', data => { body += data; });
-    request.on('end', () => reports.get(name)({ data: JSON.parse(body), response }));
-  } else {
+    request.on('end', () => {
+      try { receiveReport({ data: JSON.parse(body), response }); }
+      catch { response.writeHead(400); response.end(); }
+    });
+  } else if (request.method === 'GET') {
     response.setHeader('Content-Type', 'text/html');
-    response.end(`<title>Elecap-validation-${name}</title><body>Linux packaged validation</body>`);
+    response.end('<title>Linux package fixture</title><body>Linux packaged validation</body>');
+  } else {
+    response.writeHead(405); response.end();
   }
 });
 
@@ -97,6 +110,17 @@ async function check(name, identity, nodeMode = false) {
 (async () => {
   console.log(`Linux packaged smoke artifacts: ${root}`);
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  for (const route of ['__proto__', '%3Cscript%3Ealert(1)%3C/script%3E']) {
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/${route}`);
+    assert.equal(response.status, 404);
+    assert.equal(await response.text(), '');
+  }
+  reports.set('default', () => assert.fail('Malformed input must not reach the fixture callback'));
+  const malformed = await fetch(`http://127.0.0.1:${server.address().port}/default`, {
+    method: 'POST', body: '{invalid',
+  });
+  assert.equal(malformed.status, 400);
+  reports.delete('default');
   await check('default', null);
   // Shared profile and no explicit --multiinstance: identities must stay separate.
   await Promise.all([check('class', 'elecap-check-one'), check('alias', 'elecap-check-two')]);

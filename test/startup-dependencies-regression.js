@@ -4,6 +4,15 @@ const assert = require('node:assert/strict');
 const Module = require('node:module');
 const metadata = require('../package.json');
 const lock = require('../package-lock.json');
+const { isDevelopment } = require('../development-mode');
+
+for (const isPackaged of [false, true]) {
+  assert.equal(isDevelopment({ isPackaged }, {}), !isPackaged);
+  for (const [value, expected] of [['1', true], ['0', false], ['', false], ['true', false], ['1suffix', true]]) {
+    assert.equal(isDevelopment({ isPackaged }, { ELECTRON_IS_DEV: value }), expected);
+  }
+}
+assert.equal(metadata.dependencies['electron-is-dev'], undefined);
 
 // main.js initializes Electron synchronously before app.ready. These packages
 // must keep their callable CommonJS API until startup is migrated deliberately.

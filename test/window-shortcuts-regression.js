@@ -57,13 +57,23 @@ blocked = true;
 assert.equal(registry.set(c, 'ppt', 'Alt+P', () => {}), false);
 registry.remove(c, 'ppt');
 assert.ok(!released.includes('Alt+P'), 'never unregister a shortcut we could not acquire');
-assert.equal(registry.set(c, 'ppt', 'Alt+P', () => {}), false);
+assert.equal(registry.set(c, 'ppt', 'Alt+P', () => fired.push('recovered')), false);
+registry.retry(c);
+assert.equal(registered.has('Alt+P'), false, 'retry cannot steal an accelerator from another process');
 blocked = false;
-assert.equal(registry.set(c, 'ppt', 'Alt+P', () => {}), true, 'retry after an OS conflict clears');
+registry.retry(c);
+assert.equal(registered.has('Alt+P'), true, 'focus retry acquires a shortcut after an OS conflict clears');
+registered.get('Alt+P')();
+assert.equal(fired.at(-1), 'recovered');
+registry.retry(a);
+registry.retry(c);
+assert.equal(registered.size, 2, 'focus retries do not re-register already owned shortcuts');
 assert.equal(registry.set(c, 'ppt', 'Invalid', () => {}), false);
 c.close();
 a.close();
 assert.equal(registered.size, 0);
+registry.retry(c);
+assert.equal(registered.size, 0, 'closed windows cannot reclaim shortcuts');
 assert.equal(registry.set(a, 'mute', 'Ctrl+M', () => {}), false);
 
 // On macOS Meta (the renderer spelling of the Command key) and

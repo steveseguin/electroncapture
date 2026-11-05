@@ -35,6 +35,31 @@ function createWindowShortcuts(globalShortcut, platform = process.platform) {
   const windows = new Map();
   const accelerators = new Map();
 
+  function register(entry) {
+    if (entry.registered) return true;
+    try {
+      entry.registered = globalShortcut.register(entry.accelerator, () => {
+        // Keep the existing ownership order when retrying an OS conflict.
+        const candidates = [...entry.bindings].reverse();
+        const target = candidates.find(candidate => !candidate.window.isDestroyed());
+        if (target) target.callback();
+      });
+    } catch (error) {
+      console.warn('Unable to register shortcut:', entry.accelerator, error.message);
+    }
+    return entry.registered;
+  }
+
+  function retry(window) {
+    if (window.isDestroyed()) return;
+    const entries = new Set();
+    for (const binding of windows.get(window)?.values() || []) {
+      const entry = accelerators.get(binding.key);
+      if (entry && !entry.registered) entries.add(entry);
+    }
+    for (const entry of entries) register(entry);
+  }
+
   function remove(window, slot) {
     const bindings = windows.get(window);
     const binding = bindings?.get(slot);
@@ -70,23 +95,10 @@ function createWindowShortcuts(globalShortcut, platform = process.platform) {
     const binding = { key, window, callback };
     bindings.set(slot, binding);
     entry.bindings.add(binding);
-    if (!entry.registered) {
-      try {
-        entry.registered = globalShortcut.register(entry.accelerator, () => {
-          // The most recently registered live window owns a shared shortcut.
-          // Closing it restores the previous window without re-registering.
-          const candidates = [...entry.bindings].reverse();
-          const target = candidates.find(candidate => !candidate.window.isDestroyed());
-          if (target) target.callback();
-        });
-      } catch (error) {
-        console.warn('Unable to register shortcut:', accelerator, error.message);
-      }
-    }
-    return entry.registered;
+    return register(entry);
   }
 
-  return { set, remove };
+  return { set, remove, retry };
 }
 
 module.exports = { createWindowShortcuts, pushToTalkAccelerator };

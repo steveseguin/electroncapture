@@ -22,7 +22,7 @@ on:
         type: boolean
         default: false
       reviewed_prerelease_tooling:
-        description: '2.23.5 GitHub prerelease only: accept the four documented build-tool advisories; all other audits remain blocking'
+        description: '2.23.5 GitHub prerelease only: accept the two documented extract-zip build-tool advisories; all other audits remain blocking'
         type: boolean
         default: false
 
