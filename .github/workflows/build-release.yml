@@ -478,6 +478,7 @@ jobs:
               if xprop -root _NET_SUPPORTING_WM_CHECK 2>/dev/null | grep -q "window id"; then break; fi
               sleep .1
             done
+            node test/window-bounds-runtime.js
             node test/window-workflows.js --matrix
             node test/window-reuse-runtime.js
             node test/fetch-streams-runtime.js
@@ -535,6 +536,7 @@ jobs:
           name: linux-${{ matrix.arch }}-runtime-validation
           retention-days: 14
           path: |
+            /tmp/elecap-bounds-runtime-*/**
             /tmp/elecap-window-workflows-*/**
             /tmp/elecap-reuse-runtime-*/**
             /tmp/elecap-fetch-runtime-*/**

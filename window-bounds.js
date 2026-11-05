@@ -35,15 +35,20 @@ function createBoundsStore(file, io = fs) {
 
 function installBoundsPersistence(window, save, delay = 500) {
   let timer = null;
+  let pendingBounds = null;
   const flush = () => {
     if (timer === null) return;
     clearTimeout(timer);
     timer = null;
-    if (!window.isDestroyed() && !window.isMinimized() && !window.isMaximized() && !window.isFullScreen()) {
-      save(window.getBounds());
-    }
+    const bounds = pendingBounds;
+    pendingBounds = null;
+    if (!window.isDestroyed() && bounds) save(bounds);
   };
   const schedule = () => {
+    if (window.isDestroyed() || window.isMinimized() || window.isMaximized() || window.isFullScreen()) return;
+    // Capture normal geometry while it is available. A minimize/fullscreen
+    // transition during the debounce must not discard or overwrite this move.
+    pendingBounds = { ...window.getBounds() };
     clearTimeout(timer);
     timer = setTimeout(flush, delay);
   };
@@ -53,6 +58,7 @@ function installBoundsPersistence(window, save, delay = 500) {
   window.once('closed', () => {
     clearTimeout(timer);
     timer = null;
+    pendingBounds = null;
     window.removeListener('resize', schedule);
     window.removeListener('move', schedule);
     window.removeListener('close', flush);

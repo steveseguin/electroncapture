@@ -1313,7 +1313,12 @@ function createYargs(){
   .describe("help", "Show help.") // Override --help usage message.
   .wrap(process.stdout.columns); 
   
-  return argv.argv;
+  const parsed = argv.argv;
+  // Values equal to the defaults are still explicit user choices. Preserve this
+  // distinction when passing arguments to another instance or a new window.
+  parsed.__geometryExplicit = ['w', 'h', 'x', 'y', 'monitor'].some(key =>
+    argv.parsed.defaulted[key] !== true);
+  return parsed;
 }
 
 function sanitizeCliToken(value) {
@@ -1812,6 +1817,7 @@ function parseDeepLink(deepLinkUrl) {
 
 		const assignWithAlias = (key, alias, value) => {
 			newArgs[key] = value;
+			if (['width', 'height', 'x', 'y'].includes(key)) newArgs.__geometryExplicit = true;
 			if (alias) {
 				newArgs[alias] = value;
 			}
@@ -2636,8 +2642,8 @@ async function createWindow(args, reuse=false) {
 	}
 
 	// Restore saved window bounds if user didn't explicitly provide size/position
-	// Only applies when using default dimensions (1280x720)
-	if (args.width === 1280 && args.height === 720 && args.x === -1 && args.y === -1) {
+	// Explicit default-valued CLI/deep-link options must also win over saved bounds.
+	if (!args.__geometryExplicit && args.width === 1280 && args.height === 720 && args.x === -1 && args.y === -1) {
 		const savedBounds = loadWindowBounds();
 		if (savedBounds) {
 			try {

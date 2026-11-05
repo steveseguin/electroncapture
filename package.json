@@ -43,6 +43,7 @@
     "test:navigation": "node ./test/navigation-regression.js",
     "test:audio-output": "node ./test/audio-output-regression.js",
     "test:window-bounds": "node ./test/window-bounds-regression.js",
+    "test:window-bounds-runtime": "node ./test/window-bounds-runtime.js",
     "test:window-dpi": "node ./test/window-dpi-regression.js",
     "test:page-operations": "node ./test/page-operations-regression.js",
     "test:audio-attachment": "node ./test/application-audio-attachment-regression.js",

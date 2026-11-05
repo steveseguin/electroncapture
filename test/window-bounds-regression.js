@@ -39,9 +39,10 @@ async function main() {
 
   const saved = [];
   let bounds = good;
+  let minimized = false, maximized = false, fullscreen = false;
   const window = Object.assign(new EventEmitter(), {
-    isDestroyed: () => false, isMinimized: () => false,
-    isMaximized: () => false, isFullScreen: () => false, getBounds: () => bounds,
+    isDestroyed: () => false, isMinimized: () => minimized,
+    isMaximized: () => maximized, isFullScreen: () => fullscreen, getBounds: () => bounds,
   });
   installBoundsPersistence(window, value => saved.push(value), 10);
   window.emit('move');
@@ -51,10 +52,24 @@ async function main() {
   assert.deepEqual(saved, [bounds], 'close immediately flushes the latest pending bounds');
   await new Promise(resolve => setTimeout(resolve, 25));
   assert.equal(saved.length, 1);
+  for (const state of ['minimized', 'maximized', 'fullscreen']) {
+    bounds = { ...good, x: 200 + saved.length * 100 };
+    const normalBounds = { ...bounds };
+    window.emit('move');
+    minimized = state === 'minimized';
+    maximized = state === 'maximized';
+    fullscreen = state === 'fullscreen';
+    bounds = { x: 0, y: 0, width: 1920, height: 1080 };
+    window.emit('resize');
+    await new Promise(resolve => setTimeout(resolve, 25));
+    assert.deepEqual(saved.at(-1), normalBounds, state + ' must preserve the pending normal geometry');
+    minimized = maximized = fullscreen = false;
+  }
+  const count = saved.length;
   window.emit('move');
   window.emit('closed');
   await new Promise(resolve => setTimeout(resolve, 25));
-  assert.equal(saved.length, 1, 'destroyed windows retain no pending save');
+  assert.equal(saved.length, count, 'destroyed windows retain no pending save');
   assert.equal(window.listenerCount('resize'), 0);
   console.log('Window bounds regression checks passed');
 }

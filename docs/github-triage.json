@@ -112,7 +112,7 @@
       "url": "https://github.com/steveseguin/electroncapture/issues/90",
       "title": "Remember last position, display and size",
       "state": "open",
-      "reason": "Geometry persistence exists; the full last-display/fullscreen-state request is not completely validated."
+      "reason": "Geometry persistence exists; follow-up fixes preserve explicit CLI/deep-link choices and pending normal bounds across state transitions. Full last-display/fullscreen-state persistence is still not implemented or validated."
     },
     {
       "number": 89,
@@ -292,5 +292,27 @@
     "status": "Published: all 26 platform packages replaced; all 33 published assets match local SHA-256 hashes. Public Linux x64 AppImage re-downloaded and confirmed identical to the artifact that passed local packaged-startup and shortcut-recovery checks.",
     "release": "https://github.com/steveseguin/electroncapture/releases/tag/v2.23.5",
     "previousTagCommit": "65b14d91412dc52a43110f0e21cb132d67b603a0"
+  },
+  "postRefreshMaintenance": {
+    "releaseStatus": "Source fixes after the all-platform refresh; published v2.23.5 packages still identify commit 78b4fab.",
+    "fixes": [
+      "Explicit CLI/deep-link geometry, including values equal to defaults and an explicit monitor selection, takes precedence over remembered window bounds.",
+      "A pending normal-window move/resize is saved even if the window is minimized, maximized or made fullscreen during the debounce."
+    ],
+    "validation": {
+      "regressionSuites": 22,
+      "nativeGeometryScenarios": 7,
+      "baseline": "Default restoration passes, while all six explicit-geometry cases fail against the published package and pass against the fixed source.",
+      "windowMatrix": {
+        "scenarios": 45,
+        "assertions": 525,
+        "passed": true
+      },
+      "closedWindowRetention": {
+        "cycles": 20,
+        "retainedClosedWindows": 0,
+        "passed": true
+      }
+    }
   }
 }
