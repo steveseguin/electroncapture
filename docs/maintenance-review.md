@@ -50,6 +50,26 @@ subjective media quality and multi-hour sessions are not claimed as tested here.
 The shared 2.23.4 version update and Linux package-payload checks were pulled;
 all 22 suites and the additional payload regression pass after integration.
 
+The native compositor recheck retained alpha values 0/255/128. A fresh device run
+opened the 12 currently available input/output endpoints (including FaceTime,
+OBS Virtual Camera, built-in microphone/speakers and virtual audio devices),
+completed both download destinations, and passed resizing/fullscreen checks:
+`elecap-device-validation-JQDCD6/result.json`.
+
+**OBS recording limitation:** a 62-second OBS Virtual Camera recording and its
+close/quit samples complete and remain aligned, but fail the strict timestamp
+check. The normal file contains 55 adjacent equal video packet timestamps, no
+backwards timestamps, and a 75 ms change in audio/video offset. A separate bare
+Electron 43.8.7 window, with no application main/preload code, reproduced duplicate
+timestamps during a 20-second control recording. This points to the camera/browser
+recording path rather than the maintenance app changes, but does not identify the
+underlying cause. No media rewriting or runtime downgrade was introduced. Evidence:
+`elecap-recording-validation-fT34EQ/analysis.json` and
+`elecap-obs-control-MGRelf/analysis.json`. The generated ten-minute recording above
+still passes the independently decoded track and duration checks; OBS's strict
+timing failure is not represented as a pass.
+
+
 ## Linux follow-up, November 4, 2026
 
 [Linux validation and publication](linux-release-validation.md) completes the
