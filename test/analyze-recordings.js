@@ -16,7 +16,7 @@ async function decode(file, completed) {
   // Decode each track separately so every parsed timestamp has one source.
   async function decodeTrack(track) {
     const filters = track === 'video'
-      ? ['-map', '0:v:0', '-vf', 'showinfo', '-an', '-fps_mode', 'passthrough']
+      ? ['-map', '0:v:0', '-vf', 'showinfo', '-an', '-fps_mode', 'passthrough', '-enc_time_base:v', '-1']
       : ['-map', '0:a:0', '-af', 'ashowinfo', '-vn'];
     const child = spawn(ffmpeg, ['-hide_banner', '-nostats', '-i', file, ...filters, '-f', 'null', '-'], { windowsHide: true });
     child.stdout.resume();

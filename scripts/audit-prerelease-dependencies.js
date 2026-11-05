@@ -1,6 +1,6 @@
 'use strict';
 
-// Explicit, time-limited build-tool exceptions for the reviewed 2.23.4 GitHub prerelease.
+// Explicit, time-limited build-tool exceptions for the reviewed 2.23.5 GitHub prerelease.
 // This does not change npm audit, dismiss GitHub alerts, or permit runtime flaws.
 const fs = require('node:fs');
 const path = require('node:path');
@@ -13,7 +13,7 @@ const reviewed = new Map([
 ]);
 
 function validateReviewedAudit(report, lock, version, now = new Date()) {
-  if (version !== '2.23.4') throw new Error('Tooling exceptions apply only to 2.23.4');
+  if (version !== '2.23.5') throw new Error('Tooling exceptions apply only to 2.23.5');
   if (now >= new Date('2026-12-04T00:00:00Z')) throw new Error('Prerelease tooling review has expired');
   if (report.error || report.auditReportVersion !== 2 || !report.vulnerabilities || !report.metadata?.vulnerabilities) {
     throw new Error('Missing or invalid npm audit report');

@@ -370,7 +370,7 @@ If on version of Electron doesn't work for you all that well, try a different ve
 
 ### Linux Version 🐧
 
-The [2.23.4 release](https://github.com/steveseguin/electroncapture/releases/tag/v2.23.4) provides Linux packages using official Electron 43.8.7. The app uses the normal `2.23.4` version; GitHub marks the release as pre-release until testing is approved. The latest stable release remains separate.
+The [2.23.5 release](https://github.com/steveseguin/electroncapture/releases/tag/v2.23.5) provides Linux packages using official Electron 43.8.7. The app uses the normal `2.23.5` version; GitHub marks the release as pre-release until testing is approved. The latest stable release remains separate.
 
 | Your Linux system | AppImage | Debian / Ubuntu | Fedora / RPM | Portable archive |
 | --- | --- | --- | --- | --- |
@@ -384,22 +384,22 @@ For example, on x64 Linux:
 
 ```bash
 # AppImage: no package installation required
-chmod +x elecap-2.23.4-x86_64.AppImage
-./elecap-2.23.4-x86_64.AppImage
+chmod +x elecap-2.23.5-x86_64.AppImage
+./elecap-2.23.5-x86_64.AppImage
 
 # Debian / Ubuntu: installs required system dependencies
-sudo apt install ./elecap-2.23.4-amd64.deb
+sudo apt install ./elecap-2.23.5-amd64.deb
 
 # Fedora
-sudo dnf install ./elecap-2.23.4-x86_64.rpm
+sudo dnf install ./elecap-2.23.5-x86_64.rpm
 
 # Portable archive: extract, then run elecap inside the extracted directory
-tar -xzf elecap-2.23.4-x64.tar.gz
+tar -xzf elecap-2.23.5-x64.tar.gz
 ```
 
 `LINUX-SHASUMS256.txt` on the release contains SHA-256 checksums. From the download directory, use `sha256sum --check --ignore-missing LINUX-SHASUMS256.txt` to verify downloaded files. The tar archive includes the runtime but still requires system GTK/NSS/audio libraries and a graphical session; it does not install dependencies or desktop integration. User data defaults to the normal Linux profile directory.
 
-If AppImage reports missing FUSE support, use `./elecap-2.23.4-x86_64.AppImage --appimage-extract-and-run` or the native package. Run as your regular user. If Ubuntu blocks Chromium user namespaces, prefer the installed DEB with its packaged sandbox setup. Do not disable the sandbox system-wide. For compositor-specific trouble, try `--ozone-platform=x11`; native Wayland behavior can differ. `--class` / `--app-id` supports separate application groups.
+If AppImage reports missing FUSE support, use `./elecap-2.23.5-x86_64.AppImage --appimage-extract-and-run` or the native package. Run as your regular user. If Ubuntu blocks Chromium user namespaces, prefer the installed DEB with its packaged sandbox setup. Do not disable the sandbox system-wide. For compositor-specific trouble, try `--ozone-platform=x11`; native Wayland behavior can differ. `--class` / `--app-id` supports separate application groups.
 
 Linux uses the official Electron runtime, without the custom Windows WebRTC patches, ASIO, or Windows process-audio capture. See [Linux validation and limitations](docs/linux-release-validation.md) for tested environments, recording results, and ARM hardware coverage.
 
