@@ -86,6 +86,7 @@ async function verifyFuses() {
                 throw new Error(`${architecture}: cookie encryption must be enabled.`);
             }
             console.log(`Verified security fuses for ${architecture}.`);
+            fs.unlinkSync(binary);
         }
     } finally {
         fs.rmSync(temporary, { recursive: true, force: true });
