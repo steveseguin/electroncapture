@@ -461,6 +461,7 @@ jobs:
       - name: Verify Linux packages
         run: |
           node test/linux-package-payload-regression.js
+          node test/recording-analysis-regression.js /usr/bin/ffmpeg
           npm run ${{ matrix.verify }}
 
       - name: Verify clean Linux package dependencies

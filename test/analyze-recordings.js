@@ -9,31 +9,43 @@ if (!root || !ffmpeg) throw new Error('Provide artifact directory and FFmpeg exe
 
 async function decode(file, completed) {
   const result = { file: path.basename(file), videoFrames: 0, audioFrames: 0, maxVideoGapSeconds: 0, errors: [] };
-  const child = spawn(ffmpeg, ['-hide_banner', '-i', file, '-vf', 'showinfo', '-af', 'ashowinfo',
-    '-fps_mode', 'passthrough', '-f', 'null', '-'], { windowsHide: true });
-  child.stdout.resume();
-  let pending = '';
-  child.stderr.on('data', data => {
-    pending += data;
-    const lines = pending.split(/[\r\n]/); pending = lines.pop();
-    for (const line of lines) {
+  // FFmpeg writes audio/video filter logs from separate threads; combined
+  // stderr lines can interleave and silently lose frame counts/timestamps.
+  // Decode each track separately so every parsed timestamp has one source.
+  async function decodeTrack(track) {
+    const filters = track === 'video'
+      ? ['-map', '0:v:0', '-vf', 'showinfo', '-an', '-fps_mode', 'passthrough']
+      : ['-map', '0:a:0', '-af', 'ashowinfo', '-vn'];
+    const child = spawn(ffmpeg, ['-hide_banner', '-nostats', '-i', file, ...filters, '-f', 'null', '-'], { windowsHide: true });
+    child.stdout.resume();
+    const consume = line => {
       const time = /pts_time:([\d.e+-]+)/.exec(line);
-      if (/Parsed_ashowinfo/.test(line) && time) {
+      if (track === 'audio' && /Parsed_ashowinfo/.test(line) && time) {
         result.audioFrames++;
         result.audioStart ??= Number(time[1]);
         const samples = Number(/nb_samples:(\d+)/.exec(line)?.[1]);
         const rate = Number(/rate:(\d+)/.exec(line)?.[1]);
         result.audioEnd = Number(time[1]) + samples / rate;
-      } else if (/Parsed_showinfo/.test(line) && time) {
+      } else if (track === 'video' && /Parsed_showinfo/.test(line) && time) {
         result.videoFrames++;
         result.videoStart ??= Number(time[1]);
         if (result.videoEnd !== undefined) result.maxVideoGapSeconds = Math.max(result.maxVideoGapSeconds, Number(time[1]) - result.videoEnd);
         result.videoEnd = Number(time[1]);
       }
       if (/Error|corrupt|invalid|non.monoton/i.test(line) && result.errors.length < 20) result.errors.push(line);
-    }
-  });
-  result.exitCode = await new Promise((resolve, reject) => { child.on('error', reject); child.on('close', resolve); });
+    };
+    let pending = '';
+    child.stderr.on('data', data => {
+      pending += data;
+      const lines = pending.split(/[\r\n]/); pending = lines.pop();
+      lines.forEach(consume);
+    });
+    const code = await new Promise((resolve, reject) => { child.on('error', reject); child.on('close', resolve); });
+    if (pending) consume(pending);
+    return code;
+  }
+  result.trackExitCodes = await Promise.all(['video', 'audio'].map(decodeTrack));
+  result.exitCode = result.trackExitCodes.every(code => code === 0) ? 0 : 1;
   result.endOffsetSeconds = result.audioEnd - result.videoEnd;
   result.startOffsetSeconds = result.audioStart - result.videoStart;
   result.offsetChangeSeconds = result.endOffsetSeconds - result.startOffsetSeconds;
