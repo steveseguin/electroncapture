@@ -12,7 +12,7 @@
   "validation": {
     "regressionSuites": 22,
     "linuxPackages": "AppImage, DEB, RPM and tar.gz built and payload-verified for x64, ARM64 and ARMv7. Native x64/ARM64 startup, recording, clean dependency and removal checks passed in CI; ARMv7 was cross-built and statically verified.",
-    "native": "45 window scenarios, 14 dialog checks and 20 closed-window retention cycles passed. Native two-process shortcut recovery fails on published 2.23.5 and passes with the fix.",
+    "native": "45 window scenarios, 14 dialog checks and 20 closed-window retention cycles passed. Shortcut recovery failed on the initial 2.23.5 snapshot (65b14d9) and passes in the refreshed packages.",
     "bareElectronRecordingControl": {
       "runtime": "Electron 43.8.7",
       "platform": "Linux X11",
@@ -26,8 +26,8 @@
       "conclusion": "The roughly 200 ms startup audio delay also occurs without EleCap code; do not introduce speculative app-level audio retiming."
     },
     "crossPlatformCI": {
-      "url": "https://github.com/steveseguin/electroncapture/actions/runs/41949763781",
-      "sourceCommit": "78b4faba5e3d4b8a2b811d0006d0231dede583c9",
+      "url": "https://github.com/steveseguin/electroncapture/actions/runs/41959720595",
+      "sourceCommit": "1aa73c48c075b2b94e110295bca53853d1d049d5",
       "publishesRelease": false,
       "status": "success",
       "jobs": [
@@ -286,15 +286,15 @@
   "fixCommit": "78b4faba5e3d4b8a2b811d0006d0231dede583c9",
   "releaseRefresh": {
     "version": "2.23.5",
-    "sourceCommit": "78b4faba5e3d4b8a2b811d0006d0231dede583c9",
-    "ciRun": 41949763781,
+    "sourceCommit": "1aa73c48c075b2b94e110295bca53853d1d049d5",
+    "ciRun": 41959720595,
     "prerelease": true,
-    "status": "Published: all 26 platform packages replaced; all 33 published assets match local SHA-256 hashes. Public Linux x64 AppImage re-downloaded and confirmed identical to the artifact that passed local packaged-startup and shortcut-recovery checks.",
+    "status": "Published: all 26 platform packages replaced from the latest verified build. Public Linux x64 AppImage re-downloaded; startup, eight native geometry cases, seven geometry/deep-link integration cases, shortcut recovery and a 60-second generated-media recording passed. All 33 published assets verified against SHA-256 checksums.",
     "release": "https://github.com/steveseguin/electroncapture/releases/tag/v2.23.5",
-    "previousTagCommit": "65b14d91412dc52a43110f0e21cb132d67b603a0"
+    "previousTagCommit": "78b4faba5e3d4b8a2b811d0006d0231dede583c9"
   },
   "postRefreshMaintenance": {
-    "releaseStatus": "Source fixes after the all-platform refresh; published v2.23.5 packages still identify commit 78b4fab.",
+    "releaseStatus": "Included in the latest all-platform 2.23.5 refresh from 1aa73c48c075b2b94e110295bca53853d1d049d5.",
     "fixes": [
       "Explicit CLI/deep-link geometry, including values equal to defaults and an explicit monitor selection, takes precedence over remembered window bounds.",
       "A pending normal-window move/resize is saved even if the window is minimized, maximized or made fullscreen during the debounce."
@@ -302,7 +302,7 @@
     "validation": {
       "regressionSuites": 22,
       "nativeGeometryScenarios": 7,
-      "baseline": "Default restoration passes, while all six explicit-geometry cases fail against the published package and pass against the fixed source.",
+      "baseline": "Default restoration passes, while the six explicit-geometry cases fail against the earlier 78b4fab package and pass against the refreshed package.",
       "windowMatrix": {
         "scenarios": 45,
         "assertions": 525,
@@ -314,5 +314,25 @@
         "passed": true
       }
     }
+  },
+  "postPublicationSmoke": {
+    "publicDownload": "elecap-2.23.5-x86_64.AppImage",
+    "appImageLauncher": "passed",
+    "nativeGeometryScenarios": 8,
+    "geometryIntegrationScenarios": 7,
+    "shortcutRecovery": "passed",
+    "recordingSeconds": 60,
+    "recordingPassed": true,
+    "recordingOffsets": [
+      {
+        "startOffsetSeconds": 0.194,
+        "endOffsetSeconds": 0.0660000000000025,
+        "offsetChangeSeconds": -0.1279999999999975,
+        "complete": true,
+        "videoTimestampRegressions": 0,
+        "audioTimestampRegressions": 0
+      }
+    ],
+    "report": "https://github.com/steveseguin/electroncapture/releases/download/v2.23.5/validation.json"
   }
 }

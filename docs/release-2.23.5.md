@@ -28,10 +28,17 @@ Version 2.23.4 remains a separate earlier snapshot; its already uploaded assets 
 are preserved.
 
 The November 5, 2026 refresh replaces all 26 platform downloads with the verified
-artifacts from workflow run `41949763781`, source commit
-`78b4faba5e3d4b8a2b811d0006d0231dede583c9`. It adds recovery of shortcuts after a
+artifacts from workflow run `41959720595`, source commit
+`1aa73c48c075b2b94e110295bca53853d1d049d5`. It adds recovery of shortcuts after a
 conflicting app process exits, removes the electron-is-dev dependency, updates
-build dependencies, and fixes security findings in test fixtures. The release tag
+build dependencies, and fixes security findings in test fixtures. It also preserves
+explicit CLI/deep-link geometry and pending normal bounds across window-state
+transitions. The release tag
 now identifies that common build source. Checksums and validation metadata are
 refreshed alongside the binaries; earlier hardware testing remains labeled with
 its original source snapshot. Application version and runtime pins are unchanged.
+
+After replacement, the public Linux x64 AppImage was downloaded again. Startup,
+identity/isolation, eight native geometry scenarios, seven CLI/deep-link geometry
+cases, shortcut recovery, and a 60-second generated-media recording passed. The
+release validation.json includes exact package hashes and post-publication results.
