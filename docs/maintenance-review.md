@@ -70,6 +70,50 @@ still passes the independently decoded track and duration checks; OBS's strict
 timing failure is not represented as a pass.
 
 
+### Published 2.23.5 Mac verification
+
+The shared Linux pin/restore corrections and closed-window retention fix were
+pulled and tested on Mac. All 22 regression suites, 45 window scenarios / 529
+assertions, 138 reuse/fetch checks, and 14 real dialog checks pass on this source.
+The dialog checks include minimizing/restoring an owner while its prompt remains
+open. Twenty native open/close cycles return IPC/display/download listener counts
+to baseline, and test-only garbage collection finds zero retained closed window
+wrappers (`elecap-window-retention-1OY2Yi/result.json`). The runtime binaries do
+not enable test GC flags.
+
+The final published 2.23.5 Mac artifacts were downloaded from GitHub and matched
+its SHA-256 digests. CI built them from `65b14d9`; all 19 packaged application
+JavaScript modules match the tested `a1fa9da` code (the version update changes no
+application module). Package metadata and the macOS bundle both report 2.23.5.
+Developer ID signature, notarization ticket, Gatekeeper assessment, and both
+architecture fuse checks pass. DMG and ZIP integrity checks pass; a read-only
+mounted DMG has a valid signature and the same app.asar as the tested ZIP.
+
+The downloaded app passes native startup/CLI and JS/CSS injection, isolated-page
+and environment-injection checks, Intel/Rosetta startup, and opening a copy of the
+beta.3 profile with cookies, local storage and IndexedDB retained. The 2.23.5
+regression suites and real-media analyzer regression pass after pulling the
+updated timestamp-analysis tooling. The verifier now deletes each inspected
+architecture slice immediately, reducing temporary disk space without dropping
+any fuse/signature/notarization checks.
+
+
+The earlier ten-minute endurance evidence predates the retention correction and
+is retained as such; it is not claimed as a new ten-minute run of this snapshot.
+A preliminary 20-second packaged recording, run concurrently with startup/Rosetta
+checks, decoded completely but failed the offset-change threshold: audio started
+646 ms after video and ended 56 ms after it. That result remains a recorded timing
+failure rather than being silently counted as a pass. The final isolated 60-second recording from the downloaded 2.23.5 app passes:
+1,817 video frames decode without warnings; audio/video end offset is 5 ms,
+offset change is -84 ms, and the maximum video-frame gap is 76 ms. Both tracks
+meet the duration check. Evidence: `elecap-recording-validation-gpeYsZ/analysis.json`.
+This successful isolated run does not erase the earlier concurrent-startup timing
+failure or the independently reproduced OBS timestamp warnings.
+
+The [2.23.5 release](https://github.com/steveseguin/electroncapture/releases/tag/v2.23.5)
+remains a GitHub prerelease. Mac download checksums are in `SHA256SUMS-mac.txt`;
+stable/latest remains 2.23.2.
+
 ## Linux follow-up, November 4, 2026
 
 [Linux validation and publication](linux-release-validation.md) completes the
