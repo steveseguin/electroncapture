@@ -78,7 +78,9 @@
     "verify:linux": "node ./scripts/verify-linux-build.js x64",
     "verify:linux-armv7l": "node ./scripts/verify-linux-build.js armv7l",
     "test:window-matrix": "node ./test/window-workflows.js --matrix",
-    "test:window-reuse": "node ./test/window-reuse-runtime.js"
+    "test:window-reuse": "node ./test/window-reuse-runtime.js",
+    "test:mac-shortcuts": "node ./test/mac-shortcuts-runtime.js",
+    "test:dialogs-runtime": "node ./test/dialogs-runtime.js"
   },
   "repository": {
     "type": "git",
