@@ -7,8 +7,8 @@ const { spawn } = require('node:child_process');
 const [root, ffmpeg] = process.argv.slice(2);
 if (!root || !ffmpeg) throw new Error('Provide artifact directory and FFmpeg executable');
 
-async function decode(file) {
-  const result = { file: path.basename(file), videoFrames: 0, audioFrames: 0, errors: [] };
+async function decode(file, completed) {
+  const result = { file: path.basename(file), videoFrames: 0, audioFrames: 0, maxVideoGapSeconds: 0, errors: [] };
   const child = spawn(ffmpeg, ['-hide_banner', '-i', file, '-vf', 'showinfo', '-af', 'ashowinfo',
     '-fps_mode', 'passthrough', '-f', 'null', '-'], { windowsHide: true });
   child.stdout.resume();
@@ -27,6 +27,7 @@ async function decode(file) {
       } else if (/Parsed_showinfo/.test(line) && time) {
         result.videoFrames++;
         result.videoStart ??= Number(time[1]);
+        if (result.videoEnd !== undefined) result.maxVideoGapSeconds = Math.max(result.maxVideoGapSeconds, Number(time[1]) - result.videoEnd);
         result.videoEnd = Number(time[1]);
       }
       if (/Error|corrupt|invalid|non.monoton/i.test(line) && result.errors.length < 20) result.errors.push(line);
@@ -34,9 +35,19 @@ async function decode(file) {
   });
   result.exitCode = await new Promise((resolve, reject) => { child.on('error', reject); child.on('close', resolve); });
   result.endOffsetSeconds = result.audioEnd - result.videoEnd;
-  result.offsetChangeSeconds = result.endOffsetSeconds - (result.audioStart - result.videoStart);
+  result.startOffsetSeconds = result.audioStart - result.videoStart;
+  result.offsetChangeSeconds = result.endOffsetSeconds - result.startOffsetSeconds;
+  result.expectedSeconds = completed?.elapsedSeconds;
+  result.videoSeconds = result.videoEnd - result.videoStart;
+  result.audioSeconds = result.audioEnd - result.audioStart;
+  result.averageVideoFps = result.videoFrames / result.videoSeconds;
+  // A short/truncated clip can have perfectly matched A/V timestamps. Require
+  // both decoded tracks to cover the actual fixture run, allowing one second
+  // for recorder startup/shutdown and final HTTP chunk delivery.
+  result.complete = Number.isFinite(result.expectedSeconds) && result.expectedSeconds > 0 &&
+    result.videoSeconds >= result.expectedSeconds - 1 && result.audioSeconds >= result.expectedSeconds - 1;
   result.passed = result.exitCode === 0 && result.videoFrames > 0 && result.audioFrames > 0 &&
-    Number.isFinite(result.offsetChangeSeconds) && Math.abs(result.offsetChangeSeconds) < 0.25 && !result.errors.length;
+    result.complete && Number.isFinite(result.offsetChangeSeconds) && Math.abs(result.offsetChangeSeconds) < 0.25 && !result.errors.length;
   return result;
 }
 
@@ -51,7 +62,7 @@ async function decode(file) {
   const run = JSON.parse(fs.readFileSync(path.join(root, 'result.json'), 'utf8'));
   const report = { run, recordings: [] };
   for (const file of fs.readdirSync(root).filter(file => file.endsWith('.webm'))) {
-    report.recordings.push(await decode(path.join(root, file)));
+    report.recordings.push(await decode(path.join(root, file), run.completed?.[path.basename(file, '.webm')]));
   }
   const metricsPath = path.join(root, 'metrics.jsonl');
   if (fs.existsSync(metricsPath)) {
@@ -67,7 +78,10 @@ async function decode(file) {
       earlyMeanMB: mean(totals.slice(earlyStart, earlyStart + windowSize)), lateMeanMB: mean(totals.slice(-windowSize)) };
     report.memory.lateMinusEarlyMB = report.memory.lateMeanMB - report.memory.earlyMeanMB;
   }
-  report.passed = run.exitCode === 0 && report.recordings.length > 0 && report.recordings.every(recording => recording.passed);
+  const names = report.recordings.map(recording => path.basename(recording.file, '.webm')).sort();
+  const completedNames = Object.keys(run.completed || {}).sort();
+  report.passed = run.exitCode === 0 && names.includes('normal') &&
+    JSON.stringify(names) === JSON.stringify(completedNames) && report.recordings.every(recording => recording.passed);
   fs.writeFileSync(path.join(root, 'analysis.json'), JSON.stringify(report, null, 2));
   console.log(JSON.stringify(report, null, 2));
   process.exitCode = report.passed ? 0 : 1;
