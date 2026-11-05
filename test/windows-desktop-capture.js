@@ -28,7 +28,7 @@ if (!process.versions.electron) {
   const { app, BrowserWindow, desktopCapturer } = require('electron');
   app.setAsDefaultProtocolClient = () => false; app.isDefaultProtocolClient = () => true;
   const report = { electron: process.versions.electron, wgc: process.env.VALIDATION_WGC || 'default', passed: false, captures: [] };
-  require('../main');
+  require('./fixtures/app-require')('./main');
   app.whenReady().then(async () => {
     try {
       let receiver;

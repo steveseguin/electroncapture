@@ -32,6 +32,7 @@ packages are checked separately below. Final application/package version remains
 | Area | Windows result |
 | --- | --- |
 | Regressions | All 22 standard suites pass after integrating concurrent platform changes. |
+| Dependency checks | Production and both native lockfile audits report zero vulnerabilities. CI verifies registry signatures for 378 root, 21 ASIO and 23 process-audio packages. Four reviewed build-tool advisories remain unfixed under the release-specific exception expiring December 4, 2026; this does not address the older custom Chromium engines. |
 | Native window behavior | After the fullscreen pin correction, both runtimes pass all 45 scenarios / 542 assertions each (1,084 combined). Explicit no-pin, Node/isolation, minimize, fullscreen exit and click-through combinations are covered. |
 | Native compositor alpha | Five alpha states pass on each runtime. |
 | Real mouse input | Five repeated runs per runtime: 50 combined click/click-through/focus-restoration cycles and 10 real edge drags. Native hit testing identifies the resize edge; width changes from 640 to 720 pixels. |
@@ -232,6 +233,9 @@ restore, enter-full-screen and leave-full-screen. The level remains above the
 taskbar on exit because the exit event precedes Explorer restoring the taskbar.
 Explicit `--no-pin` and temporary dialog pin suspension remain respected.
 Mac/Linux level choices and both custom Electron binaries remain unchanged.
+Loading the original published `65b14d9` ASAR reproduces the click-through pin
+failure too (`elecap-window-workflows-QjXUcJ`); this is not only a checkout fixture
+failure. The fix is built from `f29bca1` in Windows-only CI run `41946278196`.
 
 The matrix now waits for the taskbar transition and checks fullscreen exit too.
 Source artifacts are `elecap-window-workflows-zNQt1Y` (v39) and
@@ -239,8 +243,64 @@ Source artifacts are `elecap-window-workflows-zNQt1Y` (v39) and
 checks. Both runtimes also repeat the five native compositor states, five real
 mouse/click-through/focus cycles, a real edge drag, and all 14 dialog checks
 successfully after the correction.
-Final refreshed-package results and build provenance are recorded below after
-verification. The GitHub release stays a prerelease with normal version `2.23.5`.
+The closed-window test also repeats successfully after the new native listeners:
+20 of 20 closed wrappers are collected on each runtime, with listener counts
+returning to baseline (`LaFBPZ` / `QENzwr`).
+Windows-only build [41946278196](https://github.com/steveseguin/electroncapture/actions/runs/41946278196)
+passes all three applicable jobs: validation, Windows x64 and Windows ARM64.
+The x64 job includes both custom runtimes and signed installer
+39→43→39 replacement/rollback followed by uninstall. Mac/Linux jobs are
+intentionally skipped; their existing downloads are preserved.
+
+All six Windows ZIPs pass local archive integrity checks. The six outer
+executables and both extracted x64 executables pass pinned Authenticode signer
+and timestamp verification (the expected self-signed-root trust limitation still
+applies). All three extracted ASARs embed `2.23.5` and their `main.js` matches
+`f29bca1`; executable architectures and security fuses also pass. The newly built
+x64 native modules match between variants. ARM64 retains official Electron
+43.8.7 and does not gain ASIO or custom x64 WebRTC patches; no local ARM64 GUI
+execution is claimed.
+
+| Refreshed portable | SHA-256 |
+| --- | --- |
+| `elecap.exe` | `7f723eace58faf1508d502e0e27e1a276b753b669f8c22086d3b13a762ffeb18` |
+| `elecap-win11.exe` | `c8e0b35dc188e0f28fed2359f46bbe76c529ca74942e13f06a05eb2afe4f71f4` |
+| `elecap-2.23.5-win-arm64-portable.exe` | `bd1e9db094f5f886aae3570792fc1821c91d825c0244365dcf70f631b456fb40` |
+
+Both refreshed x64 ASARs pass the full 45-scenario / 542-assertion matrix again,
+loading their packaged main process, preload and dependencies in the matching
+custom runtime (`bGu5jI` / `off6P4`). Both also pass all five native compositor
+states, five actual mouse/click-through/focus cycles and an edge resize, 14 dialog
+checks, and owned-window capture at three sizes. Their freshly compiled
+process-audio modules pass 100 source replacements plus reload/close/crash
+recovery, and their ASIO modules pass 100 sequential input-stream cycles each.
+
+The actual signed SFX launchers separately pass cold launch, process restart,
+persistent cookies/storage, CSS/JS injection, reload, second-process named-window
+reuse, deep-link routing and explicit Node-mode separation (`jY1Saq` / `yxg5UR`).
+Disabled Node environment-injection fuses remain effective in those launches.
+
+Fresh two-minute generated 1080p recordings from the signed SFX downloads fully
+decode, retain sync, and contain no reversed timestamps (`egWUvj` / `1IMCDg`):
+
+| Metric | Refreshed v39 | Refreshed v43 |
+| --- | --- | --- |
+| Decoded video / audio frames | 7,297 / 2,000 | 7,305 / 2,000 |
+| Mean encoded fps | 60.81 | 60.89 |
+| Final A/V offset / change | +47 / +14 ms | +36.5 / +31.5 ms |
+| Initial maximum video gap | 1.377 s | 1.215 s |
+| Maximum gap after 2 seconds | 42 ms | 47 ms |
+
+The initial gap remains; these short runs do not resolve or supersede the
+hour-long memory finding. All refreshed-package functional gates pass, with
+those existing media/runtime limitations explicitly retained for prerelease
+evaluation. Selected machine-readable reports, including the failing original
+package reproduction and runtime stress limits, are attached to the release.
+
+The GitHub release stays a prerelease with normal version `2.23.5`. Its original
+tag continues to identify the Mac/Linux build; the Windows refresh commit is
+explicitly identified here and in the release metadata rather than moving that
+already-published tag.
 
 ## Reproduction
 
@@ -283,26 +343,29 @@ separate portable workflow exercises the actual signed SFX launch/reuse path.
 
 ## Follow-up order
 
-1. Preserve both existing custom runtimes and rollback packages while reconciling
+1. Before stable promotion, isolate the recording startup gap and v43 sustained
+   memory growth with a bare Electron control and matched media/network workloads.
+   Compare main, renderer and GPU private memory after warm-up; require a bounded
+   long-session result rather than assuming the closed-window fix addresses it.
+2. Preserve both existing custom runtimes and rollback packages while reconciling
    exact Electron/Chromium/WebRTC/FFmpeg revisions, native patches, GN arguments
    and artifact hashes. Do not substitute SSN's non-resizable Windows 10 window
    workaround for Electron Capture's working resize behavior.
-2. Rebuild the reconciled custom patch set on a supported Electron patch release
+3. Rebuild the reconciled custom patch set on a supported Electron patch release
    in an isolated checkout. Separate window transparency/frame fixes from codec,
    cursor, adaptive-scaling and long-buffer changes so failures can be attributed.
-3. Gate replacement on these behavior tests plus actual Windows 10, mixed-DPI
+4. Gate replacement on these behavior tests plus actual Windows 10, mixed-DPI
    monitors, OBS alpha capture, visible-cursor controls, hardware-specific codec
    and QP measurements, and physical device unplug/reconnect. Keep a known-working
    installer available throughout testing.
-4. Resolve the remaining build-tool advisories through tested upstream updates;
+5. Resolve the remaining build-tool advisories through tested upstream updates;
    retain strict production/native dependency audits. The temporary prerelease
    exception does not repair or justify indefinitely retaining vulnerable tools.
-5. Investigate recording startup gaps and v43 sustained memory growth with a bare
-   Electron control and matched media/network workloads before stable promotion.
-   Promote a replacement only after signed-package install/upgrade/rollback and
-   sustained media tests pass on the supported hardware matrix. Current tests
-   do not establish subjective camera/speech quality, hostile-network recovery,
-   hardware QP ceilings, or ten-minute buffering of high-bitrate 60 fps content.
+
+Promote a replacement only after signed-package install/upgrade/rollback and
+sustained media tests pass on the supported hardware matrix. Current tests
+do not establish subjective camera/speech quality, hostile-network recovery,
+hardware QP ceilings, or ten-minute buffering of high-bitrate 60 fps content.
 
 ## Evidence notes
 
