@@ -8,8 +8,8 @@ const [root, ffmpeg] = process.argv.slice(2);
 if (!root || !ffmpeg) throw new Error('Provide artifact directory and FFmpeg executable');
 
 async function decode(file, completed) {
-  const result = { file: path.basename(file), videoFrames: 0, audioFrames: 0, maxVideoGapSeconds: 0,
-    maxAudioGapSeconds: 0, videoTimestampRegressions: 0, audioTimestampRegressions: 0, errors: [] };
+  const result = { file: path.basename(file), videoFrames: 0, audioFrames: 0, maxVideoGapSeconds: 0, maxVideoGapAfterTwoSeconds: 0,
+    maxAudioGapSeconds: 0, videoTimestampRegressions: 0, audioTimestampRegressions: 0, videoGapsOver250ms: [], errors: [] };
   let previousAudioStart;
   // FFmpeg writes audio/video filter logs from separate threads; combined
   // stderr lines can interleave and silently lose frame counts/timestamps.
@@ -36,7 +36,10 @@ async function decode(file, completed) {
         result.videoFrames++;
         result.videoStart ??= Number(time[1]);
         if (result.videoEnd !== undefined) {
-          result.maxVideoGapSeconds = Math.max(result.maxVideoGapSeconds, Number(time[1]) - result.videoEnd);
+          const gap = Number(time[1]) - result.videoEnd;
+          result.maxVideoGapSeconds = Math.max(result.maxVideoGapSeconds, gap);
+          if (result.videoEnd >= 2) result.maxVideoGapAfterTwoSeconds = Math.max(result.maxVideoGapAfterTwoSeconds, gap);
+          if (gap > 0.25 && result.videoGapsOver250ms.length < 50) result.videoGapsOver250ms.push({ from: result.videoEnd, to: Number(time[1]), seconds: gap });
           if (Number(time[1]) < result.videoEnd) result.videoTimestampRegressions++;
         }
         result.videoEnd = Number(time[1]);

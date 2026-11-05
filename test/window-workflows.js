@@ -49,6 +49,7 @@ if (!process.versions.electron) {
     fs.writeFileSync(path.join(artifacts, 'fixture.css'), 'body { --workflow-css: loaded; }');
     const results = [];
     for (const [name, flags] of Object.entries(scenarios)) {
+      if (process.env.WORKFLOW_FILTER && !name.includes(process.env.WORKFLOW_FILTER)) continue;
       const directory = path.join(artifacts, name);
       fs.mkdirSync(directory);
       const env = { ...process.env, WORKFLOW_SCENARIO: name, WORKFLOW_ARTIFACTS: directory, WORKFLOW_MATRIX: matrix ? '1' : '0',
@@ -74,6 +75,7 @@ if (!process.versions.electron) {
       if (!passed) console.error(report.error || output.slice(-4000));
     }
     fs.writeFileSync(path.join(artifacts, 'result.json'), JSON.stringify(results, null, 2));
+    assert.ok(results.length, 'The scenario filter must match at least one workflow');
     assert.ok(results.every(result => result.passed), 'Some native window workflows failed');
   })().catch(error => { console.error(error); process.exitCode = 1; });
 } else {
@@ -188,6 +190,9 @@ if (!process.versions.electron) {
       if (fullscreen) {
         await waitFor(() => fillsDisplay(win), 'CLI fullscreen bounds after restore');
         check(true, 'CLI fullscreen startup');
+        // Explorer can lower its taskbar after the initial fullscreen transition.
+        await sleep(1500);
+        check(win.isAlwaysOnTop() === expectedPin, 'fullscreen preserves pin after taskbar transition');
       }
       if (clickthrough) {
         check(win.mouseEvent === true, 'CLI click-through survives initial focus');
@@ -199,6 +204,12 @@ if (!process.versions.electron) {
         check(win.mouseEvent === true && win.isAlwaysOnTop(), 'shortcut explicitly pins click-through overlay');
         callbacks.get('CommandOrControl+Shift+Alt+X')();
         check(win.mouseEvent === false && win.isAlwaysOnTop() === expectedPin, 'shortcut restores original pin choice');
+      }
+      if (fullscreen && process.platform === 'win32') {
+        win.full = false;
+        win.setFullScreen(false);
+        await sleep(500);
+        check(win.isAlwaysOnTop() === expectedPin, 'leaving fullscreen preserves pin choice');
       }
       if (scenario === 'chroma') {
         check(await win.webContents.executeJavaScript('getComputedStyle(document.body).backgroundColor === "rgb(0, 255, 0)"'), 'chroma background injected');

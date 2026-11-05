@@ -2,6 +2,7 @@
 
 // Opt-in: briefly opens an available ASIO input, counts callbacks, and discards
 // all samples. No output channels, recordings, or external connections.
+// Run ASIO fixtures one at a time: the selected driver may be exclusive.
 const fs = require('node:fs'), path = require('node:path'), assert = require('node:assert/strict');
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const duration = Number(process.env.VALIDATION_ASIO_SECONDS || 0);
@@ -32,6 +33,8 @@ if (!process.versions.electron) {
     for (let i = 0; i < 200; i++) { if (await fn()) return; await sleep(30); }
     throw new Error(`ASIO timeout: ${label}`);
   };
+  require('./fixtures/use-packaged-native')('native-modules/electron-asio/lib/index.js');
+  report.packagedApp = process.env.VALIDATION_PACKAGED_APP;
   require('../main');
   const asio = require('../native-modules/electron-asio/lib/index');
   const active = new Set(), originalCreate = asio.createStream;
@@ -58,7 +61,8 @@ if (!process.versions.electron) {
           window.callbackCount=0; window.sampleCount=0;
           window.offAsio=electronApi.onAsioAudioData((_id,buffers)=>{window.callbackCount++;window.sampleCount+=buffers.reduce((sum,buffer)=>sum+buffer.length,0);});
           window.fixtureStream=await electronApi.createAsioStreamAsync(${JSON.stringify(config)});
-          await window.fixtureStream.start();return window.fixtureStream.streamId;
+          if (!await window.fixtureStream.start()) throw new Error('ASIO driver refused stream start');
+          return window.fixtureStream.streamId;
         })()`);
       };
       const baseline = owner.webContents.listenerCount('did-start-navigation');

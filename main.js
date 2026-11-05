@@ -741,9 +741,10 @@ function ensureWindowVisible(windowInstance, options = {}) {
 	// Restoring a window that started minimized can reset its native overlay level
 	// without emitting a restore event, so reapply the requested overlay level.
 	// CLI click-through alone must not override an explicit --no-pin choice.
-	if ((process.platform === 'darwin' || process.platform === 'linux') && !isWindowPinSuspended(windowInstance) && (windowInstance.args?.pin ||
+	if (!isWindowPinSuspended(windowInstance) && (windowInstance.args?.pin ||
 		(windowInstance.mouseEvent && windowInstance.__clickThroughForcedPin))) {
-		windowInstance.setAlwaysOnTop(true, 'floating', 1);
+		windowInstance.setAlwaysOnTop(true,
+			process.platform === 'win32' ? 'screen-saver' : 'floating', 1);
 	}
 
 	if (shouldFocus) {
@@ -2611,20 +2612,23 @@ async function createWindow(args, reuse=false) {
 	mainWindow.__immutableWebPreferences = desiredImmutableWebPreferences;
 	mainWindow.__defaultDragRegionEnabled = defaultDragRegionEnabled;
 	mainWindow.__lastDisplayId = initialDisplay ? initialDisplay.id : null;
-	if (process.platform === 'darwin' || process.platform === 'linux') {
+	{
 		const restorePinnedLevel = () => {
 			if (!mainWindow.isDestroyed() && !mainWindow.isMinimized() && !isWindowPinSuspended(mainWindow) && (mainWindow.args?.pin ||
 				(mainWindow.mouseEvent && mainWindow.__clickThroughForcedPin))) {
-				mainWindow.setAlwaysOnTop(true, 'floating', 1);
+				// Windows' floating level explicitly moves behind the taskbar. When
+				// Explorer lowers the taskbar for fullscreen this also removes TOPMOST.
+				// Keep this level on exit too: the exit event precedes taskbar restore.
+				mainWindow.setAlwaysOnTop(true, process.platform === 'win32' ? 'screen-saver' : 'floating', 1);
 			}
 		};
 		mainWindow.on('restore', restorePinnedLevel);
-		if (process.platform === 'linux') {
-			// X11 window managers can clear ABOVE when mapping or changing fullscreen.
-			for (const event of ['show', 'enter-full-screen', 'leave-full-screen']) {
-				mainWindow.on(event, restorePinnedLevel);
-			}
-		} else mainWindow.on('minimize', () => {
+		if (process.platform === 'linux' || process.platform === 'win32') {
+			// Native fullscreen/show transitions can clear the requested topmost level.
+			mainWindow.on('show', restorePinnedLevel);
+			mainWindow.on('enter-full-screen', restorePinnedLevel);
+			mainWindow.on('leave-full-screen', restorePinnedLevel);
+		} else if (process.platform === 'darwin') mainWindow.on('minimize', () => {
 			// Overlay windows normally hide the Dock icon, but minimized captures
 			// need a visible way to restore them.
 			app.dock.show().then(restorePinnedLevel).catch(error => console.warn('Unable to show Dock icon:', error));

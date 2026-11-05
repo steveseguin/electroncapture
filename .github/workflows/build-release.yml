@@ -17,6 +17,10 @@ on:
         description: 'Build and validate only Linux packages (all three architectures)'
         type: boolean
         default: false
+      windows_only:
+        description: 'Build and validate only Windows packages; preserve existing Mac/Linux release assets'
+        type: boolean
+        default: false
       reviewed_prerelease_tooling:
         description: '2.23.5 GitHub prerelease only: accept the four documented build-tool advisories; all other audits remain blocking'
         type: boolean
@@ -64,7 +68,12 @@ jobs:
         shell: bash
         env:
           REQUESTED_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+          CONFLICTING_PLATFORMS: ${{ inputs.linux_only && inputs.windows_only }}
         run: |
+          if [ "$CONFLICTING_PLATFORMS" = "true" ]; then
+            echo "::error::Choose only one platform-only option"
+            exit 1
+          fi
           package_version="$(node -p "require('./package.json').version")"
           requested_version="${REQUESTED_VERSION#v}"
           if [ "$requested_version" != "$package_version" ]; then
@@ -333,7 +342,7 @@ jobs:
             dist/*_arm64_*.zip
 
   build-macos:
-    if: github.event_name != 'workflow_dispatch' || !inputs.linux_only
+    if: github.event_name != 'workflow_dispatch' || (!inputs.linux_only && !inputs.windows_only)
     needs: validate
     runs-on: macos-15
     env:
@@ -415,6 +424,7 @@ jobs:
             dist/*.zip
 
   build-linux:
+    if: github.event_name != 'workflow_dispatch' || !inputs.windows_only
     needs: validate
     strategy:
       fail-fast: false

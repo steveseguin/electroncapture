@@ -82,7 +82,14 @@
     "test:mac-shortcuts": "node ./test/mac-shortcuts-runtime.js",
     "test:dialogs-runtime": "node ./test/dialogs-runtime.js",
     "test:window-retention": "node ./test/window-retention-runtime.js",
-    "test:recording-analysis": "node ./test/recording-analysis-regression.js"
+    "test:recording-analysis": "node ./test/recording-analysis-regression.js",
+    "test:windows-native-input": "node ./test/windows-native-input.js",
+    "test:windows-desktop-capture": "node ./test/windows-desktop-capture.js",
+    "test:windows-packaged-workflows": "node ./test/windows-packaged-workflows.js",
+    "test:fetch-integration": "node ./test/fetch-runtime-integration.js",
+    "test:asio-runtime": "node ./test/asio-runtime.js",
+    "test:webrtc-stress": "node ./test/webrtc-stress.js",
+    "test:playout-delay": "node ./test/playout-delay-runtime.js"
   },
   "repository": {
     "type": "git",

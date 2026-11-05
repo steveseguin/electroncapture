@@ -10,18 +10,22 @@ as the active ANGLE device, with an NVIDIA TITAN RTX and AMD Radeon RX 9060 XT a
 enumerated. Enumeration and enabled feature flags do not prove a particular
 hardware encoder was used.
 
-With fake-device capture enabling implementation statistics, the default v39
-codec test identifies libvpx for VP8, Intel Media Foundation hardware VP9, and
+With fake-device capture enabling implementation statistics, both default
+codec tests identify libvpx for VP8, Intel Media Foundation hardware VP9, and
 Intel Quick Sync H.264. Explicit software mode identifies libvpx for VP8/VP9 and
 OpenH264 for H.264, all with `powerEfficientEncoder=false`. This confirms the
 software switch changes the exercised encoding path; it does not cover NVIDIA
-or AMD encoders.
+or AMD encoders. With `--d3d12enc`, H.264 reports
+`D3D12VideoEncodeAccelerator` on both runtimes and continues delivering frames.
 
 The beta.3 signed portable binaries were built from `d6e8051` in workflow
 `41863845043`. Source tests also incorporate concurrent Mac/Linux changes through
-`36dad7d`, including named-window title/fullscreen reuse and native pin restoration.
+`daf3098`, including named-window title/fullscreen reuse, native pin restoration
+and the closed-window retention fix.
 The long published-package runs use beta.3; they do not silently switch to the
-newer source while recording. New `v2.23.4` packages are checked separately below.
+newer source while recording. The intermediate `v2.23.4` and final `v2.23.5`
+packages are checked separately below. Final application/package version remains
+`2.23.5`; GitHub's prerelease flag remains enabled for manual promotion.
 
 ## Completed checks
 
@@ -37,8 +41,9 @@ newer source while recording. New `v2.23.4` packages are checked separately belo
 | Process audio | Both runtimes pass 100 source replacement cycles, source exit, navigation, owner close, intentional renderer crash and subsequent recovery. |
 | Actual window capture | Both runtimes capture the owned generated window at 640×360, 800×450 and 480×270 with WGC explicitly enabled and disabled. Captured pixels match the fixture and frames advance. |
 | Available devices | Both runtimes open the six available media-device entries, route output devices, download to separate window folders, and resize out of fullscreen. Media from device checks is not retained. |
-| ASIO | ASIO4ALL v2 is available through the isolated renderer's IPC API on both runtimes. Longer runs and lifecycle results follow below. This is not testing a dedicated professional ASIO interface. |
+| ASIO | Each runtime passes 100 start/stop/close cycles and a ten-minute ASIO4ALL v2 input soak through isolated-renderer IPC. Foreign-window read/start/stop/write requests fail; foreign close does not interrupt the owner. Reload and close release native streams. This is not testing a dedicated professional ASIO interface. |
 | Updated reuse/dialogs | 135 named-window/fetch checks pass on each runtime. Title, Unicode/quoted JS, CSS, URL, cancel and overlapping prompt pin restoration pass. |
+| Closed-window retention | After pulling `a1fa9da`, both runtimes collect all 20 closed BrowserWindow wrappers; IPC/display/download listener counts return to baseline. The updated dialog suite also passes. |
 
 ## Custom runtime findings
 
@@ -53,6 +58,9 @@ despite the correct field trials being active. The 43.3.0-qp20 runtime retains
 resolution in these tests, but VP8/H.264 delivery can stall under the deliberately
 low bitrate. This stress result is a compatibility/operating-limit finding, not
 evidence that the recent JavaScript security updates caused it.
+Both codecs resume delivery when the request returns to 3 Mbps and then accept
+the replacement track. The framerate-lock scenarios exercise delivery and
+replacement; they do not assert a constant frame rate under every load.
 
 Playout is measured by decoding frame numbers drawn into generated video and
 comparing their source timestamps with actual displayed frames:
@@ -63,11 +71,25 @@ comparing their source timestamps with actual displayed frames:
 | 2 seconds | 2,010 ms | 2,005 ms |
 | 15 seconds | 36 ms — fails request | 15,003 ms |
 | 60 seconds | Not tested | 60,001 ms |
+| 600 seconds | Not tested | 600,000 ms after 30 seconds of settling |
+
+The first 600-second attempt, observed for only seven seconds after the requested
+buffer duration, failed: median delay was 598.798 seconds and source timestamps
+advanced only 263 ms in the final three seconds. A fresh run with 30 seconds of
+settling passed: 599.9996-second median delay, 3,004 ms of source progress in the
+final observation window, 30 fps, 901 decoded frames and zero reported freezes.
+This validates the low-complexity generated stream, not arbitrary high-bitrate
+or lossy-network ten-minute buffering.
 
 The default runtime reports a `playoutDelayHint` of 15 even when actual playout
 does not delay. The source inventory discrepancy documented in
 [maintenance-review.md](maintenance-review.md) remains relevant. Do not infer the
 two custom binaries contain identical native patches.
+
+The two-minute lower-concurrency 1080p repeats also show an initial video gap
+(1.104 / 1.135 seconds). After two seconds, maximum gaps are 40 / 41 ms. Thus
+startup behavior also occurs with less concurrent test load; the cause is not
+established and was not hidden by adding a recording warm-up delay.
 
 Cursor suppression is **not verified visually**: the owned-window capture test
 did not include a cursor even in its explicit visible-cursor control. Both page
@@ -76,8 +98,78 @@ real screen-share path. The test captures no unrelated desktop content.
 
 ## Endurance and current package results
 
-Results are recorded after the running media tests finish; no in-progress run is
-counted as a pass.
+### Hour-long published-package recordings
+
+Both beta.3 portables completed an hour of generated 1280×720 video (target
+60 fps, 2 Mbps) with generated audio. Independent full-track FFmpeg decoding
+found no errors or timestamp reversals. The initial video gap remains visible;
+these results establish completeness and sync, not gap-free recording.
+
+| Metric | v39 portable | v43 portable |
+| --- | --- | --- |
+| Decoded video / audio frames | 221,349 / 60,000 | 221,357 / 60,000 |
+| Mean encoded fps | 61.49 | 61.49 |
+| Final A/V offset / change | +56 / +29 ms | +36 / +15 ms |
+| Initial maximum video gap | 1.231 s | 1.119 s |
+| Maximum gap after 2 seconds | 116 ms | 116 ms |
+| First / last aggregate private memory | 535 / 742 MB | 497 / 1,118 MB |
+| Peak private memory | 769 MB | 1,122 MB |
+| Late-minus-early mean private memory | +21 MB | +343 MB |
+
+The v43 main process accounts for much of the sustained growth. This is an
+unresolved finding to investigate before stable promotion; the test does not
+identify a leak's cause. The v39 post-warm-up readings are substantially flatter.
+These recordings used beta.3 binaries; the later window-retention fix is tested
+separately and must not be assumed to resolve this single-window workload.
+
+### Published 2.23.5 recordings before the Windows pin refresh
+
+Both `65b14d9` portable builds completed ten-minute 1920×1080 generated recordings
+(target 60 fps, 6 Mbps), with full decoding, completeness and sync checks passing.
+
+| Metric | v39 portable | v43 portable |
+| --- | --- | --- |
+| Decoded video frames | 36,818 | 36,827 |
+| Mean encoded fps | 61.37 | 61.38 |
+| Final A/V offset / change | +46.5 / +23.5 ms | +50.5 / +34.5 ms |
+| Initial maximum video gap | 1.392 s | 1.248 s |
+| Maximum gap after 2 seconds | 55 ms | 49 ms |
+| Peak private memory | 872 MB | 913 MB |
+| Late-minus-early mean private memory | +118 MB | +165 MB |
+
+The same startup gap and growing memory remain observable. Neither is hidden by
+the analyzer's `passed` field, which checks decode/completeness/synchronization.
+Ten-minute memory comparisons include warm-up; the hour-long comparison above
+uses the established early/late windows rather than the first sample.
+
+### Intermediate 2.23.4 recordings
+
+Both ten-minute generated 1920×1080 recordings (target 60 fps, 6 Mbps) fully decode
+without errors or timestamp reversals. The draw timer produces approximately
+62.5 source frames per second; observed encoded rates are reported below rather
+than claiming exact 60 fps. Audio/video completeness and sync pass. This pass
+does not mean startup is gap-free or that memory is bounded.
+
+| Metric | v39 portable | v43 portable |
+| --- | --- | --- |
+| Decoded video frames | 36,816 | 36,822 |
+| Mean encoded fps | 61.36 | 61.37 |
+| Audio/video end offset | +53.5 ms | +44.0 ms |
+| Change in A/V offset | +14.5 ms | +28.0 ms |
+| Maximum video gap | 1.408 s at startup | 1.296 s at startup |
+| Maximum gap after 2 seconds | 63 ms | 57 ms |
+| Peak aggregate private memory | 893 MB | 912 MB |
+| Late-minus-early mean private memory | +122 MB | +165 MB |
+
+The lower-concurrency two-minute repeats decode cleanly and retain sync (offset
+changes +9.5 / +12.5 ms), but still show the startup gaps described above. Their
+private-memory increases are approximately 38 / 41 MB from first to last sample.
+These figures do not establish a leak or dismiss memory growth. A separate
+6,000-small-GET diagnostic, including enabled/disabled/restored response-header
+hooks and test-only garbage collection, returns JS heaps near baseline on both
+runtimes; it does not reproduce the long recording workload or identify its cause.
+
+### Downloaded packages
 
 The new `v2.23.4` Windows installer and portable downloads match their GitHub
 SHA-256 digests. All four outer executables and both extracted app executables
@@ -92,10 +184,58 @@ identical between variants. RunAsNode, NODE_OPTIONS and Node CLI inspect fuses
 are disabled; cookie encryption is enabled. Existing ASAR integrity/loading
 compatibility settings were not changed.
 
+Both also pass real second-process deep-link routing: window options are consumed,
+the named browsing context is reused, and `node=true` in the URL remains a page
+parameter without enabling Node. This uses an isolated loopback HTTPS fixture
+with only its disposable certificate's SPKI exempted in the test process. It does
+not modify OS protocol associations or test the registered-handler launch path.
+
+ASIO soak totals: 51,678 callbacks / 26,459,136 samples on v39 and 51,677 callbacks /
+26,458,624 samples on v43, with zero reported input/output underflows. Samples were
+counted and discarded. Process private memory stayed approximately 234–235 MB
+and 203–204 MB, respectively; these ten-minute observations do not prove unbounded
+memory stability.
+
 | New portable | SHA-256 |
 | --- | --- |
 | `elecap.exe` | `24246a79faedc1739167a2641d9f990996dbcb60ddb0fe5291b6a5e85b940aab` |
 | `elecap-win11.exe` | `69928b62f418462afc62bb03bbb3968f0a335cd1172535db1c5cfd1e94633d82` |
+
+The initially published `2.23.5` packages embed the correct version and match `65b14d9` source
+after line-ending normalization. Their native binaries match between custom
+runtime variants, their security fuses match the configured policy, and the four
+downloaded installers/portables match GitHub's hashes and pinned timestamped
+signer. Both final portables also pass the complete packaged workflow/deep-link
+test. The 2.23.4 entries above are retained as intermediate evidence, not relabeled
+as final-package results.
+
+| Initial 2.23.5 portable (before Windows pin refresh) | SHA-256 |
+| --- | --- |
+| `elecap.exe` | `290838c301a1f627907c67dd23734a78366367619bcf09a6d9b8a151749eb797` |
+| `elecap-win11.exe` | `d87d96e6f36d817c6f095697cf8f436c980fdfc58a18feb635850c6c3fba49f4` |
+
+The exact packaged process-audio and ASIO native modules from these two 2.23.5
+downloads also pass 100-cycle ownership, reload/close and renderer-recovery tests
+through the real app's IPC handlers. Native module hashes match between variants.
+The ASIO runs are sequential: an overlapping attempt competed for the same
+exclusive ASIO4ALL driver and is not counted as a pass. A test-only ASAR stat
+mistake was corrected to use `original-fs` before those successful runs.
+
+### Windows fullscreen pin correction
+
+The expanded Cartesian matrix exposed pinned fullscreen windows losing their
+native topmost state after minimize/restore and click-through changes on both
+custom runtimes. The native implementation's `floating` level explicitly moves
+behind the taskbar; Explorer lowering that taskbar can clear TOPMOST too.
+The Windows restore path now uses a level above the taskbar and runs on show,
+restore, enter-full-screen and leave-full-screen. The level remains above the
+taskbar on exit because the exit event precedes Explorer restoring the taskbar.
+Explicit `--no-pin` and temporary dialog pin suspension remain respected.
+Mac/Linux level choices and both custom Electron binaries remain unchanged.
+
+The matrix now waits for the taskbar transition and checks fullscreen exit too.
+Final refreshed-package results and build provenance are recorded below after
+verification. The GitHub release stays a prerelease with normal version `2.23.5`.
 
 ## Reproduction
 
@@ -125,6 +265,13 @@ hardware implementation statistics without opening the user's camera/microphone.
 Contract failures remain failures; these opt-in stress checks are not silently
 added to the standard regression command as passing tests.
 
+The packaged workflow test takes `VALIDATION_EXECUTABLE` pointing to a portable
+SFX. Optional `VALIDATION_TLS_CERT` / `VALIDATION_TLS_KEY` enable the loopback
+deep-link fixture; use a disposable localhost certificate, never a production key.
+`VALIDATION_PLAYOUT_SETTLE` extends the post-buffer observation window (default 7
+seconds). The latency test also checks that source timestamps keep advancing, so
+a frozen old frame cannot be mistaken for successful buffering.
+
 ## Follow-up order
 
 1. Preserve both existing custom runtimes and rollback packages while reconciling
@@ -141,7 +288,9 @@ added to the standard regression command as passing tests.
 4. Resolve the remaining build-tool advisories through tested upstream updates;
    retain strict production/native dependency audits. The temporary prerelease
    exception does not repair or justify indefinitely retaining vulnerable tools.
-5. Promote a replacement only after signed-package install/upgrade/rollback and
+5. Investigate recording startup gaps and v43 sustained memory growth with a bare
+   Electron control and matched media/network workloads before stable promotion.
+   Promote a replacement only after signed-package install/upgrade/rollback and
    sustained media tests pass on the supported hardware matrix. Current tests
    do not establish subjective camera/speech quality, hostile-network recovery,
    hardware QP ceilings, or ten-minute buffering of high-bitrate 60 fps content.

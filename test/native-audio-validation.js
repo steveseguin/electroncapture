@@ -41,6 +41,7 @@ if (!process.versions.electron) {
       for (let i = 0; i < 240; i++) { if (await predicate()) return; await sleep(50); }
       throw new Error('Native audio validation timed out');
     };
+    require('./fixtures/use-packaged-native')('native-modules/window-audio-capture/index.js');
     require('../main');
     app.whenReady().then(async () => {
       try {
