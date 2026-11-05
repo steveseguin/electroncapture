@@ -18,9 +18,10 @@ const analyze = () => {
   return { status: child.status, report: JSON.parse(fs.readFileSync(path.join(root, 'analysis.json'))) };
 };
 try {
-  execFileSync(ffmpeg, ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc2=size=160x90:rate=30',
-    '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000', '-t', '2', '-c:v', 'libvpx', '-c:a', 'libopus', recording],
+  const generate = (extra = []) => execFileSync(ffmpeg, ['-y', '-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc2=size=160x90:rate=30',
+    '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000', '-t', '2', ...extra, '-c:v', 'libvpx', '-c:a', 'libopus', recording],
   { timeout: 30000, stdio: 'pipe' });
+  generate();
   manifest(2);
   const good = analyze();
   assert.equal(good.status, 0);
@@ -28,6 +29,14 @@ try {
   assert.equal(good.report.recordings[0].videoFrames, 60, 'Count every known video frame');
   assert.ok(good.report.recordings[0].audioFrames > 0);
   assert.ok(good.report.recordings[0].maxVideoGapSeconds < 0.04);
+  // Valid adjacent VFR frames can be closer than the nominal 30 fps period.
+  // The null output must preserve source precision, not round both DTS values
+  // into the same 1/30-second tick and report a false monotonicity error.
+  generate(['-vf', "settb=1/1000,setpts='if(eq(N,30),959,N*33)'", '-fps_mode', 'passthrough', '-enc_time_base:v', '1/1000']);
+  const variable = analyze();
+  assert.equal(variable.status, 0, JSON.stringify(variable.report.recordings));
+  assert.equal(variable.report.recordings[0].videoFrames, 61);
+  assert.ok(variable.report.recordings[0].maxVideoGapSeconds > 0.06);
   manifest(30);
   const shortened = analyze();
   assert.equal(shortened.status, 1);

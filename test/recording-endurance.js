@@ -102,6 +102,11 @@ if (!process.versions.electron) {
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     const url = `http://127.0.0.1:${server.address().port}/`;
     const env = { ...process.env, ELECTRON_CAPTURE_USER_DATA_DIR: path.join(root, 'profile'), VALIDATION_ROOT: root, VALIDATION_SECONDS: String(seconds) };
+    if (process.platform === 'linux') {
+      // Keep packaged protocol registration inside the disposable test profile.
+      env.XDG_DATA_HOME = path.join(root, 'xdg-data');
+      env.XDG_CONFIG_HOME = path.join(root, 'xdg-config');
+    }
     delete env.ELECTRON_RUN_AS_NODE;
     const packaged = process.env.VALIDATION_EXECUTABLE;
     let executable = packaged || process.env.VALIDATION_ELECTRON || require('electron');
