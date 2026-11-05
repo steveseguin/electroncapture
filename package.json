@@ -1,6 +1,6 @@
 {
   "name": "VDON.Electron.Capture.App",
-  "version": "2.23.4-beta.3",
+  "version": "2.23.4",
   "description": "A simple tool to aid with frameless window video capture and VDO.Ninja publishing",
   "author": "Steve Seguin <steve@seguin.email>",
   "license": "GPL-3.0-only",
@@ -67,6 +67,8 @@
     "postinstall": "node ./scripts/install-custom-electron.js && node ./scripts/install-window-audio-capture.js && node ./scripts/install-electron-asio.js",
     "test:runtime-zip": "node ./test/runtime-zip-regression.js",
     "test:fetch-errors": "node ./test/fetch-errors-regression.js",
+    "test:fetch-runtime": "node ./test/fetch-streams-runtime.js",
+    "test:linux-native-window": "node ./test/linux-native-window.js",
     "test:window-workflows": "node ./test/window-workflows.js",
     "test:windows-alpha": "node ./test/window-alpha-windows.js",
     "test:webrtc-smoke": "node ./test/webrtc-runtime-smoke.js",
@@ -74,7 +76,11 @@
     "build:linux-armv7l": "electron-builder --armv7l --linux deb rpm AppImage tar.gz --publish=never --config.electronVersion=43.8.7 --config.electronDownload.mirror=https://github.com/electron/electron/releases/download/ --config.electronDownload.customDir=v43.8.7",
     "prebuild:linux-armv7l": "node ./scripts/install-window-audio-capture.js",
     "verify:linux": "node ./scripts/verify-linux-build.js x64",
-    "verify:linux-armv7l": "node ./scripts/verify-linux-build.js armv7l"
+    "verify:linux-armv7l": "node ./scripts/verify-linux-build.js armv7l",
+    "test:window-matrix": "node ./test/window-workflows.js --matrix",
+    "test:window-reuse": "node ./test/window-reuse-runtime.js",
+    "test:mac-shortcuts": "node ./test/mac-shortcuts-runtime.js",
+    "test:dialogs-runtime": "node ./test/dialogs-runtime.js"
   },
   "repository": {
     "type": "git",
@@ -317,7 +323,7 @@
     "publish": [
       {
         "provider": "github",
-        "releaseType": "release"
+        "releaseType": "prerelease"
       }
     ],
     "afterPack": "./afterPackHook.js",
@@ -325,6 +331,34 @@
     "rpm": {
       "fpm": [
         "--rpm-rpmbuild-define=_build_id_links none"
+      ],
+      "depends": [
+        "gtk3",
+        "libnotify",
+        "nss",
+        "libXScrnSaver",
+        "(libXtst or libXtst6)",
+        "xdg-utils",
+        "at-spi2-core",
+        "(libuuid or libuuid1)",
+        "(alsa-lib or libasound2)",
+        "(mesa-libgbm or libgbm1)",
+        "(libsecret or libsecret-1-0)"
+      ]
+    },
+    "deb": {
+      "depends": [
+        "libgtk-3-0",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0",
+        "libuuid1",
+        "libsecret-1-0",
+        "libasound2 | libasound2t64",
+        "libgbm1"
       ]
     }
   },

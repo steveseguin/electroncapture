@@ -5,6 +5,51 @@ Windows runtime pins. Source changes are integrated with the upstream macOS
 prerelease work on `master`; Windows binaries were built from `d6e8051`.
 The earlier September findings and evidence are retained below.
 
+## Additional macOS maintenance testing
+
+After integrating the Windows/Linux follow-ups, all 22 regression suites and the
+commit-push safety test pass on macOS. `npm run test:window-matrix` covers all 32
+combinations of pinning, minimized startup, click-through, fullscreen, and Node
+mode alongside the original scenarios: 45 scenarios and 529 assertions pass.
+
+`npm run test:window-reuse` reproduced and now verifies two corrections:
+named-window reuse applies a changed title, and macOS resizing waits for the
+native fullscreen-exit animation. Repeated requests use the latest dimensions;
+requesting continued fullscreen preserves that state. The same live test passes
+138 checks covering repeated reuse, close-timer cancellation, real renderer IPC,
+fetch-stream ownership, and cancellation on navigation/window destruction.
+
+These are maintenance fixes; no new app features are introduced. The test scripts
+use temporary profiles and local HTTP fixtures.
+
+Further macOS validation on the same production code passed:
+
+- Actual native keyboard delivery through System Events: eight checks for
+  click-through/pin restoration, Alt+Enter, mute versus push-to-talk ownership,
+  and reload (`npm run test:mac-shortcuts`; Accessibility permission required).
+- Twelve real prompt-dialog checks: Unicode/quote title editing, cancel,
+  JavaScript roundtrip/execution, CSS alpha, URL navigation, and pin suspension
+  across overlapping dialogs (`npm run test:dialogs-runtime`).
+- Shared real-renderer fetch test: 34 checks. Local WebRTC VP8, VP9 and H.264
+  each encoded and decoded 640x360 frames.
+- Signed beta.3 profile persistence: cookies, local storage and IndexedDB survive
+  restart; session storage clears; isolated pages have no Node access.
+- A 602-second generated audio/video recording decoded all 18,243 video frames
+  without warnings. Audio/video offset changed by -35 ms (53 ms final offset).
+  Window-close and app-quit recordings also passed. The stricter duration-aware
+  analyzer from the Linux follow-up confirms all three recordings are complete.
+  Resident memory rose from 529 to 570 MB; late versus early mean rose 17.6 MB.
+  This finite run does not establish multi-hour stability or a memory-leak bound.
+
+Endurance evidence: `elecap-recording-validation-JjsPSP/analysis.json` in the
+macOS temporary directory. Native key and dialog evidence:
+`elecap-mac-shortcuts-4wYcMb/result.json` and
+`elecap-dialog-runtime-aGsBdL/result.json`. Windows/Linux hardware findings remain
+owned by their separate machines. Physical reconnect, mixed-DPI external displays,
+subjective media quality and multi-hour sessions are not claimed as tested here.
+The shared 2.23.4 version update and Linux package-payload checks were pulled;
+all 22 suites and the additional payload regression pass after integration.
+
 ## Linux follow-up, November 4, 2026
 
 [Linux validation and publication](linux-release-validation.md) completes the
