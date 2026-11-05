@@ -32,7 +32,7 @@ packages are checked separately below. Final application/package version remains
 | Area | Windows result |
 | --- | --- |
 | Regressions | All 22 standard suites pass after integrating concurrent platform changes. |
-| Native window behavior | Initial 156-check suite passes on each custom runtime; expanded matrix results follow below. |
+| Native window behavior | After the fullscreen pin correction, both runtimes pass all 45 scenarios / 542 assertions each (1,084 combined). Explicit no-pin, Node/isolation, minimize, fullscreen exit and click-through combinations are covered. |
 | Native compositor alpha | Five alpha states pass on each runtime. |
 | Real mouse input | Five repeated runs per runtime: 50 combined click/click-through/focus-restoration cycles and 10 real edge drags. Native hit testing identifies the resize edge; width changes from 640 to 720 pixels. |
 | Packaged workflows | Both published portable variants pass cold start, whole-process restart, persistent localStorage/HttpOnly cookie, CSS/JS injection, reload and real second-process named-window reuse. Explicit Node opt-in opens a separate context and preserves the existing isolated window and its preferences. |
@@ -234,6 +234,11 @@ Explicit `--no-pin` and temporary dialog pin suspension remain respected.
 Mac/Linux level choices and both custom Electron binaries remain unchanged.
 
 The matrix now waits for the taskbar transition and checks fullscreen exit too.
+Source artifacts are `elecap-window-workflows-zNQt1Y` (v39) and
+`elecap-window-workflows-yY05HH` (v43), both with 45 passing scenarios and 542
+checks. Both runtimes also repeat the five native compositor states, five real
+mouse/click-through/focus cycles, a real edge drag, and all 14 dialog checks
+successfully after the correction.
 Final refreshed-package results and build provenance are recorded below after
 verification. The GitHub release stays a prerelease with normal version `2.23.5`.
 
@@ -271,6 +276,10 @@ deep-link fixture; use a disposable localhost certificate, never a production ke
 `VALIDATION_PLAYOUT_SETTLE` extends the post-buffer observation window (default 7
 seconds). The latency test also checks that source timestamps keep advancing, so
 a frozen old frame cannot be mistaken for successful buffering.
+`VALIDATION_PACKAGED_APP` selects an extracted `resources/app.asar` for window
+matrix, native mouse, compositor and dialog tests. These load the packaged main
+process, preload and dependencies using the matching custom runtime, while the
+separate portable workflow exercises the actual signed SFX launch/reuse path.
 
 ## Follow-up order
 

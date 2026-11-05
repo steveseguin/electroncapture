@@ -68,7 +68,7 @@ try {
     while (Date.now() < deadline) { if (await predicate()) return; await sleep(50); }
     throw new Error('Timed out waiting for alpha fixture');
   };
-  require('../main');
+  require('./fixtures/app-require')('./main');
   app.whenReady().then(async () => {
     try {
       let overlay;

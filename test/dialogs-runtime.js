@@ -3,7 +3,7 @@
 // Real prompt windows and IPC; menu construction is captured to invoke its handlers.
 // All pages and profiles are disposable local fixtures.
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
-const root=path.resolve(__dirname, '..');const appRequire=require('node:module').createRequire(path.join(root,'package.json'));
+const root=path.resolve(__dirname, '..');const appRequire=require('./fixtures/app-require');
 if(!process.versions.electron){
  (async()=>{
  const directory=fs.mkdtempSync(path.join(require('node:os').tmpdir(),'elecap-dialog-runtime-'));

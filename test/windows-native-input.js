@@ -42,8 +42,9 @@ if (!process.versions.electron) {
     for (let i = 0; i < 240; i++) { if (await test()) return; await sleep(50); }
     throw new Error(`Timed out: ${label}`);
   };
-  const menuModule = require.resolve('electron-context-menu');
-  const contextMenu = require(menuModule);
+  const appRequire = require('./fixtures/app-require');
+  const menuModule = appRequire.resolve('electron-context-menu');
+  const contextMenu = appRequire(menuModule);
   let menuOptions;
   require.cache[menuModule].exports = options => { menuOptions = options; return contextMenu(options); };
   const hwnd = win => Number(win.getNativeWindowHandle().readBigUInt64LE());
@@ -55,7 +56,7 @@ if (!process.versions.electron) {
       { windowsHide: true, timeout: 15000 }, (error, stdout, stderr) => error ? reject(new Error(`${error.message}\n${stderr}`)) : resolve(stdout)));
     return JSON.parse(output);
   };
-  require('../main');
+  appRequire('./main');
   app.whenReady().then(async () => {
     let backdrop;
     try {

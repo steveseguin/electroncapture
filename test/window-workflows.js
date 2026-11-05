@@ -7,6 +7,7 @@ const path = require('node:path');
 const assert = require('node:assert/strict');
 const { pathToFileURL } = require('node:url');
 const root = path.resolve(__dirname, '..');
+const appRequire = require('./fixtures/app-require');
 const scenarios = {
   default: [],
   unpinned: ['--no-pin'],
@@ -87,7 +88,7 @@ if (!process.versions.electron) {
   const fullscreen = flags.includes('--fullscreen');
   const node = flags.includes('--node');
   const clickthrough = flags.includes('--unclickable');
-  const report = { scenario, versions: process.versions, checks: [], passed: false };
+  const report = { scenario, versions: process.versions, packagedApp: process.env.VALIDATION_PACKAGED_APP, checks: [], passed: false };
   const save = () => fs.writeFileSync(path.join(directory, 'result.json'), JSON.stringify(report, null, 2));
   const check = (condition, name) => { assert.ok(condition, name); report.checks.push(name); save(); };
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -133,8 +134,8 @@ if (!process.versions.electron) {
     return registered;
   };
   globalShortcut.unregister = key => { callbacks.delete(key); return unregister(key); };
-  const menuModule = require.resolve('electron-context-menu');
-  const contextMenu = require(menuModule);
+  const menuModule = appRequire.resolve('electron-context-menu');
+  const contextMenu = appRequire(menuModule);
   let menuOptions;
   require.cache[menuModule].exports = options => { menuOptions = options; return contextMenu(options); };
   const menu = win => menuOptions.prepend({}, { frameURL: win.webContents.getURL(), mediaType: 'none', x: 0, y: 0 }, win);
@@ -150,7 +151,7 @@ if (!process.versions.electron) {
     return result;
   }
 
-  require('../main');
+  appRequire('./main');
   app.whenReady().then(async () => {
     try {
       await waitFor(() => BrowserWindow.getAllWindows().length === 1, 'initial window');
