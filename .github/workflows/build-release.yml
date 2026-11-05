@@ -460,6 +460,8 @@ jobs:
         shell: bash
         run: |
           CUSTOM_ELECTRON_SKIP=0 node scripts/install-custom-electron.js
+          sudo chown root:root node_modules/electron/dist/chrome-sandbox
+          sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
           dbus-run-session -- xvfb-run -a -s '-screen 0 1920x1080x24' bash -eo pipefail -c '
             openbox >/tmp/elecap-source-openbox.log 2>&1 &
             for attempt in $(seq 1 50); do
@@ -470,6 +472,7 @@ jobs:
             node test/window-reuse-runtime.js
             node test/fetch-streams-runtime.js
             node test/dialogs-runtime.js
+            node test/window-retention-runtime.js
           '
 
       - name: Build Linux packages
@@ -526,6 +529,7 @@ jobs:
             /tmp/elecap-reuse-runtime-*/**
             /tmp/elecap-fetch-runtime-*/**
             /tmp/elecap-dialog-runtime-*/**
+            /tmp/elecap-window-retention-*/**
             /tmp/elecap-linux-package-*/**
             /tmp/elecap-recording-validation-*/**
 

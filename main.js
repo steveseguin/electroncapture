@@ -2343,6 +2343,16 @@ ipcMain.handle('prompt', async (event, arg) => {
 });
 
 
+// This session handler must not close over a particular window's lifetime.
+function allowEmbeddedFrameHeaders(details, callback) {
+	if (details.responseHeaders['X-Frame-Options']) {
+		delete details.responseHeaders['X-Frame-Options'];
+	} else if (details.responseHeaders['x-frame-options']) {
+		delete details.responseHeaders['x-frame-options'];
+	}
+	callback({ cancel: false, responseHeaders: details.responseHeaders });
+}
+
 async function createWindow(args, reuse=false) {
   var webSecurity = true;
   
@@ -2644,16 +2654,7 @@ async function createWindow(args, reuse=false) {
 		}
 	}
 
-	mainWindow.webContents.session.webRequest.onHeadersReceived({ urls: [ "*://*/*" ] },
-		(d, c)=>{
-		  if(d.responseHeaders['X-Frame-Options']){
-			delete d.responseHeaders['X-Frame-Options'];
-		  } else if(d.responseHeaders['x-frame-options']) {
-			delete d.responseHeaders['x-frame-options'];
-		  }
-		  c({cancel: false, responseHeaders: d.responseHeaders});
-		}
-	);
+	mainWindow.webContents.session.webRequest.onHeadersReceived({ urls: [ "*://*/*" ] }, allowEmbeddedFrameHeaders);
 	
 	//var appData = process.env.APPDATA+"\\..\\Local" || (process.platform == 'darwin' ? process.env.HOME + '/Library/Preferences' : process.env.HOME + "/.local/share")
 
@@ -3073,7 +3074,7 @@ async function createWindow(args, reuse=false) {
   	}
 	
 }
-contextMenu({
+const contextMenuOptions = {
 	prepend: (defaultActions, params, browserWindow) => [
 		{
 			label: '🏠 Go to Homepage',
@@ -3744,7 +3745,16 @@ contextMenu({
 			}
 		}
 	]
-});
+};
+
+function attachWindowContextMenu(window) {
+	// Global mode in electron-context-menu 3.x retains a cleanup closure for
+	// each closed window. Explicit per-window disposal releases that reference.
+	const dispose = contextMenu({ ...contextMenuOptions, window });
+	window.webContents.once('destroyed', dispose);
+}
+for (const window of BrowserWindow.getAllWindows()) attachWindowContextMenu(window);
+app.on('browser-window-created', (_event, window) => attachWindowContextMenu(window));
 
 /* app.on('second-instance', (event, commandLine, workingDirectory, argv2) => {
 	createWindow(argv2, argv2.title); // works, but not with deeplinks for example

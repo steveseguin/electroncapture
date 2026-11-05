@@ -80,7 +80,9 @@
     "test:window-matrix": "node ./test/window-workflows.js --matrix",
     "test:window-reuse": "node ./test/window-reuse-runtime.js",
     "test:mac-shortcuts": "node ./test/mac-shortcuts-runtime.js",
-    "test:dialogs-runtime": "node ./test/dialogs-runtime.js"
+    "test:dialogs-runtime": "node ./test/dialogs-runtime.js",
+    "test:window-retention": "node ./test/window-retention-runtime.js",
+    "test:recording-analysis": "node ./test/recording-analysis-regression.js"
   },
   "repository": {
     "type": "git",
