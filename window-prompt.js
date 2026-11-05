@@ -38,4 +38,6 @@ async function showWindowPrompt(window, prompt, options, apply) {
   }
 }
 
-module.exports = { showWindowPrompt, suspendWindowPin };
+function isWindowPinSuspended(window) { return promptPins.has(window); }
+
+module.exports = { showWindowPrompt, suspendWindowPin, isWindowPinSuspended };

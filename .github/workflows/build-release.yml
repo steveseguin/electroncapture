@@ -455,6 +455,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Test native Linux window and IPC workflows
+        if: matrix.arch != 'armv7l'
+        shell: bash
+        run: |
+          CUSTOM_ELECTRON_SKIP=0 node scripts/install-custom-electron.js
+          dbus-run-session -- xvfb-run -a -s '-screen 0 1920x1080x24' bash -eo pipefail -c '
+            openbox >/tmp/elecap-source-openbox.log 2>&1 &
+            for attempt in $(seq 1 50); do
+              if xprop -root _NET_SUPPORTING_WM_CHECK 2>/dev/null | grep -q "window id"; then break; fi
+              sleep .1
+            done
+            node test/window-workflows.js --matrix
+            node test/window-reuse-runtime.js
+            node test/fetch-streams-runtime.js
+            node test/dialogs-runtime.js
+          '
+
       - name: Build Linux packages
         run: npm run ${{ matrix.build }}
 
@@ -505,6 +522,10 @@ jobs:
           name: linux-${{ matrix.arch }}-runtime-validation
           retention-days: 14
           path: |
+            /tmp/elecap-window-workflows-*/**
+            /tmp/elecap-reuse-runtime-*/**
+            /tmp/elecap-fetch-runtime-*/**
+            /tmp/elecap-dialog-runtime-*/**
             /tmp/elecap-linux-package-*/**
             /tmp/elecap-recording-validation-*/**
 

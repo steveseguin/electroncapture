@@ -3,7 +3,7 @@ const electron = require('electron')
 const process = require('process')
 const prompt = require('electron-prompt');
 const { showCustomCodePrompt } = require('./custom-code-prompt');
-const { showWindowPrompt } = require('./window-prompt');
+const { showWindowPrompt, isWindowPinSuspended } = require('./window-prompt');
 const { parseResolution, physicalResolution, resizeWindow } = require('./window-resolution');
 const { runPageOperation, setCursorHidden } = require('./page-operations');
 const { installWindowDpi } = require('./window-dpi');
@@ -738,10 +738,10 @@ function ensureWindowVisible(windowInstance, options = {}) {
 			console.warn('Failed to show window while ensuring visibility:', error);
 		}
 	}
-	// Restoring a window that started minimized can reset its native macOS level
+	// Restoring a window that started minimized can reset its native overlay level
 	// without emitting a restore event, so reapply the requested overlay level.
 	// CLI click-through alone must not override an explicit --no-pin choice.
-	if (process.platform === 'darwin' && (windowInstance.args?.pin ||
+	if ((process.platform === 'darwin' || process.platform === 'linux') && !isWindowPinSuspended(windowInstance) && (windowInstance.args?.pin ||
 		(windowInstance.mouseEvent && windowInstance.__clickThroughForcedPin))) {
 		windowInstance.setAlwaysOnTop(true, 'floating', 1);
 	}
@@ -2601,15 +2601,20 @@ async function createWindow(args, reuse=false) {
 	mainWindow.__immutableWebPreferences = desiredImmutableWebPreferences;
 	mainWindow.__defaultDragRegionEnabled = defaultDragRegionEnabled;
 	mainWindow.__lastDisplayId = initialDisplay ? initialDisplay.id : null;
-	if (process.platform === 'darwin') {
+	if (process.platform === 'darwin' || process.platform === 'linux') {
 		const restorePinnedLevel = () => {
-			if (!mainWindow.isDestroyed() && !mainWindow.isMinimized() && (mainWindow.args?.pin ||
+			if (!mainWindow.isDestroyed() && !mainWindow.isMinimized() && !isWindowPinSuspended(mainWindow) && (mainWindow.args?.pin ||
 				(mainWindow.mouseEvent && mainWindow.__clickThroughForcedPin))) {
 				mainWindow.setAlwaysOnTop(true, 'floating', 1);
 			}
 		};
 		mainWindow.on('restore', restorePinnedLevel);
-		mainWindow.on('minimize', () => {
+		if (process.platform === 'linux') {
+			// X11 window managers can clear ABOVE when mapping or changing fullscreen.
+			for (const event of ['show', 'enter-full-screen', 'leave-full-screen']) {
+				mainWindow.on(event, restorePinnedLevel);
+			}
+		} else mainWindow.on('minimize', () => {
 			// Overlay windows normally hide the Dock icon, but minimized captures
 			// need a visible way to restore them.
 			app.dock.show().then(restorePinnedLevel).catch(error => console.warn('Unable to show Dock icon:', error));
@@ -2961,7 +2966,14 @@ async function createWindow(args, reuse=false) {
 			mainWindow.setVisibleOnAllWorkspaces(false);
 		}
 
-		if (reuse){
+		if (process.platform === 'linux' && MINIMIZED && FULLSCREEN) {
+			// Entering fullscreen while mapping a hidden X11 window can override
+			// its pending minimize request. Apply fullscreen only when restored.
+			mainWindow.full = true;
+			mainWindow.once('restore', () => {
+				if (!mainWindow.isDestroyed() && mainWindow.args.fullscreen) mainWindow.setFullScreen(true);
+			});
+		} else if (reuse){
 			if (FULLSCREEN){
 				 if (process.platform == "darwin"){
 					mainWindow.maximize();
